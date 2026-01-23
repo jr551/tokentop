@@ -178,7 +178,7 @@ export function RealTimeDashboard() {
 
   const configuredProviders = useMemo(() => {
     return Array.from(providers.values())
-      .filter(p => p.configured && p.usage)
+      .filter(p => p.configured)
       .sort((a, b) => {
         const aMax = getMaxUsedPercent(a);
         const bMax = getMaxUsedPercent(b);

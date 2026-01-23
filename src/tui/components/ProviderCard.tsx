@@ -149,8 +149,8 @@ export const ProviderCard = forwardRef<BoxRenderable, ProviderCardProps>(({
       flexDirection="column"
       gap={1}
       width={44}
+      height={18}
       onMouseDown={handleClick}
-      {...(showPagination ? { height: 18 } : {})}
     >
       <box flexDirection="row" justifyContent="space-between" alignItems="center">
         <text>
