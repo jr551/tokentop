@@ -120,13 +120,30 @@ function LimitGauge({
   label, 
   usedPercent, 
   color,
+  ghost = false,
 }: { 
   label: string; 
   usedPercent: number | null; 
   color: string;
+  ghost?: boolean;
 }) {
   const colors = useColors();
   const barWidth = 8;
+  
+  if (ghost) {
+    const ghostLabel = label.padEnd(10);
+    return (
+      <box width={28} overflow="hidden">
+        <text>
+          <span fg={colors.textSubtle}>○ </span>
+          <span fg={colors.textSubtle}>{ghostLabel}</span>
+          <span fg={colors.textSubtle}>{'░'.repeat(barWidth)}</span>
+          <span fg={colors.textSubtle}> -- </span>
+        </text>
+      </box>
+    );
+  }
+  
   const percent = usedPercent ?? 0;
   const filled = Math.min(barWidth, Math.round((percent / 100) * barWidth));
   const empty = barWidth - filled;
@@ -267,7 +284,7 @@ export function RealTimeDashboard() {
   const formatTokens = (val: number) => val > 1000000 ? `${(val/1000000).toFixed(1)}M` : `${(val/1000).toFixed(1)}K`;
 
   const allLimitGauges = useMemo(() => {
-    type GaugeData = { key: string; label: string; usedPercent: number | null; color: string };
+    type GaugeData = { key: string; label: string; usedPercent: number | null; color: string; ghost: boolean };
     const gaugeData: GaugeData[] = [];
     
     configuredProviders.slice(0, 8).forEach((provider) => {
@@ -279,8 +296,32 @@ export function RealTimeDashboard() {
         label: provider.plugin.name,
         usedPercent: maxPercent > 0 ? maxPercent : null,
         color: providerColor,
+        ghost: false,
       });
     });
+    
+    const ghostProviders = [
+      { key: 'ghost-anthropic', label: 'Anthropic' },
+      { key: 'ghost-codex', label: 'Codex' },
+      { key: 'ghost-copilot', label: 'Copilot' },
+      { key: 'ghost-gemini', label: 'Gemini' },
+    ];
+    
+    const configuredKeys = new Set(configuredProviders.map(p => p.plugin.id));
+    const ghostsNeeded = Math.max(0, 4 - gaugeData.length);
+    
+    ghostProviders
+      .filter(g => !configuredKeys.has(g.key.replace('ghost-', '')))
+      .slice(0, ghostsNeeded)
+      .forEach(ghost => {
+        gaugeData.push({
+          key: ghost.key,
+          label: ghost.label,
+          usedPercent: null,
+          color: '#666666',
+          ghost: true,
+        });
+      });
     
     return gaugeData;
   }, [configuredProviders, getProviderDisplayColor]);
@@ -306,16 +347,14 @@ export function RealTimeDashboard() {
         </box>
       </box>
 
-      {configuredProviders.length > 0 && (
-        <box flexDirection="column" border borderStyle="single" padding={1} borderColor={colors.border} overflow="hidden">
-          <text fg={colors.textSubtle} marginBottom={1}>PROVIDER LIMITS</text>
-          <box flexDirection="row" flexWrap="wrap" gap={1} overflow="hidden">
-            {allLimitGauges.slice(0, 8).map(g => (
-              <LimitGauge key={g.key} label={g.label} usedPercent={g.usedPercent} color={g.color} />
-            ))}
-          </box>
+      <box flexDirection="column" border borderStyle="single" padding={1} borderColor={colors.border} overflow="hidden">
+        <text fg={colors.textSubtle} marginBottom={1}>PROVIDER LIMITS</text>
+        <box flexDirection="row" flexWrap="wrap" gap={1} overflow="hidden">
+          {allLimitGauges.slice(0, 8).map(g => (
+            <LimitGauge key={g.key} label={g.label} usedPercent={g.usedPercent} color={g.color} ghost={g.ghost} />
+          ))}
         </box>
-      )}
+      </box>
 
       <box flexDirection="row" gap={1} flexGrow={1}>
         
