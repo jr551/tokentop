@@ -84,7 +84,6 @@ function buildOAuthCredentials(
 }
 
 const PROVIDER_TO_OPENCODE_KEY: Record<string, string> = {
-  'claude-max': 'anthropic',
   'codex': 'openai',
   'antigravity': 'google',
 };

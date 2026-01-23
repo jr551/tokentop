@@ -18,15 +18,15 @@ interface AnthropicUsageResponse {
   };
 }
 
-export const claudeMaxPlugin: ProviderPlugin = {
-  id: 'claude-max',
+export const anthropicPlugin: ProviderPlugin = {
+  id: 'anthropic',
   type: 'provider',
-  name: 'Claude Pro/Max',
+  name: 'Anthropic',
   version: '1.0.0',
 
   meta: {
-    description: 'Claude Pro/Max subscription usage tracking (OAuth)',
-    homepage: 'https://claude.ai',
+    description: 'Anthropic Claude subscription usage tracking',
+    homepage: 'https://anthropic.com',
     color: '#d4a27f',
   },
 
@@ -36,8 +36,12 @@ export const claudeMaxPlugin: ProviderPlugin = {
       allowedDomains: ['api.anthropic.com'],
     },
     env: {
-      read: false,
-      vars: [],
+      read: true,
+      vars: ['ANTHROPIC_API_KEY'],
+    },
+    filesystem: {
+      read: true,
+      paths: ['~/.claude', '~/.local/share/opencode'],
     },
   },
 
@@ -49,39 +53,50 @@ export const claudeMaxPlugin: ProviderPlugin = {
   },
 
   auth: {
-    envVars: [],
+    envVars: ['ANTHROPIC_API_KEY'],
     externalPaths: [
       { path: '~/.claude/.credentials.json', type: 'claude-code' },
     ],
-    types: ['oauth'],
+    types: ['oauth', 'api'],
   },
 
   isConfigured(credentials: Credentials): boolean {
-    return !!credentials.oauth?.accessToken;
+    return !!(credentials.oauth?.accessToken || credentials.apiKey);
   },
 
   async fetchUsage(ctx: ProviderFetchContext): Promise<ProviderUsageData> {
     const { credentials, http, log } = ctx;
 
-    if (!credentials.oauth?.accessToken) {
+    const hasOAuth = !!credentials.oauth?.accessToken;
+    const hasApiKey = !!credentials.apiKey;
+
+    if (!hasOAuth && !hasApiKey) {
       return {
         fetchedAt: Date.now(),
-        error: 'OAuth token required. Sign in via OpenCode.',
+        error: 'OAuth token or API key required. Authenticate via OpenCode or Claude Code.',
       };
     }
 
-    const isExpired = credentials.oauth.expiresAt && 
-      credentials.oauth.expiresAt <= Date.now() + TOKEN_EXPIRY_BUFFER_MS;
-
-    if (isExpired) {
+    if (hasApiKey && !hasOAuth) {
       return {
+        planType: 'API',
+        allowed: true,
         fetchedAt: Date.now(),
-        error: 'Token expired. Run any command in OpenCode to refresh.',
       };
     }
 
-    const accessToken = credentials.oauth.accessToken;
-    const subscriptionType = (credentials.oauth as { subscriptionType?: string }).subscriptionType;
+    if (credentials.oauth?.expiresAt) {
+      const isExpired = credentials.oauth.expiresAt <= Date.now() + TOKEN_EXPIRY_BUFFER_MS;
+      if (isExpired) {
+        return {
+          fetchedAt: Date.now(),
+          error: 'Token expired. Run any command in OpenCode to refresh.',
+        };
+      }
+    }
+
+    const accessToken = credentials.oauth!.accessToken;
+    const subscriptionType = (credentials.oauth as { subscriptionType?: string } | undefined)?.subscriptionType;
     const planType = getPlanName(subscriptionType);
 
     try {
@@ -100,13 +115,13 @@ export const claudeMaxPlugin: ProviderPlugin = {
         if (response.status === 401) {
           return {
             fetchedAt: Date.now(),
-            error: 'OAuth token expired or invalid. Re-authenticate in Claude Code.',
+            error: 'Token expired or invalid. Re-authenticate in OpenCode or Claude Code.',
           };
         }
         if (response.status === 403) {
           return {
             fetchedAt: Date.now(),
-            error: 'OAuth token lacks required scope. Re-authenticate in Claude Code.',
+            error: 'Token lacks required scope. Re-authenticate in OpenCode or Claude Code.',
           };
         }
         
