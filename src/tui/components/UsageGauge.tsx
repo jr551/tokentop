@@ -33,6 +33,7 @@ export function UsageGauge({
   const emptyBar = '·'.repeat(emptyWidth);
 
   const resetText = resetsAt ? formatResetTime(resetsAt) : '';
+  const showWindowLabel = windowLabel && !label.toLowerCase().includes(windowLabel.toLowerCase());
 
   return (
     <box flexDirection="column" width={width}>
@@ -48,10 +49,10 @@ export function UsageGauge({
           <span fg={colors.gaugeBackground}>{emptyBar}</span>
         </text>
       </box>
-      {(windowLabel || resetText) && (
+      {(showWindowLabel || resetText) && (
         <text fg={colors.textMuted}>
-          {windowLabel}
-          {windowLabel && resetText ? ' · ' : ''}
+          {showWindowLabel ? windowLabel : ''}
+          {showWindowLabel && resetText ? ' · ' : ''}
           {resetText}
         </text>
       )}

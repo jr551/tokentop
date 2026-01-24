@@ -183,39 +183,57 @@ export const ProviderCard = forwardRef<BoxRenderable, ProviderCardProps>(({
                     />
                   ))
                 ) : (
-                  sortedItems.map((limit, idx) => (
-                    <UsageGauge
-                      key={idx}
-                      label={limit.label ?? 'Usage'}
-                      usedPercent={limit.usedPercent}
-                      color={providerColor}
-                      {...(limit.windowMinutes ? { windowLabel: formatWindow(limit.windowMinutes) } : {})}
-                      {...(limit.resetsAt ? { resetsAt: limit.resetsAt } : {})}
-                    />
-                  ))
+                  sortedItems.map((limit, idx) => {
+                    const labelText = limit.label ?? 'Usage';
+                    const labelHasWindow = labelText.toLowerCase().includes('window') || 
+                                           labelText.toLowerCase().includes('hour') ||
+                                           labelText.toLowerCase().includes('day');
+                    return (
+                      <UsageGauge
+                        key={idx}
+                        label={labelText}
+                        usedPercent={limit.usedPercent}
+                        color={providerColor}
+                        {...(limit.windowMinutes && !labelHasWindow ? { windowLabel: formatWindow(limit.windowMinutes) } : {})}
+                        {...(limit.resetsAt ? { resetsAt: limit.resetsAt } : {})}
+                      />
+                    );
+                  })
                 )}
               </>
             ) : (
               <>
-                {usage.limits?.primary && (
-                  <UsageGauge
-                    label={usage.limits.primary.label ?? 'Usage'}
-                    usedPercent={usage.limits.primary.usedPercent}
-                    color={providerColor}
-                    {...(usage.limits.primary.windowMinutes ? { windowLabel: formatWindow(usage.limits.primary.windowMinutes) } : {})}
-                    {...(usage.limits.primary.resetsAt ? { resetsAt: usage.limits.primary.resetsAt } : {})}
-                  />
-                )}
+                {usage.limits?.primary && (() => {
+                  const labelText = usage.limits.primary.label ?? 'Usage';
+                  const labelHasWindow = labelText.toLowerCase().includes('window') || 
+                                         labelText.toLowerCase().includes('hour') ||
+                                         labelText.toLowerCase().includes('day');
+                  return (
+                    <UsageGauge
+                      label={labelText}
+                      usedPercent={usage.limits.primary.usedPercent}
+                      color={providerColor}
+                      {...(usage.limits.primary.windowMinutes && !labelHasWindow ? { windowLabel: formatWindow(usage.limits.primary.windowMinutes) } : {})}
+                      {...(usage.limits.primary.resetsAt ? { resetsAt: usage.limits.primary.resetsAt } : {})}
+                    />
+                  );
+                })()}
 
-                {usage.limits?.secondary && (
-                  <UsageGauge
-                    label={usage.limits.secondary.label ?? 'Secondary'}
-                    usedPercent={usage.limits.secondary.usedPercent}
-                    color={providerColor}
-                    {...(usage.limits.secondary.windowMinutes ? { windowLabel: formatWindow(usage.limits.secondary.windowMinutes) } : {})}
-                    {...(usage.limits.secondary.resetsAt ? { resetsAt: usage.limits.secondary.resetsAt } : {})}
-                  />
-                )}
+                {usage.limits?.secondary && (() => {
+                  const labelText = usage.limits.secondary.label ?? 'Secondary';
+                  const labelHasWindow = labelText.toLowerCase().includes('window') || 
+                                         labelText.toLowerCase().includes('hour') ||
+                                         labelText.toLowerCase().includes('day');
+                  return (
+                    <UsageGauge
+                      label={labelText}
+                      usedPercent={usage.limits.secondary.usedPercent}
+                      color={providerColor}
+                      {...(usage.limits.secondary.windowMinutes && !labelHasWindow ? { windowLabel: formatWindow(usage.limits.secondary.windowMinutes) } : {})}
+                      {...(usage.limits.secondary.resetsAt ? { resetsAt: usage.limits.secondary.resetsAt } : {})}
+                    />
+                  );
+                })()}
               </>
             )}
 
