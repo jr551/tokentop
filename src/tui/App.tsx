@@ -17,6 +17,7 @@ import { StatusBar } from './components/StatusBar.tsx';
 import { DebugConsole, copyLogsToClipboard, type DebugConsoleHandle } from './components/DebugConsole.tsx';
 import { Toast } from './components/Toast.tsx';
 import { ToastProvider, useToastContext } from './contexts/ToastContext.tsx';
+import { DashboardRuntimeProvider } from './contexts/DashboardRuntimeContext.tsx';
 import { RealTimeDashboard } from './views/RealTimeDashboard.tsx';
 import { Dashboard } from './views/Dashboard.tsx';
 import { HistoricalTrendsView } from './views/HistoricalTrendsView.tsx';
@@ -282,18 +283,14 @@ function AppContent() {
       
       {isConsoleOpen ? (
         <DebugConsole ref={debugConsoleRef} height={20} follow={consoleFollow} />
-      ) : activeView === 'dashboard' ? (
-        <RealTimeDashboard />
-      ) : activeView === 'providers' ? (
-        <Dashboard />
-      ) : activeView === 'trends' ? (
-        <HistoricalTrendsView />
-      ) : activeView === 'projects' ? (
-        <ProjectsView />
-      ) : activeView === 'settings' ? (
-        <SettingsView />
       ) : (
-        <RealTimeDashboard />
+        <>
+          {activeView === 'dashboard' && <RealTimeDashboard />}
+          {activeView === 'providers' && <Dashboard />}
+          {activeView === 'trends' && <HistoricalTrendsView />}
+          {activeView === 'projects' && <ProjectsView />}
+          {activeView === 'settings' && <SettingsView />}
+        </>
       )}
       
       <StatusBar
@@ -332,7 +329,9 @@ function ConfiguredApp() {
       <ToastProvider>
         <PluginProvider>
           <AgentSessionProvider autoRefresh={true} refreshInterval={3000}>
-            <AppContent />
+            <DashboardRuntimeProvider>
+              <AppContent />
+            </DashboardRuntimeProvider>
           </AgentSessionProvider>
         </PluginProvider>
       </ToastProvider>

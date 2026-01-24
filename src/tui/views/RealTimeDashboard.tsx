@@ -8,6 +8,7 @@ import { useAgentSessions } from '../contexts/AgentSessionContext.tsx';
 import { useTimeWindow } from '../contexts/TimeWindowContext.tsx';
 import { useToastContext } from '../contexts/ToastContext.tsx';
 import { useConfig } from '../contexts/ConfigContext.tsx';
+import { useDashboardRuntime } from '../contexts/DashboardRuntimeContext.tsx';
 import { DebugInspectorOverlay } from '../components/DebugInspectorOverlay.tsx';
 import { KpiStrip } from '../components/KpiStrip.tsx';
 import { SessionDetailsDrawer } from '../components/SessionDetailsDrawer.tsx';
@@ -49,10 +50,9 @@ export function RealTimeDashboard() {
   const { height: terminalHeight } = useTerminalDimensions();
   const { showToast } = useToastContext();
   const { config } = useConfig();
+  const { activity, sparkData, deltas, emaRef, debugDataRef } = useDashboardRuntime();
   
   const visibleRows = Math.max(1, terminalHeight - 29);
-  
-  const [sparkData, setSparkData] = useState<number[]>([]);
   
   const [showHelp, setShowHelp] = useState(false);
   const [showDebugInspector, setShowDebugInspector] = useState(false);
@@ -77,30 +77,6 @@ export function RealTimeDashboard() {
     modalOpenRef.current = showHelp || showDebugInspector || showSessionDrawer;
     pendingGRef.current = pendingG;
   }, [isFiltering, showHelp, showDebugInspector, showSessionDrawer, pendingG]);
-  
-  const historyRef = useRef<{time: number, cost: number, tokens: number}[]>([]);
-  const [deltas, setDeltas] = useState({ cost: 0, tokens: 0, windowSec: 0 });
-  
-  const emaRef = useRef<{ lastTokens: number; lastTime: number; ema: number }>({ 
-    lastTokens: -1, lastTime: Date.now(), ema: 0 
-  });
-  const [activity, setActivity] = useState<{ rate: number; ema: number; isSpike: boolean }>({ 
-    rate: 0, ema: 0, isSpike: false 
-  });
-  
-  const debugDataRef = useRef<{
-    lastDeltaTokens: number;
-    lastRateTps: number;
-    lastDt: number;
-    refreshCount: number;
-    lastRefreshTime: number;
-  }>({
-    lastDeltaTokens: 0,
-    lastRateTps: 0,
-    lastDt: 0,
-    refreshCount: 0,
-    lastRefreshTime: Date.now(),
-  });
 
   const configuredProviders = useMemo(() => {
     return Array.from(providers.values())
@@ -127,88 +103,6 @@ export function RealTimeDashboard() {
 
   const formatCurrency = (val: number) => `$${val.toFixed(2)}`;
   const formatTokens = (val: number) => val > 1000000 ? `${(val/1000000).toFixed(1)}M` : `${(val/1000).toFixed(1)}K`;
-
-  useEffect(() => {
-    setSparkData(Array.from({ length: 60 }, () => 0));
-  }, []);
-
-  useEffect(() => {
-    if (isLoading || agentSessions.length === 0) return;
-    
-    const totalCost = agentSessions.reduce((sum, s) => sum + (s.totalCostUsd ?? 0), 0);
-    const totalTokens = agentSessions.reduce((sum, s) => sum + s.totals.input + s.totals.output, 0);
-    const currentTime = Date.now();
-    
-    const lastEntry = historyRef.current[historyRef.current.length - 1];
-    if (lastEntry && totalTokens < lastEntry.tokens) {
-      historyRef.current = [];
-    }
-    
-    historyRef.current.push({ time: currentTime, cost: totalCost, tokens: totalTokens });
-    if (historyRef.current.length > 300) historyRef.current.shift();
-
-    const targetTime = windowMs !== null ? currentTime - windowMs : 0;
-    let baseline = historyRef.current[0];
-    for (let i = historyRef.current.length - 1; i >= 0; i--) {
-      if (historyRef.current[i]!.time <= targetTime) {
-        baseline = historyRef.current[i];
-        break;
-      }
-    }
-    
-    if (baseline) {
-      const windowSec = (currentTime - baseline.time) / 1000;
-      setDeltas({
-        cost: totalCost - baseline.cost,
-        tokens: totalTokens - baseline.tokens,
-        windowSec,
-      });
-    }
-
-    debugDataRef.current.refreshCount++;
-    debugDataRef.current.lastRefreshTime = currentTime;
-
-    if (emaRef.current.lastTokens === -1) {
-      emaRef.current = { lastTokens: totalTokens, lastTime: currentTime, ema: 0 };
-      return;
-    }
-
-    const prevTokens = emaRef.current.lastTokens;
-    const deltaTokens = Math.max(0, totalTokens - prevTokens);
-    const dtRaw = (currentTime - emaRef.current.lastTime) / 1000;
-    const dt = Math.max(dtRaw, 0.25);
-    
-    debugDataRef.current.lastDeltaTokens = deltaTokens;
-    debugDataRef.current.lastDt = dt;
-    
-    if (deltaTokens > 0) {
-      const rateTps = deltaTokens / dt;
-      const tauSec = 10;
-      const alpha = 1 - Math.exp(-dt / tauSec);
-      const newEma = emaRef.current.ema + alpha * (rateTps - emaRef.current.ema);
-      const isSpike = rateTps >= Math.max(800, newEma * 2) && (rateTps - newEma) >= 200;
-      
-      debugDataRef.current.lastRateTps = rateTps;
-      emaRef.current.ema = newEma;
-      setActivity({ rate: rateTps, ema: newEma, isSpike });
-    }
-    
-    emaRef.current.lastTokens = totalTokens;
-    emaRef.current.lastTime = currentTime;
-  }, [agentSessions, isLoading, windowMs]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const alpha = 2 / (10 + 1);
-      const decayedEma = (1 - alpha) * emaRef.current.ema;
-      emaRef.current.ema = decayedEma;
-      
-      setActivity(prev => ({ ...prev, ema: decayedEma, isSpike: false }));
-      setSparkData(d => [...d.slice(1), decayedEma]);
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   const processedSessions = useMemo(() => {
     let result = [...agentSessions];
@@ -527,7 +421,7 @@ export function RealTimeDashboard() {
                       width={6} 
                       height={1} 
                       fg={isSelected 
-                        ? rowFg
+                        ? (session.status === 'active' ? '#ffffff' : rowFg)
                         : (session.status === 'active' ? colors.success : colors.textMuted)}
                     >
                       {session.status === 'active' ? '●' : '○'}
