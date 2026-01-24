@@ -53,5 +53,4 @@ temp/
 .tmp/
 .temp/
 
-# Documentation (excluded from initial commit)
-docs/
+

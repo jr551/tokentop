@@ -13,7 +13,21 @@ import type { Credentials, OAuthCredentials } from '../types/provider.ts';
 
 const OPENCODE_AUTH_PATH = path.join(os.homedir(), '.local/share/opencode/auth.json');
 const OPENCODE_CONFIG_PATH = path.join(os.homedir(), '.config/opencode/opencode.json');
-const OPENCODE_SESSIONS_PATH = path.join(os.homedir(), '.local/share/opencode/sessions');
+const OPENCODE_STORAGE_PATH = path.join(os.homedir(), '.local/share/opencode/storage');
+const OPENCODE_SESSIONS_PATH = path.join(OPENCODE_STORAGE_PATH, 'session');
+const OPENCODE_MESSAGES_PATH = path.join(OPENCODE_STORAGE_PATH, 'message');
+
+const sessionCache: {
+  lastCheck: number;
+  lastResult: SessionUsageData[];
+  lastLimit: number;
+} = {
+  lastCheck: 0,
+  lastResult: [],
+  lastLimit: 0,
+};
+
+const CACHE_TTL_MS = 2000;
 
 interface OpenCodeAuthEntry {
   type: 'api' | 'oauth' | 'codex' | 'github' | 'wellknown';
@@ -40,26 +54,44 @@ interface OpenCodeConfig {
   }>;
 }
 
-interface OpenCodeSessionMessage {
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-  model?: string;
-  provider?: string;
-  usage?: {
-    input_tokens?: number;
-    output_tokens?: number;
-    cache_read_input_tokens?: number;
-    cache_creation_input_tokens?: number;
+interface OpenCodeMessageTokens {
+  input: number;
+  output: number;
+  reasoning?: number;
+  cache?: {
+    read: number;
+    write: number;
   };
-  timestamp?: number;
+}
+
+interface OpenCodeMessage {
+  id: string;
+  sessionID: string;
+  role: 'user' | 'assistant' | 'system';
+  time: {
+    created: number;
+    completed?: number;
+  };
+  providerID?: string;
+  modelID?: string;
+  cost?: number;
+  tokens?: OpenCodeMessageTokens;
+  agent?: string;
+  model?: {
+    providerID?: string;
+    modelID?: string;
+  };
 }
 
 interface OpenCodeSession {
   id: string;
-  messages: OpenCodeSessionMessage[];
-  created_at?: number;
-  updated_at?: number;
-  project_path?: string;
+  projectID?: string;
+  directory?: string;
+  title?: string;
+  time: {
+    created: number;
+    updated: number;
+  };
 }
 
 function buildOAuthCredentials(
@@ -108,7 +140,7 @@ export const opencodeAgentPlugin: AgentPlugin = {
   agent: {
     command: 'opencode',
     configPath: OPENCODE_CONFIG_PATH,
-    sessionPath: OPENCODE_SESSIONS_PATH,
+    sessionPath: OPENCODE_STORAGE_PATH,
     authPath: OPENCODE_AUTH_PATH,
   },
 
@@ -168,60 +200,123 @@ export const opencodeAgentPlugin: AgentPlugin = {
   },
 
   async parseSessions(options: SessionParseOptions, ctx: AgentFetchContext): Promise<SessionUsageData[]> {
-    const sessions: SessionUsageData[] = [];
+    const limit = options.limit ?? 100;
 
     try {
-      await fs.access(OPENCODE_SESSIONS_PATH);
+      await fs.access(OPENCODE_STORAGE_PATH);
     } catch {
-      ctx.log.debug('No OpenCode sessions directory found');
+      ctx.log.debug('No OpenCode storage directory found');
+      return [];
+    }
+
+    const now = Date.now();
+    if (
+      !options.sessionId &&
+      limit === sessionCache.lastLimit &&
+      now - sessionCache.lastCheck < CACHE_TTL_MS &&
+      sessionCache.lastResult.length > 0
+    ) {
+      ctx.log.debug('Using cached sessions (within TTL)', { count: sessionCache.lastResult.length });
+      return sessionCache.lastResult;
+    }
+
+    const sessions: SessionUsageData[] = [];
+    const sessionFiles: Array<{ path: string; session: OpenCodeSession }> = [];
+
+    try {
+      const projectDirs = await fs.readdir(OPENCODE_SESSIONS_PATH, { withFileTypes: true });
+
+      for (const projectDir of projectDirs) {
+        if (!projectDir.isDirectory()) continue;
+
+        const projectPath = path.join(OPENCODE_SESSIONS_PATH, projectDir.name);
+        const sessionEntries = await fs.readdir(projectPath, { withFileTypes: true });
+
+        for (const entry of sessionEntries) {
+          if (!entry.isFile() || !entry.name.endsWith('.json')) continue;
+
+          const sessionFilePath = path.join(projectPath, entry.name);
+          const session = await readJsonFile<OpenCodeSession>(sessionFilePath);
+
+          if (session?.id) {
+            if (options.sessionId && session.id !== options.sessionId) continue;
+            sessionFiles.push({ path: sessionFilePath, session });
+          }
+        }
+      }
+    } catch (err) {
+      ctx.log.debug('Failed to read session directories', { error: err });
       return sessions;
     }
 
-    const entries = await fs.readdir(OPENCODE_SESSIONS_PATH, { withFileTypes: true });
-    const sessionDirs = entries.filter((e) => e.isDirectory());
+    sessionFiles.sort((a, b) => b.session.time.updated - a.session.time.updated);
 
-    const limit = options.limit ?? 100;
-    let count = 0;
+    const maxSessionsToProcess = Math.min(sessionFiles.length, 50);
 
-    for (const dir of sessionDirs) {
-      if (count >= limit) break;
+    for (let i = 0; i < maxSessionsToProcess; i++) {
+      const { session } = sessionFiles[i]!;
 
-      if (options.sessionId && dir.name !== options.sessionId) continue;
+      const messagesDir = path.join(OPENCODE_MESSAGES_PATH, session.id);
 
-      const sessionPath = path.join(OPENCODE_SESSIONS_PATH, dir.name, 'session.json');
-      const session = await readJsonFile<OpenCodeSession>(sessionPath);
+      try {
+        await fs.access(messagesDir);
+      } catch {
+        continue;
+      }
 
-      if (!session?.messages) continue;
+      const messageFiles = await fs.readdir(messagesDir, { withFileTypes: true });
+      
+      const messageData: Array<{ file: string; mtime: number }> = [];
+      for (const msgFile of messageFiles) {
+        if (!msgFile.isFile() || !msgFile.name.endsWith('.json')) continue;
+        const msgPath = path.join(messagesDir, msgFile.name);
+        try {
+          const stat = await fs.stat(msgPath);
+          messageData.push({ file: msgPath, mtime: stat.mtimeMs });
+        } catch {
+          continue;
+        }
+      }
+      
+      messageData.sort((a, b) => b.mtime - a.mtime);
 
-      for (const message of session.messages) {
-        if (message.role !== 'assistant' || !message.usage) continue;
+      for (const { file: msgPath } of messageData) {
+        const message = await readJsonFile<OpenCodeMessage>(msgPath);
+
+        if (!message || message.role !== 'assistant' || !message.tokens) continue;
+
+        const providerId = message.providerID ?? message.model?.providerID ?? 'unknown';
+        const modelId = message.modelID ?? message.model?.modelID ?? 'unknown';
 
         const usage: SessionUsageData = {
-          sessionId: session.id || dir.name,
-          providerId: message.provider ?? 'unknown',
-          modelId: message.model ?? 'unknown',
+          sessionId: session.id,
+          providerId,
+          modelId,
           tokens: {
-            input: message.usage.input_tokens ?? 0,
-            output: message.usage.output_tokens ?? 0,
+            input: message.tokens.input ?? 0,
+            output: message.tokens.output ?? 0,
           },
-          timestamp: message.timestamp ?? session.updated_at ?? Date.now(),
+          timestamp: message.time.completed ?? message.time.created,
         };
 
-        if (message.usage.cache_read_input_tokens) {
-          usage.tokens.cacheRead = message.usage.cache_read_input_tokens;
+        if (message.tokens.cache?.read) {
+          usage.tokens.cacheRead = message.tokens.cache.read;
         }
-        if (message.usage.cache_creation_input_tokens) {
-          usage.tokens.cacheWrite = message.usage.cache_creation_input_tokens;
+        if (message.tokens.cache?.write) {
+          usage.tokens.cacheWrite = message.tokens.cache.write;
         }
-        if (session.project_path) {
-          usage.projectPath = session.project_path;
+        if (session.directory) {
+          usage.projectPath = session.directory;
         }
 
         sessions.push(usage);
-        count++;
-
-        if (count >= limit) break;
       }
+    }
+
+    if (!options.sessionId) {
+      sessionCache.lastCheck = Date.now();
+      sessionCache.lastResult = sessions;
+      sessionCache.lastLimit = limit;
     }
 
     ctx.log.debug('Parsed OpenCode sessions', { count: sessions.length });

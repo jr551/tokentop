@@ -3,71 +3,8 @@ import { useKeyboard } from '@opentui/react';
 import { useColors } from '../contexts/ThemeContext.tsx';
 import { usePlugins } from '../contexts/PluginContext.tsx';
 import { useInputFocus } from '../contexts/InputContext.tsx';
-
-interface AgentSession {
-  sessionId: string;
-  agentName: 'OpenCode' | 'Claude Code' | 'Gemini CLI' | 'Cursor' | 'Windsurf';
-  providerId: string;  
-  modelId: string;     
-  projectPath: string;
-  tokens: {
-    input: number;
-    output: number;
-    cacheRead?: number;
-    cacheWrite?: number;
-  };
-  cost: number;        
-  startedAt: number;   
-  lastActivityAt: number;
-  requestCount: number;
-  status: 'active' | 'idle';
-}
-
-function generateMockSessions(): AgentSession[] {
-  const agents = ['OpenCode', 'Claude Code', 'Gemini CLI', 'Cursor', 'Windsurf'] as const;
-  const models = [
-    { id: 'claude-3-7-sonnet', provider: 'anthropic', costIn: 3.0, costOut: 15.0 },
-    { id: 'claude-3-5-sonnet', provider: 'anthropic', costIn: 3.0, costOut: 15.0 },
-    { id: 'claude-3-haiku', provider: 'anthropic', costIn: 0.25, costOut: 1.25 },
-    { id: 'gpt-4o', provider: 'openai', costIn: 2.5, costOut: 10.0 },
-    { id: 'gpt-4o-mini', provider: 'openai', costIn: 0.15, costOut: 0.6 },
-    { id: 'gemini-1.5-pro', provider: 'google', costIn: 1.25, costOut: 5.0 },
-    { id: 'gemini-2.0-flash', provider: 'google', costIn: 0.1, costOut: 0.4 },
-  ];
-  
-  const projects = ['~/dev/tokentop', '~/work/backend-api', '~/experiments/ui-kit', '~/personal/blog', '~/oss/react'];
-  
-  const sessions: AgentSession[] = [];
-  const count = 4 + Math.floor(Math.random() * 5);
-
-  for (let i = 0; i < count; i++) {
-    const model = models[Math.floor(Math.random() * models.length)]!;
-    const agent = agents[Math.floor(Math.random() * agents.length)]!;
-    const project = projects[Math.floor(Math.random() * projects.length)]!;
-    
-    const input = 5000 + Math.floor(Math.random() * 150000);
-    const output = 1000 + Math.floor(Math.random() * 30000);
-    
-    const cost = (input * model.costIn + output * model.costOut) / 1000000;
-    const isActive = Math.random() > 0.6;
-
-    sessions.push({
-      sessionId: `ses_${Math.random().toString(36).substr(2, 6)}`,
-      agentName: agent,
-      providerId: model.provider,
-      modelId: model.id,
-      projectPath: project,
-      tokens: { input, output },
-      cost,
-      startedAt: Date.now() - Math.random() * 3600000 * 4,
-      lastActivityAt: isActive ? Date.now() : Date.now() - Math.random() * 60000 * 10,
-      requestCount: 10 + Math.floor(Math.random() * 200),
-      status: isActive ? 'active' : 'idle'
-    });
-  }
-
-  return sessions.sort((a, b) => b.cost - a.cost);
-}
+import { useAgentSessions } from '../contexts/AgentSessionContext.tsx';
+import { DebugInspectorOverlay } from '../components/DebugInspectorOverlay.tsx';
 
 function Sparkline({ data, width = 60, label }: { data: number[], width?: number, label?: string }) {
   const colors = useColors();
@@ -222,13 +159,14 @@ export function RealTimeDashboard() {
   const colors = useColors();
   const { providers } = usePlugins();
   const { setInputFocused } = useInputFocus();
+  const { sessions: agentSessions, isLoading, refreshSessions } = useAgentSessions();
   
-  // Data State
-  const [sessions, setSessions] = useState<AgentSession[]>([]);
+  // Sparkline data for activity visualization
   const [sparkData, setSparkData] = useState<number[]>([]);
   
   // UI State
   const [showHelp, setShowHelp] = useState(false);
+  const [showDebugInspector, setShowDebugInspector] = useState(false);
   const [selectedRow, setSelectedRow] = useState(0);
   const [focusedPanel, setFocusedPanel] = useState<'sessions' | 'sidebar'>('sessions');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -239,11 +177,26 @@ export function RealTimeDashboard() {
   const historyRef = useRef<{time: number, cost: number, tokens: number}[]>([]);
   const [deltas, setDeltas] = useState({ cost: 0, tokens: 0 });
   
+  // Use -1 as sentinel to detect first load and avoid false spike
   const emaRef = useRef<{ lastTokens: number; lastTime: number; ema: number }>({ 
-    lastTokens: 0, lastTime: Date.now(), ema: 0 
+    lastTokens: -1, lastTime: Date.now(), ema: 0 
   });
   const [activity, setActivity] = useState<{ rate: number; ema: number; isSpike: boolean }>({ 
     rate: 0, ema: 0, isSpike: false 
+  });
+  
+  const debugDataRef = useRef<{
+    lastDeltaTokens: number;
+    lastRateTps: number;
+    lastDt: number;
+    refreshCount: number;
+    lastRefreshTime: number;
+  }>({
+    lastDeltaTokens: 0,
+    lastRateTps: 0,
+    lastDt: 0,
+    refreshCount: 0,
+    lastRefreshTime: Date.now(),
   });
 
   const configuredProviders = useMemo(() => {
@@ -283,97 +236,104 @@ export function RealTimeDashboard() {
   };
 
   useEffect(() => {
-    setSessions(generateMockSessions());
-    setSparkData(Array.from({ length: 60 }, () => Math.floor(Math.random() * 20)));
+    setSparkData(Array.from({ length: 60 }, () => 0));
+  }, []);
 
-    const interval = setInterval(() => {
-      const currentTime = Date.now();
-      
-      setSessions(prev => {
-        const newSessions = prev.map(s => {
-          if (s.status === 'active' && Math.random() > 0.3) {
-            const addedInput = Math.floor(Math.random() * 500);
-            const addedOutput = Math.floor(Math.random() * 100);
-            const addedCost = (addedInput * 3.0 + addedOutput * 15.0) / 1000000;
-            return {
-              ...s,
-              tokens: {
-                ...s.tokens,
-                input: s.tokens.input + addedInput,
-                output: s.tokens.output + addedOutput
-              },
-              cost: s.cost + addedCost,
-              requestCount: s.requestCount + (Math.random() > 0.8 ? 1 : 0),
-              lastActivityAt: currentTime
-            };
-          }
-          return s;
-        });
+  useEffect(() => {
+    const totalCost = agentSessions.reduce((sum, s) => sum + (s.totalCostUsd ?? 0), 0);
+    const totalTokens = agentSessions.reduce((sum, s) => sum + s.totals.input + s.totals.output, 0);
+    
+    const currentTime = Date.now();
+    historyRef.current.push({ time: currentTime, cost: totalCost, tokens: totalTokens });
+    if (historyRef.current.length > 300) historyRef.current.shift();
 
-        const totalCost = newSessions.reduce((sum, s) => sum + s.cost, 0);
-        const totalTokens = newSessions.reduce((sum, s) => sum + s.tokens.input + s.tokens.output, 0);
-        
-        historyRef.current.push({ time: currentTime, cost: totalCost, tokens: totalTokens });
-        if (historyRef.current.length > 300) historyRef.current.shift();
-
-        const fiveMinAgo = historyRef.current[0];
-        if (fiveMinAgo) {
-          setDeltas({
-            cost: totalCost - fiveMinAgo.cost,
-            tokens: totalTokens - fiveMinAgo.tokens
-          });
-        }
-
-        const dt = (currentTime - emaRef.current.lastTime) / 1000;
-        const deltaTokens = Math.max(0, totalTokens - emaRef.current.lastTokens);
-        const rateTps = dt > 0 ? deltaTokens / dt : 0;
-        
-        const alpha = 2 / (10 + 1);
-        const newEma = alpha * rateTps + (1 - alpha) * emaRef.current.ema;
-        const isSpike = rateTps >= Math.max(800, newEma * 2) && (rateTps - newEma) >= 200;
-        
-        emaRef.current = { lastTokens: totalTokens, lastTime: currentTime, ema: newEma };
-        setActivity({ rate: rateTps, ema: newEma, isSpike });
-        
-        setSparkData(d => [...d.slice(1), Math.min(100, Math.round(newEma / 10))]);
-
-        return newSessions;
+    const fiveMinAgo = historyRef.current[0];
+    if (fiveMinAgo) {
+      setDeltas({
+        cost: totalCost - fiveMinAgo.cost,
+        tokens: totalTokens - fiveMinAgo.tokens
       });
+    }
+
+    debugDataRef.current.refreshCount++;
+    debugDataRef.current.lastRefreshTime = currentTime;
+
+    if (emaRef.current.lastTokens === -1) {
+      emaRef.current = { lastTokens: totalTokens, lastTime: currentTime, ema: 0 };
+      return;
+    }
+
+    const prevTokens = emaRef.current.lastTokens;
+    const deltaTokens = Math.max(0, totalTokens - prevTokens);
+    const dt = (currentTime - emaRef.current.lastTime) / 1000;
+    
+    debugDataRef.current.lastDeltaTokens = deltaTokens;
+    debugDataRef.current.lastDt = dt;
+    
+    if (deltaTokens > 0) {
+      const rateTps = dt > 0 ? deltaTokens / dt : 0;
+      const alpha = 2 / (10 + 1);
+      const newEma = alpha * rateTps + (1 - alpha) * emaRef.current.ema;
+      const isSpike = rateTps >= Math.max(800, newEma * 2) && (rateTps - newEma) >= 200;
+      
+      debugDataRef.current.lastRateTps = rateTps;
+      emaRef.current.ema = newEma;
+      setActivity({ rate: rateTps, ema: newEma, isSpike });
+    }
+    
+    emaRef.current.lastTokens = totalTokens;
+    emaRef.current.lastTime = currentTime;
+  }, [agentSessions]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const alpha = 2 / (10 + 1);
+      const decayedEma = (1 - alpha) * emaRef.current.ema;
+      emaRef.current.ema = decayedEma;
+      
+      setActivity(prev => ({ ...prev, ema: decayedEma, isSpike: false }));
+      setSparkData(d => [...d.slice(1), Math.min(100, Math.round(decayedEma / 10))]);
     }, 1000);
 
     return () => clearInterval(interval);
   }, []);
 
   const processedSessions = useMemo(() => {
-    let result = [...sessions];
+    let result = [...agentSessions];
     
     if (filterQuery) {
       const q = filterQuery.toLowerCase();
       result = result.filter(s => 
         s.agentName.toLowerCase().includes(q) || 
-        s.modelId.toLowerCase().includes(q) ||
-        s.projectPath.toLowerCase().includes(q)
+        s.streams.some(st => st.modelId.toLowerCase().includes(q)) ||
+        (s.projectPath?.toLowerCase().includes(q) ?? false)
       );
     }
 
     result.sort((a, b) => {
-      if (sortField === 'cost') return b.cost - a.cost;
-      if (sortField === 'tokens') return (b.tokens.input + b.tokens.output) - (a.tokens.input + a.tokens.output);
+      if (sortField === 'cost') return (b.totalCostUsd ?? 0) - (a.totalCostUsd ?? 0);
+      if (sortField === 'tokens') return (b.totals.input + b.totals.output) - (a.totals.input + a.totals.output);
       return b.lastActivityAt - a.lastActivityAt;
     });
 
     return result;
-  }, [sessions, filterQuery, sortField]);
+  }, [agentSessions, filterQuery, sortField]);
 
   useKeyboard((key) => {
     if (key.sequence === '?' || (key.shift && key.name === '/')) {
       setShowHelp(prev => !prev);
       return;
     }
+    
+    if (key.shift && key.name === 'd') {
+      setShowDebugInspector(prev => !prev);
+      return;
+    }
 
-    if (showHelp) {
+    if (showHelp || showDebugInspector) {
       if (key.name === 'escape' || key.name === 'q' || key.sequence === '?') {
         setShowHelp(false);
+        setShowDebugInspector(false);
       }
       return;
     }
@@ -413,6 +373,12 @@ export function RealTimeDashboard() {
     
     if (key.name === 's') {
       setSortField(curr => curr === 'cost' ? 'tokens' : 'cost');
+      return;
+    }
+
+    if (key.name === 'r') {
+      refreshSessions();
+      return;
     }
 
     if (focusedPanel === 'sessions') {
@@ -424,28 +390,45 @@ export function RealTimeDashboard() {
     }
   });
 
-  const totalCost = sessions.reduce((acc, s) => acc + s.cost, 0);
-  const totalTokens = sessions.reduce((acc, s) => acc + s.tokens.input + s.tokens.output, 0);
-  const totalRequests = sessions.reduce((acc, s) => acc + s.requestCount, 0);
-  const activeCount = sessions.filter(s => s.status === 'active').length;
+  const totalCost = agentSessions.reduce((acc, s) => acc + (s.totalCostUsd ?? 0), 0);
+  const totalTokens = agentSessions.reduce((acc, s) => acc + s.totals.input + s.totals.output, 0);
+  const totalRequests = agentSessions.reduce((acc, s) => acc + s.requestCount, 0);
+  const activeCount = agentSessions.filter(s => s.status === 'active').length;
 
   const modelStats = useMemo(() => {
     const stats: Record<string, number> = {};
-    sessions.forEach(s => { stats[s.modelId] = (stats[s.modelId] || 0) + s.cost; });
+    agentSessions.forEach(s => {
+      s.streams.forEach(st => {
+        stats[st.modelId] = (stats[st.modelId] || 0) + (st.costUsd ?? 0);
+      });
+    });
     return Object.entries(stats).sort(([, a], [, b]) => b - a).slice(0, 5);
-  }, [sessions]);
+  }, [agentSessions]);
 
   const providerStats = useMemo(() => {
     const stats: Record<string, number> = {};
-    sessions.forEach(s => { stats[s.providerId] = (stats[s.providerId] || 0) + s.cost; });
+    agentSessions.forEach(s => {
+      s.streams.forEach(st => {
+        stats[st.providerId] = (stats[st.providerId] || 0) + (st.costUsd ?? 0);
+      });
+    });
     return Object.entries(stats).sort(([, a], [, b]) => b - a);
-  }, [sessions]);
+  }, [agentSessions]);
 
   const maxModelCost = Math.max(...modelStats.map(([, c]) => c), 0.01);
 
   return (
     <box flexDirection="column" flexGrow={1} padding={1} gap={1} overflow="hidden">
       {showHelp && <HelpOverlay />}
+      {showDebugInspector && (
+        <DebugInspectorOverlay 
+          sessions={agentSessions}
+          emaData={emaRef.current}
+          debugData={debugDataRef.current}
+          activity={activity}
+          sparkData={sparkData}
+        />
+      )}
       
       <box flexDirection="row" gap={1} height={5} flexShrink={0}>
         <KPICard 
@@ -494,7 +477,7 @@ export function RealTimeDashboard() {
         </box>
       </box>
 
-      <box flexDirection="row" gap={1} flexGrow={1}>
+      <box flexDirection="row" gap={1} flexGrow={1} minHeight={10}>
         
         <box 
           flexDirection="column" 
@@ -502,9 +485,12 @@ export function RealTimeDashboard() {
           border 
           borderStyle={focusedPanel === 'sessions' ? "double" : "single"} 
           borderColor={focusedPanel === 'sessions' ? colors.primary : colors.border}
+          overflow="hidden"
         >
           <box flexDirection="row" paddingLeft={1} paddingRight={1} paddingBottom={0} justifyContent="space-between">
-            <text fg={colors.textSubtle}>ACTIVE SESSIONS {isFiltering ? `(Filter: ${filterQuery})` : ''}</text>
+            <text fg={colors.textSubtle}>
+              SESSIONS{isFiltering ? ` (Filter: ${filterQuery})` : ''}{isLoading ? ' ⟳' : '  '}
+            </text>
             <text fg={colors.textMuted}>{processedSessions.length} sessions</text>
           </box>
           
@@ -520,13 +506,22 @@ export function RealTimeDashboard() {
           
           <scrollbox flexGrow={1}>
             <box flexDirection="column">
+              {processedSessions.length === 0 && (
+                <box paddingLeft={1}>
+                  <text fg={colors.textMuted}>{isLoading ? 'Loading sessions...' : 'No sessions found'}</text>
+                </box>
+              )}
               {processedSessions.map((session, idx) => {
                 const isSelected = idx === selectedRow;
                 const rowFg = isSelected ? colors.background : colors.text;
-                const providerColor = getProviderColor(session.providerId);
-                const projectDisplay = session.projectPath.length > 20 
-                  ? '…' + session.projectPath.slice(-19) 
-                  : session.projectPath;
+                const primaryStream = session.streams[0];
+                const providerId = primaryStream?.providerId ?? 'unknown';
+                const modelId = primaryStream?.modelId ?? 'unknown';
+                const providerColor = getProviderColor(providerId);
+                const projectPath = session.projectPath ?? '—';
+                const projectDisplay = projectPath.length > 20 
+                  ? '…' + projectPath.slice(-19) 
+                  : projectPath;
 
                 return (
                   <box 
@@ -536,11 +531,11 @@ export function RealTimeDashboard() {
                     paddingRight={1}
                     {...(isSelected ? { backgroundColor: colors.primary } : {})}
                   >
-                    <text width={8} fg={isSelected ? rowFg : colors.textMuted}>{session.sessionId.substr(4)}</text>
+                    <text width={8} fg={isSelected ? rowFg : colors.textMuted}>{session.sessionId.slice(0, 7)}</text>
                     <text width={12} fg={isSelected ? rowFg : colors.text}>{session.agentName}</text>
-                    <text width={16} fg={isSelected ? rowFg : providerColor}>{session.modelId.split('/').pop()?.slice(0,15)}</text>
-                    <text width={8} fg={isSelected ? rowFg : colors.text}>{formatTokens(session.tokens.input + session.tokens.output).padStart(7)}</text>
-                    <text width={8} fg={isSelected ? rowFg : colors.success}>{formatCurrency(session.cost).padStart(7)}</text>
+                    <text width={16} fg={isSelected ? rowFg : providerColor}>{modelId.split('/').pop()?.slice(0,15)}</text>
+                    <text width={8} fg={isSelected ? rowFg : colors.text}>{formatTokens(session.totals.input + session.totals.output).padStart(7)}</text>
+                    <text width={8} fg={isSelected ? rowFg : colors.success}>{formatCurrency(session.totalCostUsd ?? 0).padStart(7)}</text>
                     <text flexGrow={1} fg={isSelected ? rowFg : colors.textSubtle} paddingLeft={2}>{projectDisplay}</text>
                     <text width={6} fg={isSelected ? rowFg : (session.status === 'active' ? colors.success : colors.textMuted)}>
                       {session.status === 'active' ? 'active' : 'idle'}

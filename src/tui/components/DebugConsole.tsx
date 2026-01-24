@@ -1,14 +1,44 @@
+import { useRef, useImperativeHandle, forwardRef, useEffect } from 'react';
+import type { ScrollBoxRenderable } from '@opentui/core';
 import { useColors } from '../contexts/ThemeContext.tsx';
 import { useLogs, type LogEntry, type LogLevel } from '../contexts/LogContext.tsx';
 import { copyToClipboard } from '@/utils/clipboard.ts';
 
 interface DebugConsoleProps {
   height?: number;
+  follow?: boolean;
 }
 
-export function DebugConsole({ height = 15 }: DebugConsoleProps) {
+export interface DebugConsoleHandle {
+  scrollToTop: () => void;
+  scrollToBottom: () => void;
+}
+
+export const DebugConsole = forwardRef<DebugConsoleHandle, DebugConsoleProps>(function DebugConsole({ height = 15, follow = true }, ref) {
   const colors = useColors();
   const { logs } = useLogs();
+  const scrollboxRef = useRef<ScrollBoxRenderable>(null);
+
+  useImperativeHandle(ref, () => ({
+    scrollToTop: () => {
+      scrollboxRef.current?.scrollTo(0);
+    },
+    scrollToBottom: () => {
+      const scrollbox = scrollboxRef.current;
+      if (scrollbox) {
+        scrollbox.scrollTo(scrollbox.scrollHeight);
+      }
+    },
+  }));
+
+  useEffect(() => {
+    if (follow) {
+      const scrollbox = scrollboxRef.current;
+      if (scrollbox) {
+        scrollbox.scrollTo(scrollbox.scrollHeight);
+      }
+    }
+  }, [logs.length, follow]);
 
   const levelColors: Record<LogLevel, string> = {
     debug: colors.textSubtle,
@@ -40,18 +70,23 @@ export function DebugConsole({ height = 15 }: DebugConsoleProps) {
         paddingLeft={1}
         paddingRight={1}
         backgroundColor={colors.foreground}
+        height={1}
+        flexShrink={0}
       >
         <text>
           <span fg={colors.primary}>
             <strong>Debug Console</strong>
           </span>
           <span fg={colors.textMuted}> ({logs.length} entries)</span>
+          {follow && <span fg={colors.success}> [FOLLOW]</span>}
         </text>
-        <text fg={colors.textSubtle}>ESC:close c:clear x:export y:copy</text>
+        <text fg={colors.textSubtle}>~:close f:follow c:clear G:bottom gg:top</text>
       </box>
 
       <scrollbox
+        ref={scrollboxRef}
         focused
+        flexGrow={1}
         style={{
           rootOptions: { backgroundColor: colors.background },
           viewportOptions: { backgroundColor: colors.background },
@@ -75,7 +110,7 @@ export function DebugConsole({ height = 15 }: DebugConsoleProps) {
       </scrollbox>
     </box>
   );
-}
+});
 
 interface LogLineProps {
   entry: LogEntry;
