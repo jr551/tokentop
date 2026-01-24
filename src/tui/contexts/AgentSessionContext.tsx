@@ -8,6 +8,8 @@ import { pluginRegistry } from '@/plugins/registry.ts';
 import { createSandboxedHttpClient, createPluginLogger } from '@/plugins/sandbox.ts';
 import { useLogs } from './LogContext.tsx';
 import { usePlugins } from './PluginContext.tsx';
+import { useStorage } from './StorageContext.tsx';
+import type { PricingSource } from '@/storage/types.ts';
 
 interface AgentSessionContextValue {
   sessions: AgentSessionAggregate[];
@@ -38,6 +40,7 @@ export function AgentSessionProvider({
   const [error, setError] = useState<string | null>(null);
   const { debug, info, warn, error: logError } = useLogs();
   const { isInitialized: pluginsInitialized } = usePlugins();
+  const { isReady: storageReady, recordAgentSession } = useStorage();
 
   const discoverAgents = useCallback(async (): Promise<AgentInfo[]> => {
     const agentPlugins = pluginRegistry.getAll('agent');
@@ -139,6 +142,44 @@ export function AgentSessionProvider({
 
       pricedSessions.sort((a, b) => b.lastActivityAt - a.lastActivityAt);
 
+      if (storageReady) {
+        const now = Date.now();
+        for (const session of pricedSessions) {
+          recordAgentSession(
+            {
+              agentId: session.agentId,
+              sessionId: session.sessionId,
+              projectPath: session.projectPath ?? null,
+              startedAt: session.startedAt ?? null,
+              lastSeenAt: now,
+            },
+            {
+              timestamp: now,
+              lastActivityAt: session.lastActivityAt,
+              status: session.status,
+              totalInputTokens: session.totals.input,
+              totalOutputTokens: session.totals.output,
+              totalCacheReadTokens: session.totals.cacheRead ?? 0,
+              totalCacheWriteTokens: session.totals.cacheWrite ?? 0,
+              totalCostUsd: session.totalCostUsd ?? 0,
+              requestCount: session.requestCount,
+            },
+            session.streams.map(s => ({
+              provider: s.providerId,
+              model: s.modelId,
+              inputTokens: s.tokens.input,
+              outputTokens: s.tokens.output,
+              cacheReadTokens: s.tokens.cacheRead ?? 0,
+              cacheWriteTokens: s.tokens.cacheWrite ?? 0,
+              costUsd: s.costUsd ?? 0,
+              requestCount: s.requestCount,
+              pricingSource: (s.pricingSource as PricingSource) ?? null,
+            }))
+          );
+        }
+        debug(`Persisted ${pricedSessions.length} sessions to storage`, undefined, 'agent-sessions');
+      }
+
       setSessions(pricedSessions);
       setLastRefreshAt(Date.now());
 
@@ -152,7 +193,7 @@ export function AgentSessionProvider({
         setIsLoading(false);
       }
     }
-  }, [sessions.length, discoverAgents, fetchAgentSessions, debug, info, warn, logError]);
+  }, [sessions.length, discoverAgents, fetchAgentSessions, debug, info, warn, logError, storageReady, recordAgentSession]);
 
   useEffect(() => {
     if (pluginsInitialized) {

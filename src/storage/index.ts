@@ -1,27 +1,57 @@
 export { PATHS } from './paths.ts';
+
 export {
   initDatabase,
   getDatabase,
   closeDatabase,
-  insertUsage,
-  insertUsageBatch,
+  isDatabaseInitialized,
+  getAppRunId,
+} from './db.ts';
+
+export {
   insertProviderSnapshot,
-  queryUsage,
-  getUsageSummary,
-  getUsageByProvider,
-  getUsageByModel,
-  getUsageTimeSeries,
-  getProviderSnapshots,
-  upsertDailyAggregate,
-  getDailyAggregates,
-  getTodaySummary,
-  getThisMonthSummary,
-  type UsageRecord,
-  type ProviderSnapshot,
-  type DailyAggregate,
-  type UsageQuery,
-  type UsageSummary,
-  type ProviderSummary,
-  type ModelSummary,
-  type TimeSeriesPoint,
-} from './database.ts';
+  insertProviderSnapshotBatch,
+  queryProviderSnapshots,
+  getLatestProviderSnapshot,
+} from './repos/providerSnapshots.ts';
+
+export {
+  insertUsageEvent,
+  insertUsageEventBatch,
+  queryUsageTimeSeries,
+  calculateBurnRate,
+  getTotalUsageInWindow,
+} from './repos/usageEvents.ts';
+
+export {
+  upsertAgentSession,
+  insertAgentSessionSnapshot,
+  getAgentSession,
+  getRecentSessions,
+  getSessionsByProject,
+} from './repos/agentSessions.ts';
+
+export type {
+  UsageEventSource,
+  SessionStatus,
+  CostSource,
+  PricingSource,
+  AppRunRow,
+  ProviderSnapshotRow,
+  ProviderSnapshotInsert,
+  AgentSessionDim,
+  AgentSessionUpsert,
+  AgentSessionSnapshotRow,
+  AgentSessionSnapshotInsert,
+  AgentSessionStreamSnapshotRow,
+  UsageEventRow,
+  UsageEventInsert,
+  HourlyAggregateRow,
+  DailyAggregateRow,
+  TimeSeriesPoint,
+  TimeSeriesFilters,
+  UsageQueryOptions,
+  StreamTotals,
+} from './types.ts';
+
+export { computeStreamDelta } from './types.ts';

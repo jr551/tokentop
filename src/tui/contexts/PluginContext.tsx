@@ -6,6 +6,8 @@ import { pluginRegistry } from '@/plugins/registry.ts';
 import { discoverAllCredentials } from '@/credentials/index.ts';
 import { createSandboxedHttpClient, createPluginLogger } from '@/plugins/sandbox.ts';
 import { useLogs } from './LogContext.tsx';
+import { useStorage } from './StorageContext.tsx';
+import type { ProviderSnapshotInsert } from '@/storage/types.ts';
 
 export interface UsageSnapshot {
   timestamp: number;
@@ -71,6 +73,7 @@ export function PluginProvider({ children }: PluginProviderProps) {
   const [themes, setThemes] = useState<ThemePlugin[]>([]);
   const [notifications, setNotifications] = useState<NotificationPlugin[]>([]);
   const { debug, info, warn, error: logError } = useLogs();
+  const { isReady: storageReady, recordProviderSnapshots } = useStorage();
 
   useEffect(() => {
     async function initialize() {
@@ -197,6 +200,19 @@ export function PluginProvider({ children }: PluginProviderProps) {
           limitReached: usage.limitReached,
           primaryUsage: usage.limits?.primary?.usedPercent,
         }, 'refresh');
+        
+        if (storageReady) {
+          const now = Date.now();
+          const snapshotInsert: ProviderSnapshotInsert = {
+            timestamp: now,
+            provider: providerId,
+            usedPercent: getMaxUsagePercent(usage),
+            limitReached: usage.limitReached ?? false,
+            resetsAt: usage.limits?.primary?.resetsAt ?? null,
+            rawJson: JSON.stringify(usage),
+          };
+          recordProviderSnapshots([snapshotInsert]);
+        }
       }
 
       setProviders((prev) => {
@@ -239,7 +255,7 @@ export function PluginProvider({ children }: PluginProviderProps) {
         return next;
       });
     }
-  }, [providers, debug, info, warn, logError]);
+  }, [providers, debug, info, warn, logError, storageReady, recordProviderSnapshots]);
 
   const refreshAllProviders = useCallback(async () => {
     const configuredProviders = Array.from(providers.entries())
