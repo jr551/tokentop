@@ -34,9 +34,17 @@ export const ProviderCard = forwardRef<BoxRenderable, ProviderCardProps>(({
   const [autoRotate, setAutoRotate] = useState(true);
   const [pulseStep, setPulseStep] = useState(0);
 
-  const items = usage?.limits?.items;
-  const hasItems = items && items.length > 0;
-  const totalPages = hasItems ? Math.ceil(items.length / 2) : 0;
+  const rawItems = usage?.limits?.items;
+  const hasItems = rawItems && rawItems.length > 0;
+  
+  const sortedItems = hasItems 
+    ? [...rawItems].sort((a, b) => (b.usedPercent ?? 0) - (a.usedPercent ?? 0))
+    : [];
+  
+  const hasUrgentLimit = sortedItems.some(item => (item.usedPercent ?? 0) >= 80);
+  const effectiveAutoRotate = autoRotate && !hasUrgentLimit;
+  
+  const totalPages = hasItems ? Math.ceil(sortedItems.length / 2) : 0;
   const safePage = totalPages > 0 ? page % totalPages : 0;
 
   const goNext = useCallback(() => {
@@ -77,12 +85,12 @@ export const ProviderCard = forwardRef<BoxRenderable, ProviderCardProps>(({
   });
 
   useEffect(() => {
-    if (!hasItems || totalPages <= 1 || !autoRotate) return;
+    if (!hasItems || totalPages <= 1 || !effectiveAutoRotate) return;
     const timer = setInterval(() => {
       setPage((p) => (p + 1) % totalPages);
     }, 4000);
     return () => clearInterval(timer);
-  }, [hasItems, totalPages, autoRotate]);
+  }, [hasItems, totalPages, effectiveAutoRotate]);
 
   useEffect(() => {
     if (totalPages > 0 && page >= totalPages) {
@@ -161,7 +169,7 @@ export const ProviderCard = forwardRef<BoxRenderable, ProviderCardProps>(({
         <box flexDirection="row" alignItems="center" gap={1}>
           {focused && showPagination && (
             <box onMouseDown={toggleAutoRotate}>
-              <text fg={colors.textSubtle}>{autoRotate ? '▶' : '⏸'}</text>
+              <text fg={colors.textSubtle}>{effectiveAutoRotate ? '▶' : '⏸'}</text>
             </box>
           )}
           <text fg={statusColor}>
@@ -191,7 +199,7 @@ export const ProviderCard = forwardRef<BoxRenderable, ProviderCardProps>(({
 
             {hasItems ? (
               <>
-                {items!.slice(safePage * 2, safePage * 2 + 2).map((limit, idx) => (
+                {sortedItems.slice(safePage * 2, safePage * 2 + 2).map((limit, idx) => (
                   <UsageGauge
                     key={`${safePage}-${idx}`}
                     label={limit.label ?? 'Usage'}
@@ -201,6 +209,15 @@ export const ProviderCard = forwardRef<BoxRenderable, ProviderCardProps>(({
                     {...(limit.resetsAt ? { resetsAt: limit.resetsAt } : {})}
                   />
                 ))}
+                {safePage === 0 && totalPages > 1 && (() => {
+                  const hiddenItems = sortedItems.slice(2);
+                  const hiddenUrgent = hiddenItems.some(i => (i.usedPercent ?? 0) >= 80);
+                  return hiddenItems.length > 0 ? (
+                    <text fg={hiddenUrgent ? colors.warning : colors.textMuted}>
+                      +{hiddenItems.length} more{hiddenUrgent ? ' ⚠' : ''}
+                    </text>
+                  ) : null;
+                })()}
               </>
             ) : (
               <>
