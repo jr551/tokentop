@@ -45,7 +45,7 @@ export function Header({ title = 'tokentop', subtitle, activeView }: HeaderProps
           </box>
         )}
       </box>
-      <text fg={colors.textSubtle}>q:quit r:refresh d:debug /:filter s:sort</text>
+      <text fg={colors.textSubtle}>?:help  Tab:switch  q:quit</text>
     </box>
   );
 }
