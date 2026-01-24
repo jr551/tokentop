@@ -30,7 +30,7 @@ export function UsageGauge({
                     providerColor;
 
   const filledBar = '█'.repeat(filledWidth);
-  const emptyBar = '░'.repeat(emptyWidth);
+  const emptyBar = '·'.repeat(emptyWidth);
 
   const resetText = resetsAt ? formatResetTime(resetsAt) : '';
 
