@@ -17,6 +17,8 @@ import { DebugConsole, copyLogsToClipboard, type DebugConsoleHandle } from './co
 import { Toast, useToast } from './components/Toast.tsx';
 import { RealTimeDashboard } from './views/RealTimeDashboard.tsx';
 import { Dashboard } from './views/Dashboard.tsx';
+import { HistoricalTrendsView } from './views/HistoricalTrendsView.tsx';
+import { ProjectsView } from './views/ProjectsView.tsx';
 import { copyToClipboard } from '@/utils/clipboard.ts';
 import type { ThemePlugin } from '@/plugins/types/theme.ts';
 
@@ -26,7 +28,7 @@ interface AppProps {
   debug?: boolean;
 }
 
-type View = 'dashboard' | 'providers';
+type View = 'dashboard' | 'providers' | 'trends' | 'projects';
 
 function AppContent({ refreshInterval = 60000 }: { refreshInterval?: number }) {
   const renderer = useRenderer();
@@ -150,6 +152,12 @@ function AppContent({ refreshInterval = 60000 }: { refreshInterval?: number }) {
     if (key.name === '2') {
       setActiveView('providers');
     }
+    if (key.name === '3') {
+      setActiveView('trends');
+    }
+    if (key.name === '4') {
+      setActiveView('projects');
+    }
 
     if (key.name === 'q' || (key.ctrl && key.name === 'c')) {
       renderer.destroy();
@@ -226,8 +234,14 @@ function AppContent({ refreshInterval = 60000 }: { refreshInterval?: number }) {
         <DebugConsole ref={debugConsoleRef} height={20} follow={consoleFollow} />
       ) : activeView === 'dashboard' ? (
         <RealTimeDashboard />
-      ) : (
+      ) : activeView === 'providers' ? (
         <Dashboard />
+      ) : activeView === 'trends' ? (
+        <HistoricalTrendsView />
+      ) : activeView === 'projects' ? (
+        <ProjectsView />
+      ) : (
+        <RealTimeDashboard />
       )}
       
       <StatusBar

@@ -4,7 +4,7 @@ import { useColors } from '../contexts/ThemeContext.tsx';
 interface HeaderProps {
   title?: string;
   subtitle?: string;
-  activeView?: 'dashboard' | 'providers';
+  activeView?: 'dashboard' | 'providers' | 'trends' | 'projects';
 }
 
 const ASCII_LOGO = [
@@ -24,6 +24,8 @@ export function Header({ title = 'tokentop', subtitle, activeView }: HeaderProps
 
   const isDashboard = activeView === 'dashboard';
   const isProviders = activeView === 'providers';
+  const isTrends = activeView === 'trends';
+  const isProjects = activeView === 'projects';
   const useLargeLogo = height >= MIN_HEIGHT_FOR_LARGE_LOGO;
 
   const headerHeight = useLargeLogo ? 7 : 1;
@@ -60,24 +62,33 @@ export function Header({ title = 'tokentop', subtitle, activeView }: HeaderProps
         )}
         {useLargeLogo && <box width={10} />}
         {activeView && (
-          <box flexDirection="row" gap={useLargeLogo ? 2 : 0} marginLeft={useLargeLogo ? 0 : 2} alignItems="center" height={1}>
+          <box flexDirection="row" gap={useLargeLogo ? 1 : 0} marginLeft={useLargeLogo ? 0 : 2} alignItems="center" height={1}>
             <text height={1}>
               {isDashboard ? (
-                <span bg={colors.primary} fg={colors.background}>
-                  <strong> DASHBOARD </strong>
-                </span>
+                <span bg={colors.primary} fg={colors.background}><strong> DASHBOARD </strong></span>
               ) : (
                 <span fg={colors.textMuted}> DASHBOARD </span>
               )}
             </text>
-            {!useLargeLogo && <text height={1} fg={colors.textMuted}>/</text>}
             <text height={1}>
               {isProviders ? (
-                <span bg={colors.primary} fg={colors.background}>
-                  <strong> PROVIDERS </strong>
-                </span>
+                <span bg={colors.primary} fg={colors.background}><strong> PROVIDERS </strong></span>
               ) : (
                 <span fg={colors.textMuted}> PROVIDERS </span>
+              )}
+            </text>
+            <text height={1}>
+              {isTrends ? (
+                <span bg={colors.primary} fg={colors.background}><strong> TRENDS </strong></span>
+              ) : (
+                <span fg={colors.textMuted}> TRENDS </span>
+              )}
+            </text>
+            <text height={1}>
+              {isProjects ? (
+                <span bg={colors.primary} fg={colors.background}><strong> PROJECTS </strong></span>
+              ) : (
+                <span fg={colors.textMuted}> PROJECTS </span>
               )}
             </text>
           </box>

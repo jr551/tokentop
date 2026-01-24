@@ -3,3 +3,6 @@ export type { EmaActivityState, EmaDebugData, UseEmaActivityResult } from './use
 
 export { useDashboardState } from './useDashboardState.ts';
 export type { DashboardDeltas, UseDashboardStateResult } from './useDashboardState.ts';
+
+export { usePulse, getPulseColor } from './usePulse.ts';
+export type { UsePulseOptions } from './usePulse.ts';

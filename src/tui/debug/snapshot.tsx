@@ -39,6 +39,13 @@ import { Toast } from '../components/Toast.tsx';
 import { Spinner } from '../components/Spinner.tsx';
 import { SkeletonText, SkeletonGauge, SkeletonProviderContent } from '../components/Skeleton.tsx';
 import { DebugConsole } from '../components/DebugConsole.tsx';
+import { HistoricalTrendsView } from '../views/HistoricalTrendsView.tsx';
+import { ProjectsView } from '../views/ProjectsView.tsx';
+import { AgentSessionProvider } from '../contexts/AgentSessionContext.tsx';
+import { TimeWindowProvider } from '../contexts/TimeWindowContext.tsx';
+import { StorageProvider } from '../contexts/StorageContext.tsx';
+import { InputProvider } from '../contexts/InputContext.tsx';
+import { PluginProvider } from '../contexts/PluginContext.tsx';
 
 function createMockDebugInspectorProps(): DebugInspectorProps {
   const now = Date.now();
@@ -340,6 +347,32 @@ const COMPONENT_REGISTRY: Record<string, ComponentEntry> = {
     defaultWidth: 100,
     defaultHeight: 20,
     render: () => <DebugConsole height={15} follow={true} />,
+  },
+  'historical-trends': {
+    name: 'HistoricalTrendsView',
+    description: 'ASCII chart showing cost trends over time',
+    defaultWidth: 80,
+    defaultHeight: 20,
+    render: () => <HistoricalTrendsView />,
+  },
+  'projects-view': {
+    name: 'ProjectsView',
+    description: 'Sessions grouped by project with cost breakdown',
+    defaultWidth: 100,
+    defaultHeight: 25,
+    render: () => (
+      <InputProvider>
+        <StorageProvider>
+          <TimeWindowProvider defaultWindow="24h">
+            <PluginProvider>
+              <AgentSessionProvider autoRefresh={false}>
+                <ProjectsView />
+              </AgentSessionProvider>
+            </PluginProvider>
+          </TimeWindowProvider>
+        </StorageProvider>
+      </InputProvider>
+    ),
   },
 };
 
