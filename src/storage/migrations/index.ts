@@ -127,35 +127,37 @@ export const migrations: Migration[] = [
         CREATE INDEX IF NOT EXISTS idx_usage_events_project_ts ON usage_events(project_path, timestamp);
 
         CREATE TABLE IF NOT EXISTS hourly_aggregates (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
           bucket_start INTEGER NOT NULL,
-          provider TEXT,
-          model TEXT,
-          agent_id TEXT,
-          project_path TEXT,
+          provider TEXT NOT NULL DEFAULT '',
+          model TEXT NOT NULL DEFAULT '',
+          agent_id TEXT NOT NULL DEFAULT '',
+          project_path TEXT NOT NULL DEFAULT '',
           input_tokens INTEGER NOT NULL DEFAULT 0,
           output_tokens INTEGER NOT NULL DEFAULT 0,
           cache_read_tokens INTEGER NOT NULL DEFAULT 0,
           cache_write_tokens INTEGER NOT NULL DEFAULT 0,
           cost_usd REAL NOT NULL DEFAULT 0,
           request_count INTEGER NOT NULL DEFAULT 0,
-          PRIMARY KEY (bucket_start, COALESCE(provider,''), COALESCE(model,''), COALESCE(agent_id,''), COALESCE(project_path,''))
+          UNIQUE (bucket_start, provider, model, agent_id, project_path)
         );
 
         CREATE INDEX IF NOT EXISTS idx_hourly_aggregates_bucket ON hourly_aggregates(bucket_start);
 
         CREATE TABLE IF NOT EXISTS daily_aggregates (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
           date TEXT NOT NULL,
-          provider TEXT,
-          model TEXT,
-          agent_id TEXT,
-          project_path TEXT,
+          provider TEXT NOT NULL DEFAULT '',
+          model TEXT NOT NULL DEFAULT '',
+          agent_id TEXT NOT NULL DEFAULT '',
+          project_path TEXT NOT NULL DEFAULT '',
           input_tokens INTEGER NOT NULL DEFAULT 0,
           output_tokens INTEGER NOT NULL DEFAULT 0,
           cache_read_tokens INTEGER NOT NULL DEFAULT 0,
           cache_write_tokens INTEGER NOT NULL DEFAULT 0,
           cost_usd REAL NOT NULL DEFAULT 0,
           request_count INTEGER NOT NULL DEFAULT 0,
-          PRIMARY KEY (date, COALESCE(provider,''), COALESCE(model,''), COALESCE(agent_id,''), COALESCE(project_path,''))
+          UNIQUE (date, provider, model, agent_id, project_path)
         );
 
         CREATE INDEX IF NOT EXISTS idx_daily_aggregates_date ON daily_aggregates(date);

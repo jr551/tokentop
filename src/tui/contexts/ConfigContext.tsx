@@ -16,19 +16,22 @@ const ConfigContext = createContext<ConfigContextValue | null>(null);
 
 interface ConfigProviderProps {
   children: ReactNode;
+  /** For testing: skip async loading and use this config directly */
+  initialConfig?: AppConfig;
 }
 
-export function ConfigProvider({ children }: ConfigProviderProps) {
-  const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG);
-  const [isLoading, setIsLoading] = useState(true);
+export function ConfigProvider({ children, initialConfig }: ConfigProviderProps) {
+  const [config, setConfig] = useState<AppConfig>(initialConfig ?? DEFAULT_CONFIG);
+  const [isLoading, setIsLoading] = useState(!initialConfig);
   const [pendingSave, setPendingSave] = useState(false);
 
   useEffect(() => {
+    if (initialConfig) return; // Skip loading if initial config provided
     loadConfig().then((loaded) => {
       setConfig(loaded);
       setIsLoading(false);
     });
-  }, []);
+  }, [initialConfig]);
 
   useEffect(() => {
     if (isLoading || !pendingSave) return;

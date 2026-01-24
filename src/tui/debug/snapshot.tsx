@@ -49,6 +49,7 @@ import { InputProvider } from '../contexts/InputContext.tsx';
 import { PluginProvider } from '../contexts/PluginContext.tsx';
 import { ToastProvider } from '../contexts/ToastContext.tsx';
 import { ConfigProvider } from '../contexts/ConfigContext.tsx';
+import { DEFAULT_CONFIG } from '@/config/schema.ts';
 
 function createMockDebugInspectorProps(): DebugInspectorProps {
   const now = Date.now();
@@ -383,7 +384,7 @@ const COMPONENT_REGISTRY: Record<string, ComponentEntry> = {
     defaultWidth: 80,
     defaultHeight: 25,
     render: () => (
-      <ConfigProvider>
+      <ConfigProvider initialConfig={DEFAULT_CONFIG}>
         <ToastProvider>
           <SettingsView />
         </ToastProvider>
