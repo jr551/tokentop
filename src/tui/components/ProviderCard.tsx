@@ -14,7 +14,7 @@ interface CompactGaugeProps {
   color?: string | undefined;
 }
 
-function CompactGauge({ label, usedPercent, windowMinutes, resetsAt, color }: CompactGaugeProps) {
+function CompactGauge({ label, usedPercent, resetsAt, color }: CompactGaugeProps) {
   const colors = useColors();
   const providerColor = color ?? colors.primary;
   const percent = usedPercent ?? 0;
@@ -30,21 +30,25 @@ function CompactGauge({ label, usedPercent, windowMinutes, resetsAt, color }: Co
   const filledBar = '█'.repeat(filledWidth);
   const emptyBar = '·'.repeat(emptyWidth);
   
-  const windowText = windowMinutes ? formatWindowCompact(windowMinutes) : '';
   const resetText = resetsAt ? formatResetTime(resetsAt) : '';
-  const suffix = [windowText, resetText].filter(Boolean).join(' · ');
+  
+  const truncatedLabel = label.length > 18 ? label.slice(0, 17) + '…' : label;
   
   return (
-    <box flexDirection="row" gap={1}>
-      <text>
-        <span fg={providerColor}>{label}</span>
-        <span fg={colors.textMuted}> [</span>
-        <span fg={fillColor}>{filledBar}</span>
-        <span fg={colors.gaugeBackground}>{emptyBar}</span>
-        <span fg={colors.textMuted}>] </span>
-        <span fg={colors.text}>{percent !== null ? `${Math.round(percent)}%` : '--'}</span>
-        {suffix && <span fg={colors.textMuted}> ({suffix})</span>}
-      </text>
+    <box flexDirection="column" height={2}>
+      <box flexDirection="row" height={1}>
+        <text>
+          <span fg={colors.textMuted}>{truncatedLabel.padEnd(18)} </span>
+          <span fg={fillColor}>{filledBar}</span>
+          <span fg={colors.gaugeBackground}>{emptyBar}</span>
+          <span fg={colors.text}> {(percent !== null ? `${Math.round(percent)}%` : '--').padStart(4)}</span>
+        </text>
+      </box>
+      {resetText && (
+        <box height={1}>
+          <text fg={colors.textMuted}>{''.padEnd(19)}{resetText}</text>
+        </box>
+      )}
     </box>
   );
 }
@@ -249,18 +253,6 @@ function formatWindow(minutes: number): string {
     return `${hours}-hour window`;
   }
   return `${minutes}-minute window`;
-}
-
-function formatWindowCompact(minutes: number): string {
-  if (minutes >= 1440) {
-    const days = Math.round(minutes / 1440);
-    return `${days}d`;
-  }
-  if (minutes >= 60) {
-    const hours = Math.round(minutes / 60);
-    return `${hours}h`;
-  }
-  return `${minutes}m`;
 }
 
 function formatResetTime(timestamp: number): string {
