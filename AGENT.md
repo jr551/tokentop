@@ -223,11 +223,43 @@ Display estimated costs with `~` indicator: `~$0.0234`
 
 ## TUI Debugging System
 
-Tokentop includes a comprehensive debugging system for AI-assisted visual debugging. This allows AI agents to "see" what the TUI displays and help fix layout issues.
+**IMPORTANT FOR AI AGENTS**: When the user reports visual bugs, animation issues, or says "something looks wrong" - IMMEDIATELY check for captured frames. The user captures frames to show you exactly what they see.
 
-### Frame Capture (In-App)
+### Frame Location (CHECK THIS FIRST)
 
-While running tokentop, use these shortcuts to capture frames:
+```
+~/.local/share/tokentop/logs/frames/
+```
+
+**Always check for recent frames when debugging UI issues:**
+```bash
+# List recent frames (most recent last)
+ls -la ~/.local/share/tokentop/logs/frames/ | tail -20
+
+# Read a specific frame
+cat ~/.local/share/tokentop/logs/frames/frame-*.txt
+
+# Read burst captures (10 sequential frames showing animation/changes)
+ls ~/.local/share/tokentop/logs/frames/burst-*/
+cat ~/.local/share/tokentop/logs/frames/burst-*/frame-0001.txt
+```
+
+### What Frames Show You
+
+Frames are **exact terminal snapshots** - they show precisely what the user sees. Use them to:
+- See real data values (costs, tokens, rates) at capture time
+- Observe animation behavior across burst frames
+- Identify layout issues (overflow, misalignment, ghost text)
+- Verify fixes without running the app yourself
+
+### Frame Types
+
+| Type | Location | Purpose |
+|------|----------|---------|
+| Manual frame | `frame-{timestamp}-manual.txt` | Single snapshot (Ctrl+P) |
+| Burst frames | `burst-{timestamp}/frame-0001.txt` through `frame-0010.txt` | 10 sequential frames showing changes over time (Ctrl+Shift+P) |
+
+### Capture Shortcuts (In-App)
 
 | Shortcut | Action |
 |----------|--------|
@@ -236,11 +268,13 @@ While running tokentop, use these shortcuts to capture frames:
 | `Shift+D` | Toggle Debug Inspector overlay |
 | `~` | Toggle debug console |
 
-**Output location**: `~/.local/share/tokentop/logs/frames/`
+### AI Debugging Workflow
 
-Each capture creates two files:
-- `frame-{timestamp}-{label}.txt` - Raw terminal text
-- `frame-{timestamp}-{label}.json` - Metadata (dimensions, timestamp)
+1. **User reports issue** → Check `~/.local/share/tokentop/logs/frames/` for recent captures
+2. **Read the frames** → `cat` the .txt files to see exactly what's displayed
+3. **For animation issues** → Compare burst frames sequentially (frame-0001 through frame-0010)
+4. **Analyze the data** → Look at actual values, timing, layout
+5. **Fix and verify** → Ask user to capture new frame after fix
 
 ### Headless Snapshot Tool
 
@@ -265,20 +299,6 @@ bun src/tui/debug/snapshot.tsx toast --output my-toast.txt
 ```
 
 **Available components**: debug-inspector, header, status-bar, provider-card, provider-card-loading, provider-card-unconfigured, provider-card-error, usage-gauge, toast, toast-error, toast-warning, spinner, skeleton-text, skeleton-gauge, skeleton-provider, debug-console
-
-### AI-Assisted Debugging Workflow
-
-When debugging visual/layout issues:
-
-1. **Capture the problem**: Use `Ctrl+P` to capture a frame showing the issue
-2. **Read the frame**: `cat ~/.local/share/tokentop/logs/frames/frame-*.txt`
-3. **Analyze**: The frame shows exactly what the terminal displays - look for:
-   - Ghost characters (old text bleeding through)
-   - Misaligned columns
-   - Overflow issues (text outside borders)
-   - Missing content
-4. **Fix**: Apply fixes based on frame analysis
-5. **Verify**: Capture another frame to confirm the fix
 
 ### Common OpenTUI Layout Fixes
 
