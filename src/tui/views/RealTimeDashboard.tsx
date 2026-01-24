@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useKeyboard } from '@opentui/react';
 import { useColors } from '../contexts/ThemeContext.tsx';
 import { usePlugins } from '../contexts/PluginContext.tsx';
+import { useInputFocus } from '../contexts/InputContext.tsx';
 
 interface AgentSession {
   sessionId: string;
@@ -19,6 +20,7 @@ interface AgentSession {
   startedAt: number;   
   lastActivityAt: number;
   requestCount: number;
+  status: 'active' | 'idle';
 }
 
 function generateMockSessions(): AgentSession[] {
@@ -47,6 +49,7 @@ function generateMockSessions(): AgentSession[] {
     const output = 1000 + Math.floor(Math.random() * 30000);
     
     const cost = (input * model.costIn + output * model.costOut) / 1000000;
+    const isActive = Math.random() > 0.6;
 
     sessions.push({
       sessionId: `ses_${Math.random().toString(36).substr(2, 6)}`,
@@ -57,15 +60,16 @@ function generateMockSessions(): AgentSession[] {
       tokens: { input, output },
       cost,
       startedAt: Date.now() - Math.random() * 3600000 * 4,
-      lastActivityAt: Date.now() - Math.random() * 60000 * 10,
-      requestCount: 10 + Math.floor(Math.random() * 200)
+      lastActivityAt: isActive ? Date.now() : Date.now() - Math.random() * 60000 * 10,
+      requestCount: 10 + Math.floor(Math.random() * 200),
+      status: isActive ? 'active' : 'idle'
     });
   }
 
-  return sessions.sort((a, b) => b.lastActivityAt - a.lastActivityAt);
+  return sessions.sort((a, b) => b.cost - a.cost);
 }
 
-function Sparkline({ data, width = 60 }: { data: number[], width?: number }) {
+function Sparkline({ data, width = 60, label }: { data: number[], width?: number, label?: string }) {
   const colors = useColors();
   const chars = [' ', '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
   
@@ -75,11 +79,9 @@ function Sparkline({ data, width = 60 }: { data: number[], width?: number }) {
   const displayData = normalized.slice(-width);
   const padding = width - displayData.length;
   
-  const getColor = (v: number) => v > 6 ? colors.error : v > 3 ? colors.warning : colors.success;
-  
   const groups: { color: string; chars: string }[] = [];
   for (const v of displayData) {
-    const color = getColor(v);
+    const color = v > 6 ? colors.error : v > 3 ? colors.warning : colors.success;
     const char = chars[v] ?? ' ';
     if (groups.length > 0 && groups[groups.length - 1]!.color === color) {
       groups[groups.length - 1]!.chars += char;
@@ -89,29 +91,14 @@ function Sparkline({ data, width = 60 }: { data: number[], width?: number }) {
   }
   
   return (
-    <text>
-      {padding > 0 && <span>{' '.repeat(padding)}</span>}
-      {groups.map((group, i) => (
-        <span key={i} fg={group.color}>{group.chars}</span>
-      ))}
-    </text>
-  );
-}
-
-function BarChart({ label, value, max, color, valueLabel }: { label: string, value: number, max: number, color: string, valueLabel: string }) {
-  const colors = useColors();
-  const width = 20;
-  const filled = Math.min(width, Math.ceil((value / max) * width));
-  const empty = width - filled;
-  
-  return (
-    <box flexDirection="row" gap={1}>
-      <text width={16} fg={colors.text}>{label}</text>
+    <box flexDirection="column">
       <text>
-        <span fg={color}>{'█'.repeat(filled)}</span>
-        <span fg={colors.textSubtle}>{'░'.repeat(empty)}</span>
+        {padding > 0 && <span>{' '.repeat(padding)}</span>}
+        {groups.map((group, i) => (
+          <span key={i} fg={group.color}>{group.chars}</span>
+        ))}
       </text>
-      <text fg={colors.textMuted}>{valueLabel}</text>
+      {label && <text fg={colors.textMuted}>{label}</text>}
     </box>
   );
 }
@@ -128,17 +115,17 @@ function LimitGauge({
   ghost?: boolean;
 }) {
   const colors = useColors();
-  const barWidth = 8;
+  const barWidth = 10;
   
   if (ghost) {
-    const ghostLabel = label.padEnd(10);
+    const ghostLabel = label.length > 10 ? label.slice(0, 9) + '…' : label.padEnd(10);
     return (
-      <box width={28} overflow="hidden">
+      <box width={30} overflow="hidden">
         <text>
-          <span fg={colors.textSubtle}>○ </span>
-          <span fg={colors.textSubtle}>{ghostLabel}</span>
+          <span fg={colors.textSubtle}> ○ </span>
+          <span fg={colors.textSubtle}>{ghostLabel} </span>
           <span fg={colors.textSubtle}>{'░'.repeat(barWidth)}</span>
-          <span fg={colors.textSubtle}> -- </span>
+          <span fg={colors.textSubtle}> N/A</span>
         </text>
       </box>
     );
@@ -148,22 +135,85 @@ function LimitGauge({
   const filled = Math.min(barWidth, Math.round((percent / 100) * barWidth));
   const empty = barWidth - filled;
   
-  const barColor = percent >= 90 ? colors.error : percent >= 70 ? colors.warning : color;
-  const statusIcon = percent >= 90 ? '!' : percent >= 70 ? '~' : '●';
-  const statusColor = percent >= 90 ? colors.error : percent >= 70 ? colors.warning : colors.success;
+  const isCritical = percent >= 95;
+  const isWarning = percent >= 80;
+  
+  const barColor = isCritical ? colors.error : isWarning ? colors.warning : color;
+  const statusIcon = isCritical ? '!!' : isWarning ? ' !' : ' ●';
+  const statusColor = isCritical ? colors.error : isWarning ? colors.warning : colors.success;
   
   const displayLabel = label.length > 10 ? label.slice(0, 9) + '…' : label.padEnd(10);
-  const percentStr = usedPercent !== null ? `${Math.round(percent)}%`.padStart(4) : ' -- ';
+  const percentStr = usedPercent !== null ? `${Math.round(percent)}%`.padStart(3) : ' --';
   
   return (
-    <box width={28} overflow="hidden">
+    <box width={30} overflow="hidden">
       <text>
         <span fg={statusColor}>{statusIcon} </span>
-        <span fg={colors.text}>{displayLabel}</span>
+        <span fg={colors.text}>{displayLabel} </span>
         <span fg={barColor}>{'█'.repeat(filled)}</span>
         <span fg={colors.textSubtle}>{'░'.repeat(empty)}</span>
-        <span fg={colors.textMuted}>{percentStr}</span>
+        <span fg={isCritical ? colors.error : colors.textMuted}> {percentStr}</span>
       </text>
+    </box>
+  );
+}
+
+const KPICard = ({ title, value, delta, subValue, highlight = false }: any) => {
+  const colors = useColors();
+  return (
+    <box 
+      flexDirection="column" 
+      paddingLeft={1}
+      paddingRight={1}
+      border 
+      borderStyle={highlight ? "double" : "single"}
+      borderColor={highlight ? colors.primary : colors.border}
+      width={18}
+    >
+      <text fg={colors.textMuted}>{title}</text>
+      <text fg={highlight ? colors.primary : colors.text}><strong>{value}</strong></text>
+      {delta && <text fg={colors.textMuted}>{delta}</text>}
+      {subValue && <text fg={colors.textMuted}>{subValue}</text>}
+    </box>
+  );
+};
+
+function HelpOverlay() {
+  const colors = useColors();
+  return (
+    <box 
+      position="absolute" 
+      top="20%" 
+      left="30%" 
+      width={50} 
+      height={20} 
+      border 
+      borderStyle="double" 
+      borderColor={colors.primary} 
+      flexDirection="column" 
+      padding={1} 
+      zIndex={10}
+      backgroundColor={colors.background}
+    >
+      <box justifyContent="center"><text><strong>Help</strong></text></box>
+      
+      <box marginTop={1}><text fg={colors.primary}><strong>Navigation</strong></text></box>
+      <box flexDirection="row"><text width={12} fg={colors.textSubtle}>Tab</text><text>Switch panel focus</text></box>
+      <box flexDirection="row"><text width={12} fg={colors.textSubtle}>↑/↓ j/k</text><text>Navigate sessions</text></box>
+      <box flexDirection="row"><text width={12} fg={colors.textSubtle}>Enter</text><text>View details</text></box>
+      
+      <box marginTop={1}><text fg={colors.primary}><strong>Actions</strong></text></box>
+      <box flexDirection="row"><text width={12} fg={colors.textSubtle}>/</text><text>Filter sessions</text></box>
+      <box flexDirection="row"><text width={12} fg={colors.textSubtle}>s</text><text>Toggle sort</text></box>
+      <box flexDirection="row"><text width={12} fg={colors.textSubtle}>i</text><text>Toggle sidebar</text></box>
+      <box flexDirection="row"><text width={12} fg={colors.textSubtle}>r</text><text>Refresh data</text></box>
+      
+      <box marginTop={1}><text fg={colors.primary}><strong>General</strong></text></box>
+      <box flexDirection="row"><text width={12} fg={colors.textSubtle}>1</text><text>Dashboard tab</text></box>
+      <box flexDirection="row"><text width={12} fg={colors.textSubtle}>2</text><text>Providers tab</text></box>
+      <box flexDirection="row"><text width={12} fg={colors.textSubtle}>q</text><text>Quit</text></box>
+      
+      <box justifyContent="center" marginTop={1}><text fg={colors.textMuted}>Press ? or Esc to close</text></box>
     </box>
   );
 }
@@ -171,33 +221,47 @@ function LimitGauge({
 export function RealTimeDashboard() {
   const colors = useColors();
   const { providers } = usePlugins();
+  const { setInputFocused } = useInputFocus();
+  
+  // Data State
   const [sessions, setSessions] = useState<AgentSession[]>([]);
-  const [selectedRow, setSelectedRow] = useState(0);
   const [sparkData, setSparkData] = useState<number[]>([]);
-  const [now, setNow] = useState(new Date());
+  
+  // UI State
+  const [showHelp, setShowHelp] = useState(false);
+  const [selectedRow, setSelectedRow] = useState(0);
+  const [focusedPanel, setFocusedPanel] = useState<'sessions' | 'sidebar'>('sessions');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [filterQuery, setFilterQuery] = useState('');
+  const [isFiltering, setIsFiltering] = useState(false);
+  const [sortField, setSortField] = useState<'cost' | 'tokens' | 'time'>('cost');
+  
+  const historyRef = useRef<{time: number, cost: number, tokens: number}[]>([]);
+  const [deltas, setDeltas] = useState({ cost: 0, tokens: 0 });
+  
+  const emaRef = useRef<{ lastTokens: number; lastTime: number; ema: number }>({ 
+    lastTokens: 0, lastTime: Date.now(), ema: 0 
+  });
+  const [activity, setActivity] = useState<{ rate: number; ema: number; isSpike: boolean }>({ 
+    rate: 0, ema: 0, isSpike: false 
+  });
 
   const configuredProviders = useMemo(() => {
     return Array.from(providers.values())
       .filter(p => p.configured)
-      .sort((a, b) => {
-        const aMax = getMaxUsedPercent(a);
-        const bMax = getMaxUsedPercent(b);
-        return bMax - aMax;
-      });
+      .sort((a, b) => getMaxUsedPercent(b) - getMaxUsedPercent(a));
   }, [providers]);
 
-  function getMaxUsedPercent(provider: { usage: { limits?: { primary?: { usedPercent: number | null }; secondary?: { usedPercent: number | null }; items?: Array<{ usedPercent: number | null }> } } | null }): number {
+  function getMaxUsedPercent(provider: any): number {
     if (!provider.usage?.limits) return 0;
     const items = provider.usage.limits.items ?? [];
-    if (items.length > 0) {
-      return Math.max(...items.map(i => i.usedPercent ?? 0));
-    }
+    if (items.length > 0) return Math.max(...items.map((i: any) => i.usedPercent ?? 0));
     const primary = provider.usage.limits.primary?.usedPercent ?? 0;
     const secondary = provider.usage.limits.secondary?.usedPercent ?? 0;
     return Math.max(primary, secondary);
   }
 
-  const getProviderDisplayColor = (id: string) => {
+  const getProviderColor = (id: string) => {
     if (id.includes('anthropic') || id.includes('claude')) return '#d97757';
     if (id.includes('openai') || id.includes('codex')) return '#10a37f';
     if (id.includes('google') || id.includes('gemini')) return '#4285f4';
@@ -205,178 +269,264 @@ export function RealTimeDashboard() {
     return colors.primary;
   };
 
+  const formatCurrency = (val: number) => `$${val.toFixed(2)}`;
+  const formatTokens = (val: number) => val > 1000000 ? `${(val/1000000).toFixed(1)}M` : `${(val/1000).toFixed(1)}K`;
+  const formatRate = (val: number) => val >= 1000 ? `${(val/1000).toFixed(1)}k` : `${Math.round(val)}`;
+  
+  const getActivityStatus = () => {
+    const { ema, isSpike } = activity;
+    if (isSpike || ema >= 2000) return { label: 'SPIKE', color: colors.error };
+    if (ema >= 800) return { label: 'HOT', color: colors.warning };
+    if (ema >= 200) return { label: 'BUSY', color: colors.success };
+    if (ema >= 50) return { label: 'LOW', color: colors.textMuted };
+    return { label: 'IDLE', color: colors.textSubtle };
+  };
+
   useEffect(() => {
     setSessions(generateMockSessions());
-    
-    setSparkData(Array.from({ length: 60 }, () => Math.floor(Math.random() * 100)));
+    setSparkData(Array.from({ length: 60 }, () => Math.floor(Math.random() * 20)));
 
     const interval = setInterval(() => {
-      setNow(new Date());
+      const currentTime = Date.now();
       
-      setSparkData(prev => [...prev.slice(1), Math.floor(Math.random() * 100)]);
-      
-      setSessions(prev => prev.map(s => {
-        if (Math.random() > 0.7) {
-          const addedInput = Math.floor(Math.random() * 1000);
-          const addedOutput = Math.floor(Math.random() * 200);
-          const addedCost = (addedInput * 3.0 + addedOutput * 15.0) / 1000000;
-          return {
-            ...s,
-            tokens: {
-              ...s.tokens,
-              input: s.tokens.input + addedInput,
-              output: s.tokens.output + addedOutput
-            },
-            cost: s.cost + addedCost,
-            requestCount: s.requestCount + 1,
-            lastActivityAt: Date.now()
-          };
+      setSessions(prev => {
+        const newSessions = prev.map(s => {
+          if (s.status === 'active' && Math.random() > 0.3) {
+            const addedInput = Math.floor(Math.random() * 500);
+            const addedOutput = Math.floor(Math.random() * 100);
+            const addedCost = (addedInput * 3.0 + addedOutput * 15.0) / 1000000;
+            return {
+              ...s,
+              tokens: {
+                ...s.tokens,
+                input: s.tokens.input + addedInput,
+                output: s.tokens.output + addedOutput
+              },
+              cost: s.cost + addedCost,
+              requestCount: s.requestCount + (Math.random() > 0.8 ? 1 : 0),
+              lastActivityAt: currentTime
+            };
+          }
+          return s;
+        });
+
+        const totalCost = newSessions.reduce((sum, s) => sum + s.cost, 0);
+        const totalTokens = newSessions.reduce((sum, s) => sum + s.tokens.input + s.tokens.output, 0);
+        
+        historyRef.current.push({ time: currentTime, cost: totalCost, tokens: totalTokens });
+        if (historyRef.current.length > 300) historyRef.current.shift();
+
+        const fiveMinAgo = historyRef.current[0];
+        if (fiveMinAgo) {
+          setDeltas({
+            cost: totalCost - fiveMinAgo.cost,
+            tokens: totalTokens - fiveMinAgo.tokens
+          });
         }
-        return s;
-      }));
+
+        const dt = (currentTime - emaRef.current.lastTime) / 1000;
+        const deltaTokens = Math.max(0, totalTokens - emaRef.current.lastTokens);
+        const rateTps = dt > 0 ? deltaTokens / dt : 0;
+        
+        const alpha = 2 / (10 + 1);
+        const newEma = alpha * rateTps + (1 - alpha) * emaRef.current.ema;
+        const isSpike = rateTps >= Math.max(800, newEma * 2) && (rateTps - newEma) >= 200;
+        
+        emaRef.current = { lastTokens: totalTokens, lastTime: currentTime, ema: newEma };
+        setActivity({ rate: rateTps, ema: newEma, isSpike });
+        
+        setSparkData(d => [...d.slice(1), Math.min(100, Math.round(newEma / 10))]);
+
+        return newSessions;
+      });
     }, 1000);
 
     return () => clearInterval(interval);
   }, []);
 
+  const processedSessions = useMemo(() => {
+    let result = [...sessions];
+    
+    if (filterQuery) {
+      const q = filterQuery.toLowerCase();
+      result = result.filter(s => 
+        s.agentName.toLowerCase().includes(q) || 
+        s.modelId.toLowerCase().includes(q) ||
+        s.projectPath.toLowerCase().includes(q)
+      );
+    }
+
+    result.sort((a, b) => {
+      if (sortField === 'cost') return b.cost - a.cost;
+      if (sortField === 'tokens') return (b.tokens.input + b.tokens.output) - (a.tokens.input + a.tokens.output);
+      return b.lastActivityAt - a.lastActivityAt;
+    });
+
+    return result;
+  }, [sessions, filterQuery, sortField]);
+
   useKeyboard((key) => {
-    if (key.name === 'down' || key.name === 'j') {
-      setSelectedRow(curr => Math.min(curr + 1, sessions.length - 1));
-    } else if (key.name === 'up' || key.name === 'k') {
-      setSelectedRow(curr => Math.max(curr - 1, 0));
+    if (key.sequence === '?' || (key.shift && key.name === '/')) {
+      setShowHelp(prev => !prev);
+      return;
+    }
+
+    if (showHelp) {
+      if (key.name === 'escape' || key.name === 'q' || key.sequence === '?') {
+        setShowHelp(false);
+      }
+      return;
+    }
+
+    if (isFiltering) {
+      if (key.name === 'escape' || key.name === 'enter') {
+        setIsFiltering(false);
+        setInputFocused(false);
+        return;
+      }
+      if (key.name === 'backspace') {
+        setFilterQuery(q => q.slice(0, -1));
+        return;
+      }
+      if (key.sequence && key.sequence.length === 1 && /^[a-zA-Z0-9\-_./]$/.test(key.sequence)) {
+        setFilterQuery(q => q + key.sequence);
+        return;
+      }
+      return;
+    }
+
+    if (key.name === 'tab') {
+      setFocusedPanel(curr => curr === 'sessions' ? 'sidebar' : 'sessions');
+      return;
+    }
+
+    if (key.name === 'i') {
+      setSidebarCollapsed(curr => !curr);
+      return;
+    }
+
+    if (key.name === '/' || key.sequence === '/') {
+      setIsFiltering(true);
+      setInputFocused(true);
+      return;
+    }
+    
+    if (key.name === 's') {
+      setSortField(curr => curr === 'cost' ? 'tokens' : 'cost');
+    }
+
+    if (focusedPanel === 'sessions') {
+      if (key.name === 'down' || key.name === 'j') {
+        setSelectedRow(curr => Math.min(curr + 1, processedSessions.length - 1));
+      } else if (key.name === 'up' || key.name === 'k') {
+        setSelectedRow(curr => Math.max(curr - 1, 0));
+      }
     }
   });
 
   const totalCost = sessions.reduce((acc, s) => acc + s.cost, 0);
   const totalTokens = sessions.reduce((acc, s) => acc + s.tokens.input + s.tokens.output, 0);
   const totalRequests = sessions.reduce((acc, s) => acc + s.requestCount, 0);
-  
+  const activeCount = sessions.filter(s => s.status === 'active').length;
+
   const modelStats = useMemo(() => {
     const stats: Record<string, number> = {};
-    sessions.forEach(s => {
-      stats[s.modelId] = (stats[s.modelId] || 0) + s.cost;
-    });
-    return Object.entries(stats)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 5);
+    sessions.forEach(s => { stats[s.modelId] = (stats[s.modelId] || 0) + s.cost; });
+    return Object.entries(stats).sort(([, a], [, b]) => b - a).slice(0, 5);
   }, [sessions]);
-  
-  const maxModelCost = Math.max(...modelStats.map(([, c]) => c), 0.01);
 
   const providerStats = useMemo(() => {
     const stats: Record<string, number> = {};
-    sessions.forEach(s => {
-      stats[s.providerId] = (stats[s.providerId] || 0) + s.cost;
-    });
+    sessions.forEach(s => { stats[s.providerId] = (stats[s.providerId] || 0) + s.cost; });
     return Object.entries(stats).sort(([, a], [, b]) => b - a);
   }, [sessions]);
 
-  const maxProviderCost = Math.max(...providerStats.map(([, c]) => c), 0.01);
-
-  const getProviderColor = (id: string) => {
-    if (id.includes('anthropic')) return '#d97757';
-    if (id.includes('openai')) return '#10a37f';
-    if (id.includes('google')) return '#4285f4';
-    return colors.text;
-  };
-
-  const formatCurrency = (val: number) => `$${val.toFixed(2)}`;
-  const formatTokens = (val: number) => val > 1000000 ? `${(val/1000000).toFixed(1)}M` : `${(val/1000).toFixed(1)}K`;
-
-  const allLimitGauges = useMemo(() => {
-    type GaugeData = { key: string; label: string; usedPercent: number | null; color: string; ghost: boolean };
-    const gaugeData: GaugeData[] = [];
-    
-    configuredProviders.slice(0, 8).forEach((provider) => {
-      const providerColor = getProviderDisplayColor(provider.plugin.id);
-      const maxPercent = getMaxUsedPercent(provider);
-      
-      gaugeData.push({
-        key: provider.plugin.id,
-        label: provider.plugin.name,
-        usedPercent: maxPercent > 0 ? maxPercent : null,
-        color: providerColor,
-        ghost: false,
-      });
-    });
-    
-    const ghostProviders = [
-      { key: 'ghost-anthropic', label: 'Anthropic' },
-      { key: 'ghost-codex', label: 'Codex' },
-      { key: 'ghost-copilot', label: 'Copilot' },
-      { key: 'ghost-gemini', label: 'Gemini' },
-    ];
-    
-    const configuredKeys = new Set(configuredProviders.map(p => p.plugin.id));
-    const ghostsNeeded = Math.max(0, 4 - gaugeData.length);
-    
-    ghostProviders
-      .filter(g => !configuredKeys.has(g.key.replace('ghost-', '')))
-      .slice(0, ghostsNeeded)
-      .forEach(ghost => {
-        gaugeData.push({
-          key: ghost.key,
-          label: ghost.label,
-          usedPercent: null,
-          color: '#666666',
-          ghost: true,
-        });
-      });
-    
-    return gaugeData;
-  }, [configuredProviders, getProviderDisplayColor]);
+  const maxModelCost = Math.max(...modelStats.map(([, c]) => c), 0.01);
 
   return (
     <box flexDirection="column" flexGrow={1} padding={1} gap={1} overflow="hidden">
-      <box flexDirection="row" gap={3} border borderStyle="single" padding={1} borderColor={colors.border} flexShrink={0}>
-        <box flexDirection="column" width={14}>
-          <text fg={colors.textSubtle}>COST</text>
-          <text fg={colors.success}><strong>{formatCurrency(totalCost)}</strong></text>
-        </box>
-        <box flexDirection="column" width={14}>
-          <text fg={colors.textSubtle}>TOKENS</text>
-          <text fg={colors.info}><strong>{formatTokens(totalTokens)}</strong></text>
-        </box>
-        <box flexDirection="column" width={14}>
-          <text fg={colors.textSubtle}>REQS</text>
-          <text fg={colors.text}><strong>{totalRequests.toLocaleString()}</strong></text>
-        </box>
-        <box flexDirection="column" flexGrow={1} marginLeft={2}>
-          <text fg={colors.textSubtle}>ACTIVITY</text>
-          <Sparkline data={sparkData} width={40} />
+      {showHelp && <HelpOverlay />}
+      
+      <box flexDirection="row" gap={1} height={5} flexShrink={0}>
+        <KPICard 
+          title="COST" 
+          value={formatCurrency(totalCost)} 
+          delta={`+${formatCurrency(deltas.cost)} (5m)`} 
+          highlight={true}
+        />
+        <KPICard 
+          title="TOKENS" 
+          value={formatTokens(totalTokens)} 
+          delta={`+${formatTokens(deltas.tokens)} (5m)`}
+        />
+        <KPICard 
+          title="REQUESTS" 
+          value={totalRequests.toLocaleString()} 
+          subValue={`${activeCount} active`}
+        />
+        
+        <box flexDirection="column" flexGrow={1} border borderStyle="single" borderColor={colors.border} paddingLeft={1} paddingRight={1}>
+          <box flexDirection="row" justifyContent="space-between">
+            <text fg={colors.textSubtle}>ACTIVITY</text>
+            <text>
+              <span fg={getActivityStatus().color}>{getActivityStatus().label}</span>
+              <span fg={colors.textMuted}> {formatRate(activity.ema)}/s</span>
+            </text>
+          </box>
+          <Sparkline data={sparkData} width={50} label="tokens/s (60s)" />
         </box>
       </box>
 
-      <box flexDirection="column" border borderStyle="single" padding={1} borderColor={colors.border} overflow="hidden">
-        <text fg={colors.textSubtle} marginBottom={1}>PROVIDER LIMITS</text>
-        <box flexDirection="row" flexWrap="wrap" gap={1} overflow="hidden">
-          {allLimitGauges.slice(0, 8).map(g => (
-            <LimitGauge key={g.key} label={g.label} usedPercent={g.usedPercent} color={g.color} ghost={g.ghost} />
+      <box flexDirection="column" border borderStyle="single" padding={1} borderColor={colors.border} overflow="hidden" height={5} flexShrink={0}>
+        <text fg={colors.textSubtle} marginBottom={0}>PROVIDER LIMITS</text>
+        <box flexDirection="row" flexWrap="wrap" gap={2} overflow="hidden">
+          {configuredProviders.slice(0, 4).map(p => (
+            <LimitGauge 
+              key={p.plugin.id} 
+              label={p.plugin.name} 
+              usedPercent={getMaxUsedPercent(p)} 
+              color={getProviderColor(p.plugin.id)} 
+            />
           ))}
+          {configuredProviders.length === 0 && (
+            <text fg={colors.textMuted}>No providers configured with limits.</text>
+          )}
         </box>
       </box>
 
       <box flexDirection="row" gap={1} flexGrow={1}>
         
-        <box flexDirection="column" flexGrow={2} border borderStyle="single" borderColor={colors.border}>
-          <box flexDirection="row" paddingLeft={1} paddingRight={1} paddingBottom={1}>
-            <text fg={colors.textSubtle}>ACTIVE SESSIONS</text>
+        <box 
+          flexDirection="column" 
+          flexGrow={2} 
+          border 
+          borderStyle={focusedPanel === 'sessions' ? "double" : "single"} 
+          borderColor={focusedPanel === 'sessions' ? colors.primary : colors.border}
+        >
+          <box flexDirection="row" paddingLeft={1} paddingRight={1} paddingBottom={0} justifyContent="space-between">
+            <text fg={colors.textSubtle}>ACTIVE SESSIONS {isFiltering ? `(Filter: ${filterQuery})` : ''}</text>
+            <text fg={colors.textMuted}>{processedSessions.length} sessions</text>
           </box>
           
           <box flexDirection="row" paddingLeft={1} paddingRight={1}>
             <text width={8} fg={colors.textSubtle}>PID</text>
             <text width={12} fg={colors.textSubtle}>AGENT</text>
-            <text width={20} fg={colors.textSubtle}>MODEL</text>
-            <text width={10} fg={colors.textSubtle}>TOKENS</text>
-            <text width={10} fg={colors.textSubtle}>COST</text>
+            <text width={16} fg={colors.textSubtle}>MODEL</text>
+            <text width={8} fg={colors.textSubtle}>TOKENS</text>
+            <text width={8} fg={colors.textSubtle}>COST</text>
             <text flexGrow={1} fg={colors.textSubtle} paddingLeft={2}>PROJECT</text>
+            <text width={6} fg={colors.textSubtle}>STATUS</text>
           </box>
           
           <scrollbox flexGrow={1}>
             <box flexDirection="column">
-              {sessions.map((session, idx) => {
+              {processedSessions.map((session, idx) => {
                 const isSelected = idx === selectedRow;
                 const rowFg = isSelected ? colors.background : colors.text;
+                const providerColor = getProviderColor(session.providerId);
+                const projectDisplay = session.projectPath.length > 20 
+                  ? '…' + session.projectPath.slice(-19) 
+                  : session.projectPath;
 
                 return (
                   <box 
@@ -388,10 +538,13 @@ export function RealTimeDashboard() {
                   >
                     <text width={8} fg={isSelected ? rowFg : colors.textMuted}>{session.sessionId.substr(4)}</text>
                     <text width={12} fg={isSelected ? rowFg : colors.text}>{session.agentName}</text>
-                    <text width={20} fg={isSelected ? rowFg : getProviderColor(session.providerId)}>{session.modelId}</text>
-                    <text width={10} fg={isSelected ? rowFg : colors.text}>{formatTokens(session.tokens.input + session.tokens.output)}</text>
-                    <text width={10} fg={isSelected ? rowFg : colors.success}>{formatCurrency(session.cost)}</text>
-                    <text flexGrow={1} fg={isSelected ? rowFg : colors.textSubtle} paddingLeft={2}>{session.projectPath}</text>
+                    <text width={16} fg={isSelected ? rowFg : providerColor}>{session.modelId.split('/').pop()?.slice(0,15)}</text>
+                    <text width={8} fg={isSelected ? rowFg : colors.text}>{formatTokens(session.tokens.input + session.tokens.output).padStart(7)}</text>
+                    <text width={8} fg={isSelected ? rowFg : colors.success}>{formatCurrency(session.cost).padStart(7)}</text>
+                    <text flexGrow={1} fg={isSelected ? rowFg : colors.textSubtle} paddingLeft={2}>{projectDisplay}</text>
+                    <text width={6} fg={isSelected ? rowFg : (session.status === 'active' ? colors.success : colors.textMuted)}>
+                      {session.status === 'active' ? 'active' : 'idle'}
+                    </text>
                   </box>
                 );
               })}
@@ -399,49 +552,51 @@ export function RealTimeDashboard() {
           </scrollbox>
         </box>
 
-        <box flexDirection="column" width={45} gap={1}>
-          
-          <box flexDirection="column" border borderStyle="single" borderColor={colors.border} flexGrow={1} padding={1}>
-            <text fg={colors.textSubtle} marginBottom={1}>MODEL BREAKDOWN</text>
-            <box flexDirection="column" gap={0}>
+        {!sidebarCollapsed && (
+          <box 
+            flexDirection="column" 
+            width={35} 
+            gap={1}
+            border
+            borderStyle={focusedPanel === 'sidebar' ? "double" : "single"}
+            borderColor={focusedPanel === 'sidebar' ? colors.primary : colors.border}
+          >
+            <box flexDirection="column" padding={1} flexGrow={1}>
+              <text fg={colors.textSubtle} marginBottom={1}>MODEL BREAKDOWN</text>
               {modelStats.map(([modelId, cost]) => (
-                <BarChart 
-                  key={modelId}
-                  label={modelId.length > 15 ? modelId.substr(0,14)+'…' : modelId}
-                  value={cost}
-                  max={maxModelCost}
-                  color={getProviderColor(modelId.includes('gpt') ? 'openai' : modelId.includes('claude') ? 'anthropic' : 'google')}
-                  valueLabel={formatCurrency(cost)}
-                />
+                <box key={modelId} flexDirection="column" marginBottom={1}>
+                  <box flexDirection="row" justifyContent="space-between">
+                    <text fg={colors.text}>{modelId.length > 15 ? modelId.slice(0,14)+'…' : modelId}</text>
+                    <text fg={colors.textMuted}>{formatCurrency(cost)}</text>
+                  </box>
+                  <box flexDirection="row">
+                    <text fg={getProviderColor(modelId)}>
+                      {'█'.repeat(Math.ceil((cost / maxModelCost) * 20))}
+                    </text>
+                  </box>
+                </box>
               ))}
             </box>
-          </box>
 
-          <box flexDirection="column" border borderStyle="single" borderColor={colors.border} flexGrow={1} padding={1}>
-            <text fg={colors.textSubtle} marginBottom={1}>COST BY PROVIDER</text>
-            <box flexDirection="column" gap={0}>
-              {providerStats.map(([provider, cost]) => (
-                <BarChart 
-                  key={provider}
-                  label={provider.charAt(0).toUpperCase() + provider.slice(1)}
-                  value={cost}
-                  max={maxProviderCost}
-                  color={getProviderColor(provider)}
-                  valueLabel={formatCurrency(cost)}
-                />
-              ))}
+            <box flexDirection="column" padding={1} flexGrow={1}>
+               <text fg={colors.textSubtle} marginBottom={1}>BY PROVIDER</text>
+               {providerStats.map(([provider, cost]) => (
+                 <box key={provider} flexDirection="row" justifyContent="space-between">
+                   <text fg={getProviderColor(provider)}>{provider}</text>
+                   <text fg={colors.text}>{formatCurrency(cost)}</text>
+                 </box>
+               ))}
             </box>
           </box>
-
-        </box>
+        )}
       </box>
       
-      <box flexDirection="row" justifyContent="space-between" paddingLeft={1}>
+      <box flexDirection="row" paddingLeft={1}>
         <text fg={colors.textSubtle}>
-          Last update: {now.toLocaleTimeString()}
-        </text>
-        <text fg={colors.textSubtle}>
-          Use ↑/↓ to navigate sessions
+          {isFiltering ? 'Type to filter  Esc cancel  Enter apply' : 
+           focusedPanel === 'sessions' ? '/ filter  ↑↓ navigate  Enter details  s sort' :
+           focusedPanel === 'sidebar' ? 'Tab back to sessions' :
+           '/ filter  i sidebar  Tab switch  ? help'}
         </text>
       </box>
     </box>
