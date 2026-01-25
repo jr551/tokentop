@@ -50,7 +50,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     staleThresholdMs: 300000,
   },
   display: {
-    defaultTimeWindow: '5m',
+    defaultTimeWindow: '1h',
     sidebarCollapsed: false,
     compactMode: false,
     timeFormat: '24h',

@@ -231,9 +231,7 @@ export function Dashboard() {
                 focused={!isFiltering}
                 style={{
                   scrollbarOptions: {
-                    trackOptions: {
-                      foregroundColor: colors.textSubtle,
-                    },
+                    visible: false,
                   },
                 }}
               >

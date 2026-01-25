@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { useKeyboard } from '@opentui/react';
+import { useState, useCallback, useMemo } from 'react';
+import { useKeyboard, useTerminalDimensions } from '@opentui/react';
 import { useColors } from '../contexts/ThemeContext.tsx';
 import { useToastContext } from '../contexts/ToastContext.tsx';
 import { useConfig } from '../contexts/ConfigContext.tsx';
@@ -192,12 +192,22 @@ export function SettingsView() {
   const colors = useColors();
   const { showToast } = useToastContext();
   const { config, isLoading, updateConfig, resetToDefaults, saveNow } = useConfig();
+  const { width: terminalWidth } = useTerminalDimensions();
   
   const [selectedCategory, setSelectedCategory] = useState<SettingCategory>('refresh');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [focusedPane, setFocusedPane] = useState<'categories' | 'settings'>('settings');
   
   const categorySettings = SETTINGS.filter(s => s.category === selectedCategory);
+  
+  const helpText = useMemo(() => {
+    if (terminalWidth >= 100) {
+      return 'Tab: switch panes    ↑↓: navigate    Enter/Space: toggle    ←→: adjust    Ctrl+S: save    Shift+R: reset';
+    } else if (terminalWidth >= 80) {
+      return 'Tab: switch    ↑↓: nav    Enter: toggle    ←→: adjust    ^S: save    R: reset';
+    }
+    return 'Tab ↑↓ Enter ←→ ^S:save R:reset';
+  }, [terminalWidth]);
   
   const handleSave = useCallback(async () => {
     try {
@@ -369,13 +379,8 @@ export function SettingsView() {
         </box>
       </box>
       
-      <box flexDirection="row" height={1} gap={2} paddingLeft={1}>
-        <text fg={colors.textSubtle}>Tab: switch pane</text>
-        <text fg={colors.textSubtle}>↑↓: navigate</text>
-        <text fg={colors.textSubtle}>Enter/Space: toggle</text>
-        <text fg={colors.textSubtle}>←→: cycle</text>
-        <text fg={colors.textSubtle}>Ctrl+S: save</text>
-        <text fg={colors.textSubtle}>Shift+R: reset</text>
+      <box flexDirection="row" height={1} paddingLeft={1}>
+        <text fg={colors.textSubtle}>{helpText}</text>
       </box>
     </box>
   );

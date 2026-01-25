@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useTerminalDimensions } from '@opentui/react';
 import type { ScrollBoxRenderable } from '@opentui/core';
 import { useColors } from '../contexts/ThemeContext.tsx';
@@ -7,10 +7,10 @@ import { useAgentSessions } from '../contexts/AgentSessionContext.tsx';
 import { useTimeWindow } from '../contexts/TimeWindowContext.tsx';
 import { useConfig } from '../contexts/ConfigContext.tsx';
 import { useDashboardRuntime } from '../contexts/DashboardRuntimeContext.tsx';
+import { useDrawer } from '../contexts/DrawerContext.tsx';
 import { useDashboardKeyboard } from '../hooks/useDashboardKeyboard.ts';
 import { DebugInspectorOverlay } from '../components/DebugInspectorOverlay.tsx';
 import { KpiStrip } from '../components/KpiStrip.tsx';
-import { SessionDetailsDrawer } from '../components/SessionDetailsDrawer.tsx';
 import { SessionsTable } from '../components/SessionsTable.tsx';
 import { SidebarBreakdown } from '../components/SidebarBreakdown.tsx';
 import { LimitGauge } from '../components/LimitGauge.tsx';
@@ -21,15 +21,26 @@ export function RealTimeDashboard() {
   const { providers } = usePlugins();
   const { sessions: agentSessions, isLoading } = useAgentSessions();
   const { windowMs, windowLabel } = useTimeWindow();
-  const { height: terminalHeight } = useTerminalDimensions();
+  const { height: terminalHeight, width: terminalWidth } = useTerminalDimensions();
   const { config } = useConfig();
   const { activity, sparkData, deltas, emaRef, debugDataRef } = useDashboardRuntime();
 
-  const visibleRows = Math.max(1, terminalHeight - 29);
+  const showProviderLimits = terminalHeight >= 30;
+  const showLargeHeader = terminalHeight >= 35;
+  
+  const LARGE_HEADER_AREA = 16;
+  const SMALL_HEADER_AREA = 9;
+  const HEADER_AREA = showLargeHeader ? LARGE_HEADER_AREA : SMALL_HEADER_AREA;
+  const PROVIDER_LIMITS_AREA = 6;
+  const TABLE_CHROME = 4;
+  const FOOTER_AREA = 3;
+  const reservedLines = HEADER_AREA + (showProviderLimits ? PROVIDER_LIMITS_AREA : 0) + TABLE_CHROME + FOOTER_AREA;
+  const visibleRows = Math.max(1, terminalHeight - reservedLines);
 
+  const { showDrawer, isOpen: showSessionDrawer } = useDrawer();
+  
   const [showHelp, setShowHelp] = useState(false);
   const [showDebugInspector, setShowDebugInspector] = useState(false);
-  const [showSessionDrawer, setShowSessionDrawer] = useState(false);
   const [selectedRow, setSelectedRow] = useState(0);
   const [focusedPanel, setFocusedPanel] = useState<'sessions' | 'sidebar'>('sessions');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(config.display.sidebarCollapsed);
@@ -38,6 +49,9 @@ export function RealTimeDashboard() {
   const [sortField, setSortField] = useState<'cost' | 'tokens' | 'time'>('cost');
   const [pendingG, setPendingG] = useState(false);
   const [scrollOffset, setScrollOffset] = useState(0);
+
+  // Collapse sidebar if terminal is too narrow, overriding user preference if needed
+  const effectiveSidebarCollapsed = sidebarCollapsed || terminalWidth < 100;
 
   const sessionsScrollboxRef = useRef<ScrollBoxRenderable>(null);
 
@@ -95,6 +109,20 @@ export function RealTimeDashboard() {
   }, [agentSessions, filterQuery, sortField, windowMs]);
 
   useEffect(() => {
+    if (processedSessions.length === 0) {
+      if (selectedRow !== 0) setSelectedRow(0);
+      if (scrollOffset !== 0) setScrollOffset(0);
+      return;
+    }
+    
+    const maxRow = processedSessions.length - 1;
+    if (selectedRow > maxRow) {
+      setSelectedRow(maxRow);
+      return;
+    }
+  }, [processedSessions.length, selectedRow, scrollOffset]);
+
+  useEffect(() => {
     if (!sessionsScrollboxRef.current || processedSessions.length === 0) return;
 
     let newOffset = scrollOffset;
@@ -110,7 +138,16 @@ export function RealTimeDashboard() {
     }
 
     sessionsScrollboxRef.current.scrollTo(newOffset);
-  }, [selectedRow, processedSessions, scrollOffset, visibleRows]);
+  }, [selectedRow, processedSessions.length, scrollOffset, visibleRows]);
+
+  const openSessionDrawer = useCallback(() => {
+    const session = processedSessions[selectedRow];
+    if (session) {
+      showDrawer(session);
+    }
+  }, [processedSessions, selectedRow, showDrawer]);
+
+  const { hideDrawer } = useDrawer();
 
   useDashboardKeyboard({
     state: {
@@ -129,7 +166,8 @@ export function RealTimeDashboard() {
     actions: {
       setShowHelp,
       setShowDebugInspector,
-      setShowSessionDrawer,
+      openSessionDrawer,
+      closeSessionDrawer: hideDrawer,
       setSelectedRow,
       setFocusedPanel,
       setSidebarCollapsed,
@@ -159,12 +197,7 @@ export function RealTimeDashboard() {
           sparkData={sparkData}
         />
       )}
-      {showSessionDrawer && processedSessions[selectedRow] && (
-        <SessionDetailsDrawer 
-          session={processedSessions[selectedRow]} 
-          onClose={() => setShowSessionDrawer(false)} 
-        />
-      )}
+
       
       <KpiStrip
         totalCost={totalCost}
@@ -185,25 +218,27 @@ export function RealTimeDashboard() {
         }}
       />
 
-      <box flexDirection="column" border borderStyle="single" padding={1} borderColor={colors.border} overflow="hidden" height={5} flexShrink={0}>
-        <text fg={colors.textMuted} marginBottom={0}>PROVIDER LIMITS</text>
-        <box flexDirection="row" flexWrap="wrap" gap={2} overflow="hidden">
-          {configuredProviders.slice(0, 4).map(p => (
-            <LimitGauge 
-              key={p.plugin.id} 
-              label={p.plugin.name} 
-              usedPercent={getMaxUsedPercent(p)} 
-              color={getProviderColor(p.plugin.id)}
-              {...(p.usage?.error ? { error: p.usage.error } : {})}
-            />
-          ))}
-          {configuredProviders.length === 0 && (
-            <text fg={colors.textMuted}>No providers configured with limits.</text>
-          )}
+      {showProviderLimits && (
+        <box flexDirection="column" border borderStyle="single" padding={1} borderColor={colors.border} overflow="hidden" height={5} flexShrink={0}>
+          <text fg={colors.textMuted} marginBottom={0}>PROVIDER LIMITS</text>
+          <box flexDirection="row" flexWrap="wrap" gap={2} overflow="hidden">
+            {configuredProviders.slice(0, 4).map(p => (
+              <LimitGauge 
+                key={p.plugin.id} 
+                label={p.plugin.name} 
+                usedPercent={getMaxUsedPercent(p)} 
+                color={getProviderColor(p.plugin.id)}
+                {...(p.usage?.error ? { error: p.usage.error } : {})}
+              />
+            ))}
+            {configuredProviders.length === 0 && (
+              <text fg={colors.textMuted}>No providers configured with limits.</text>
+            )}
+          </box>
         </box>
-      </box>
+      )}
 
-      <box flexDirection="row" gap={1} flexGrow={1} minHeight={10}>
+      <box flexDirection="row" gap={1} flexGrow={1} minHeight={1}>
         <SessionsTable
           ref={sessionsScrollboxRef}
           sessions={processedSessions}
@@ -216,7 +251,7 @@ export function RealTimeDashboard() {
           getProviderColor={getProviderColor}
         />
 
-        {!sidebarCollapsed && (
+        {!effectiveSidebarCollapsed && (
           <SidebarBreakdown
             sessions={agentSessions}
             focusedPanel={focusedPanel}

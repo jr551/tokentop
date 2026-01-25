@@ -1,6 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useKeyboard } from '@opentui/react';
+import { useKeyboard, useTerminalDimensions } from '@opentui/react';
+import { RGBA } from '@opentui/core';
 import { useColors } from '../contexts/ThemeContext.tsx';
+import { useInputFocus } from '../contexts/InputContext.tsx';
+
+const OVERLAY_BG = RGBA.fromValues(0.0, 0.0, 0.0, 0.5);
 
 export interface CommandAction {
   id: string;
@@ -16,28 +20,40 @@ interface CommandPaletteProps {
 
 export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
   const colors = useColors();
+  const { width: termWidth, height: termHeight } = useTerminalDimensions();
+  const { setInputFocused } = useInputFocus();
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
-  
+
+  useEffect(() => {
+    setInputFocused(true);
+    return () => setInputFocused(false);
+  }, [setInputFocused]);
+
   const filteredCommands = useMemo(() => {
     if (!query) return commands;
     const lowerQuery = query.toLowerCase();
-    return commands.filter(cmd => 
+    return commands.filter(cmd =>
       cmd.label.toLowerCase().includes(lowerQuery) ||
       cmd.id.toLowerCase().includes(lowerQuery)
     );
   }, [commands, query]);
-  
+
+  const width = Math.max(50, Math.min(termWidth - 4, 80));
+  const maxVisibleItems = 15;
+  const listHeight = Math.min(filteredCommands.length, maxVisibleItems);
+  const height = Math.min(listHeight + 5, termHeight - 4);
+
   useEffect(() => {
     setSelectedIndex(0);
   }, [query]);
-  
+
   useKeyboard((key) => {
     if (key.name === 'escape') {
       onClose();
       return;
     }
-    
+
     if (key.name === 'return') {
       const selected = filteredCommands[selectedIndex];
       if (selected) {
@@ -46,86 +62,95 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
       }
       return;
     }
-    
+
     if (key.name === 'down' || key.name === 'j' || (key.ctrl && key.name === 'n')) {
       setSelectedIndex(i => Math.min(i + 1, filteredCommands.length - 1));
       return;
     }
-    
+
     if (key.name === 'up' || key.name === 'k' || (key.ctrl && key.name === 'p')) {
       setSelectedIndex(i => Math.max(i - 1, 0));
       return;
     }
-    
+
     if (key.name === 'backspace') {
       setQuery(q => q.slice(0, -1));
       return;
     }
-    
+
     if (key.sequence && key.sequence.length === 1 && /^[a-zA-Z0-9\-_. ]$/.test(key.sequence)) {
       setQuery(q => q + key.sequence);
       return;
     }
   });
-  
+
   return (
     <box
       position="absolute"
-      top="20%"
-      left="25%"
-      width={60}
-      height={Math.min(filteredCommands.length + 5, 20)}
-      border
-      borderStyle="double"
-      borderColor={colors.primary}
-      flexDirection="column"
-      zIndex={20}
-      backgroundColor={colors.background}
+      left={0}
+      top={0}
+      width="100%"
+      height="100%"
+      justifyContent="center"
+      alignItems="center"
+      zIndex={100}
+      backgroundColor={OVERLAY_BG}
     >
-      <box padding={1}>
-        <text>
-          <span fg={colors.textMuted}>: </span>
-          <span fg={colors.text}>{query}</span>
-          <span fg={colors.primary}>│</span>
-        </text>
-      </box>
-      
-      <scrollbox flexGrow={1}>
-        <box flexDirection="column">
-          {filteredCommands.length === 0 ? (
-            <box padding={1}>
-              <text fg={colors.textMuted}>No matching commands</text>
-            </box>
-          ) : (
-            filteredCommands.map((cmd, idx) => {
-              const isSelected = idx === selectedIndex;
-              return (
-                <box
-                  key={cmd.id}
-                  flexDirection="row"
-                  justifyContent="space-between"
-                  paddingLeft={1}
-                  paddingRight={1}
-                  height={1}
-                  {...(isSelected ? { backgroundColor: colors.primary } : {})}
-                >
-                  <text fg={isSelected ? colors.background : colors.text}>
-                    {cmd.label}
-                  </text>
-                  {cmd.shortcut && (
-                    <text fg={isSelected ? colors.background : colors.textSubtle}>
-                      {cmd.shortcut}
-                    </text>
-                  )}
-                </box>
-              );
-            })
-          )}
+      <box
+        width={width}
+        height={height}
+        border
+        borderStyle="double"
+        borderColor={colors.primary}
+        flexDirection="column"
+        backgroundColor={colors.background}
+        overflow="hidden"
+      >
+        <box padding={1} height={1}>
+          <text height={1}>
+            <span fg={colors.textMuted}>: </span>
+            <span fg={colors.text}>{query}</span>
+            <span fg={colors.primary}>│</span>
+          </text>
         </box>
-      </scrollbox>
-      
-      <box paddingLeft={1} paddingRight={1} height={1}>
-        <text fg={colors.textSubtle}>↑↓ navigate  Enter select  Esc close</text>
+
+        <scrollbox flexGrow={1}>
+          <box flexDirection="column">
+            {filteredCommands.length === 0 ? (
+              <box padding={1} height={1}>
+                <text height={1} fg={colors.textMuted}>No matching commands</text>
+              </box>
+            ) : (
+              filteredCommands.map((cmd, idx) => {
+                const isSelected = idx === selectedIndex;
+                return (
+                  <box
+                    key={cmd.id}
+                    flexDirection="row"
+                    justifyContent="space-between"
+                    paddingLeft={1}
+                    paddingRight={1}
+                    height={1}
+                    {...(isSelected ? { backgroundColor: colors.primary } : {})}
+                  >
+                    <text height={1} fg={isSelected ? colors.background : colors.text}>
+                      {cmd.label}
+                    </text>
+                    {cmd.shortcut && (
+                      <text height={1} fg={isSelected ? colors.background : colors.textSubtle}>
+                        {cmd.shortcut}
+                      </text>
+                    )}
+                  </box>
+                );
+              })
+            )}
+          </box>
+        </scrollbox>
+
+        <box paddingLeft={1} paddingRight={1} height={1}>
+          <text height={1} fg={colors.textSubtle}>↑↓ navigate  Enter select  Esc close</text>
+        </box>
       </box>
     </box>
   );

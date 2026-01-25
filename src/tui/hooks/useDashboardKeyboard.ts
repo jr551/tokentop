@@ -48,7 +48,8 @@ interface DashboardKeyboardState {
 interface DashboardKeyboardActions {
   setShowHelp: (fn: (prev: boolean) => boolean) => void;
   setShowDebugInspector: (fn: (prev: boolean) => boolean) => void;
-  setShowSessionDrawer: (val: boolean) => void;
+  openSessionDrawer: () => void;
+  closeSessionDrawer: () => void;
   setSelectedRow: (fn: (prev: number) => number) => void;
   setFocusedPanel: (fn: (prev: 'sessions' | 'sidebar') => 'sessions' | 'sidebar') => void;
   setSidebarCollapsed: (fn: (prev: boolean) => boolean) => void;
@@ -78,14 +79,22 @@ export function useDashboardKeyboard({
   const isFilteringRef = useRef(state.isFiltering);
   const modalOpenRef = useRef(false);
   const pendingGRef = useRef(false);
+  const sessionsRef = useRef(processedSessions);
 
   useEffect(() => {
     isFilteringRef.current = state.isFiltering;
     modalOpenRef.current = state.showHelp || state.showDebugInspector || state.showSessionDrawer;
     pendingGRef.current = state.pendingG;
-  }, [state.isFiltering, state.showHelp, state.showDebugInspector, state.showSessionDrawer, state.pendingG]);
+    sessionsRef.current = processedSessions;
+  }, [state.isFiltering, state.showHelp, state.showDebugInspector, state.showSessionDrawer, state.pendingG, processedSessions]);
+
+  const { isInputFocused } = useInputFocus();
 
   useKeyboard((key) => {
+    if (isInputFocused) {
+      return;
+    }
+
     if (key.sequence === '?' || (key.shift && key.name === '/')) {
       actions.setShowHelp(prev => !prev);
       return;
@@ -100,7 +109,7 @@ export function useDashboardKeyboard({
       if (key.name === 'escape' || key.name === 'q' || key.sequence === '?') {
         actions.setShowHelp(() => false);
         actions.setShowDebugInspector(() => false);
-        actions.setShowSessionDrawer(false);
+        actions.closeSessionDrawer();
         return;
       }
 
@@ -178,16 +187,16 @@ export function useDashboardKeyboard({
     }
 
     if (state.focusedPanel === 'sessions') {
+      const sessions = sessionsRef.current;
       if (key.name === 'down' || key.name === 'j') {
         actions.setPendingG(false);
-        actions.setSelectedRow(curr => Math.min(curr + 1, processedSessions.length - 1));
+        actions.setSelectedRow(curr => Math.min(curr + 1, sessions.length - 1));
       } else if (key.name === 'up' || key.name === 'k') {
         actions.setPendingG(false);
         actions.setSelectedRow(curr => Math.max(curr - 1, 0));
       } else if (key.shift && key.name === 'g') {
         actions.setPendingG(false);
-        actions.setSelectedRow(() => processedSessions.length - 1);
-        actions.setScrollOffset(Math.max(0, processedSessions.length - 1));
+        actions.setSelectedRow(() => sessions.length - 1);
       } else if (key.name === 'g') {
         if (pendingGRef.current) {
           actions.setSelectedRow(() => 0);
@@ -197,9 +206,9 @@ export function useDashboardKeyboard({
           actions.setPendingG(true);
           setTimeout(() => actions.setPendingG(false), 500);
         }
-      } else if (key.name === 'return' && processedSessions.length > 0) {
+      } else if (key.name === 'return' && sessions.length > 0) {
         actions.setPendingG(false);
-        actions.setShowSessionDrawer(true);
+        actions.openSessionDrawer();
       } else {
         actions.setPendingG(false);
       }

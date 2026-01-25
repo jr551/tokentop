@@ -416,6 +416,51 @@ echo '{"action":"launch","width":80,"height":24}
 | `status` | - | Get driver status |
 | `help` | - | List all commands |
 
+#### Diff & Assertions
+
+| Action | Parameters | Description |
+|--------|------------|-------------|
+| `diff` | `file1`, `file2` OR `frame1`, `frame2`, `ignoreWhitespace`, `visual` | Compare two frames |
+| `assert` | `name`, `goldenDir`, `update`, `ignoreWhitespace`, `visual` | Assert frame matches golden file (captures terminal size) |
+| `listGolden` | `goldenDir` | List all golden files |
+| `getGolden` | `name`, `goldenDir` | Get golden file content with metadata (width, height, timestamps) |
+| `deleteGolden` | `name`, `goldenDir` | Delete a golden file |
+
+**Golden File Format**: Golden files are stored as JSON (`.golden.json`) with terminal dimensions. When asserting, the driver validates that the current terminal size matches the golden file's captured size. If sizes differ, the assertion fails with a `dimensionMismatch` error.
+
+```json
+{
+  "version": 1,
+  "width": 80,
+  "height": 24,
+  "frame": "...",
+  "createdAt": "2026-01-24T...",
+  "updatedAt": "2026-01-24T..."
+}
+```
+
+#### Recording & Replay
+
+| Action | Parameters | Description |
+|--------|------------|-------------|
+| `startRecording` | `name`, `captureFrames` | Start recording commands |
+| `stopRecording` | `dir` | Stop recording and save |
+| `cancelRecording` | - | Cancel without saving |
+| `recordingStatus` | - | Get recording status |
+| `replay` | `name`, `dir`, `speed` | Replay a recording |
+| `listRecordings` | `dir` | List all recordings |
+| `getRecording` | `name`, `dir` | Get recording content |
+| `deleteRecording` | `name`, `dir` | Delete a recording |
+
+#### Coverage Tracking
+
+| Action | Parameters | Description |
+|--------|------------|-------------|
+| `startCoverage` | `knownViews` | Start tracking view coverage |
+| `stopCoverage` | `visual` | Stop tracking and get report |
+| `recordViewFromFrame` | - | Detect and record current view |
+| `getCoverage` | `visual` | Get current coverage report |
+
 ### Programmatic Usage
 
 ```typescript
@@ -526,4 +571,10 @@ console.log(`Found ${opusSessions} opus sessions`);
 
 - Driver: `src/tui/driver/driver.ts`
 - CLI: `src/tui/driver/cli.ts`
+- Diff: `src/tui/driver/diff.ts`
+- Assertions: `src/tui/driver/assertions.ts`
+- Recorder: `src/tui/driver/recorder.ts`
+- Coverage: `src/tui/driver/coverage.ts`
 - Snapshots: `./snapshots/`
+- Golden files: `./golden/`
+- Recordings: `./recordings/`

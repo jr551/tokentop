@@ -12,6 +12,8 @@ import { AgentSessionProvider } from './contexts/AgentSessionContext.tsx';
 import { StorageProvider } from './contexts/StorageContext.tsx';
 import { TimeWindowProvider } from './contexts/TimeWindowContext.tsx';
 import { ConfigProvider, useConfig } from './contexts/ConfigContext.tsx';
+import { DrawerProvider, useDrawer } from './contexts/DrawerContext.tsx';
+import { SessionDetailsDrawer } from './components/SessionDetailsDrawer.tsx';
 import { Header } from './components/Header.tsx';
 import { StatusBar } from './components/StatusBar.tsx';
 import { DebugConsole, copyLogsToClipboard, type DebugConsoleHandle } from './components/DebugConsole.tsx';
@@ -43,6 +45,7 @@ function AppContent() {
   const { toast, showToast, dismissToast } = useToastContext();
   const { isInputFocused } = useInputFocus();
   const { config } = useConfig();
+  const { selectedSession, hideDrawer, isOpen: isDrawerOpen } = useDrawer();
   
   const refreshInterval = config.refresh.pauseAutoRefresh ? 0 : config.refresh.intervalMs;
   
@@ -279,6 +282,7 @@ function AppContent() {
       height="100%"
       backgroundColor={colors.background}
       onMouseUp={handleMouseUp}
+      position="relative"
     >
       <Header 
         {...(isConsoleOpen ? { subtitle: '(debug)' } : {})} 
@@ -317,6 +321,13 @@ function AppContent() {
           onClose={() => setShowCommandPalette(false)}
         />
       )}
+
+      {isDrawerOpen && selectedSession && (
+        <SessionDetailsDrawer
+          session={selectedSession}
+          onClose={hideDrawer}
+        />
+      )}
     </box>
   );
 }
@@ -334,7 +345,9 @@ function ConfiguredApp() {
         <PluginProvider>
           <AgentSessionProvider autoRefresh={true} refreshInterval={3000}>
             <DashboardRuntimeProvider>
-              <AppContent />
+              <DrawerProvider>
+                <AppContent />
+              </DrawerProvider>
             </DashboardRuntimeProvider>
           </AgentSessionProvider>
         </PluginProvider>

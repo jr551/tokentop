@@ -1,3 +1,4 @@
+import { useTerminalDimensions } from '@opentui/react';
 import { useColors } from '../contexts/ThemeContext.tsx';
 import { Sparkline } from './Sparkline.tsx';
 import { usePulse } from '../hooks/usePulse.ts';
@@ -47,10 +48,10 @@ function KPICard({ title, value, delta, subValue, metric = 'default', budgetStat
       paddingRight={2}
       flexGrow={1}
     >
-      <text fg={colors.textMuted}>{title}</text>
-      <text fg={valueColor}><strong>{value}</strong></text>
-      {delta && <text fg={deltaColor}>{delta}</text>}
-      {subValue && <text fg={colors.textMuted}>{subValue}</text>}
+      <text fg={colors.textMuted} height={1}>{title}</text>
+      <text fg={valueColor} height={1}><strong>{value}</strong></text>
+      {delta && <text fg={deltaColor} height={1}>{delta}</text>}
+      {subValue && <text fg={colors.textMuted} height={1}>{subValue}</text>}
     </box>
   );
 }
@@ -94,6 +95,7 @@ export function KpiStrip({
   budget,
 }: KpiStripProps) {
   const colors = useColors();
+  const { width: terminalWidth } = useTerminalDimensions();
   
   const formatCurrency = (val: number) => `$${val.toFixed(2)}`;
   const formatTokens = (val: number) => val > 1000000 ? `${(val/1000000).toFixed(1)}M` : `${(val/1000).toFixed(1)}K`;
@@ -132,6 +134,11 @@ export function KpiStrip({
   };
 
   const activityStatus = getActivityStatus();
+  
+  // Calculate responsive width for sparkline
+  // Min width 20, max width 50
+  // Target: 25% of terminal width
+  const sparklineWidth = Math.min(50, Math.max(20, Math.floor(terminalWidth * 0.25)));
 
   return (
     <>
@@ -170,7 +177,7 @@ export function KpiStrip({
               <span fg={colors.textMuted}> {formatRate(activity.ema)}/s</span>
             </text>
           </box>
-          <Sparkline data={sparkData} width={50} label="tok/s" fixedMax={2000} />
+          <Sparkline data={sparkData} width={sparklineWidth} label="tok/s" fixedMax={2000} />
         </box>
       </box>
       

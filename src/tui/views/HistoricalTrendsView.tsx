@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useKeyboard } from '@opentui/react';
+import { useKeyboard, useTerminalDimensions } from '@opentui/react';
 import { useColors } from '../contexts/ThemeContext.tsx';
 import { useStorageReady } from '../contexts/StorageContext.tsx';
 import { queryUsageTimeSeries, isDatabaseInitialized } from '@/storage/index.ts';
@@ -43,20 +43,18 @@ function getTimeSeriesData(period: TimePeriod): ChartPoint[] {
     
     const points: ChartPoint[] = [];
     for (let i = daysBack - 1; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(d.getDate() - i);
-      d.setHours(0, 0, 0, 0);
-      
-      const bucketStart = d.getTime();
+      const dayTimestamp = now - i * MS_PER_DAY;
+      const bucketStart = Math.floor(dayTimestamp / bucketMs) * bucketMs;
       const cost = costByBucket.get(bucketStart) ?? 0;
       
+      const d = new Date(bucketStart);
       let label = '';
       if (period === '7d') {
         label = d.toLocaleDateString('en-US', { weekday: 'short' });
       } else if (period === '30d') {
-        label = i % 5 === 0 ? d.getDate().toString() : '';
+        label = i % 5 === 0 ? d.getUTCDate().toString() : '';
       } else {
-        label = i % 15 === 0 ? `${d.getMonth() + 1}/${d.getDate()}` : '';
+        label = i % 15 === 0 ? `${d.getUTCMonth() + 1}/${d.getUTCDate()}` : '';
       }
       
       points.push({ label, value: cost });
@@ -206,9 +204,16 @@ const AsciiChart = ({ data, height, width, color, labelColor, gridColor }: Chart
 export function HistoricalTrendsView() {
   const colors = useColors();
   const isStorageReady = useStorageReady();
+  const { width: terminalWidth, height: terminalHeight } = useTerminalDimensions();
   const [period, setPeriod] = useState<TimePeriod>('7d');
   const [data, setData] = useState<ChartPoint[]>([]);
   
+  // Dynamic chart dimensions
+  // Width: Full width minus padding (2) and borders (2) -> 4
+  // Height: Full height minus header (2), footer (2), borders (2) -> 6
+  const chartWidth = Math.max(40, terminalWidth - 6);
+  const chartHeight = Math.max(8, terminalHeight - 8);
+
   useEffect(() => {
     if (isStorageReady) {
       setData(getTimeSeriesData(period));
@@ -228,7 +233,7 @@ export function HistoricalTrendsView() {
   });
 
   return (
-    <box flexDirection="column" padding={1} border borderStyle="single" borderColor={colors.border}>
+    <box flexDirection="column" flexGrow={1} padding={1} border borderStyle="single" borderColor={colors.border}>
       <box flexDirection="row" justifyContent="space-between" height={1} marginBottom={1}>
         <text height={1}>
             <span fg={colors.primary}><strong> COST TREND </strong></span>
@@ -251,8 +256,8 @@ export function HistoricalTrendsView() {
           ) : (
             <AsciiChart 
               data={data} 
-              height={12} 
-              width={65} 
+              height={chartHeight} 
+              width={chartWidth} 
               color={colors.primary}
               labelColor={colors.textMuted}
               gridColor={colors.border}

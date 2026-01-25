@@ -125,7 +125,7 @@ export function ProjectsView() {
   return (
     <box flexDirection="column" flexGrow={1} padding={1}>
       <box height={1} marginBottom={1}>
-        <box width={25}><text fg={colors.textMuted}>PROJECT</text></box>
+        <box width={25} flexGrow={1}><text fg={colors.textMuted}>PROJECT</text></box>
         <box width={10} justifyContent="flex-end"><text fg={colors.textMuted}>SESSIONS</text></box>
         <box width={12} justifyContent="flex-end"><text fg={colors.textMuted}>TOKENS</text></box>
         <box width={15} justifyContent="flex-end">
@@ -149,9 +149,9 @@ export function ProjectsView() {
 
             return (
               <box key={project.path} height={1} flexDirection="row">
-                <box width={25}>
+                <box width={25} flexGrow={1}>
                   <text fg={isSelected ? colors.primary : colors.text}>
-                    {project.name.length > 24 ? project.name.substring(0, 23) + '…' : project.name}
+                    {project.name.length > 50 ? project.name.substring(0, 49) + '…' : project.name}
                   </text>
                 </box>
 

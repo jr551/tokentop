@@ -173,3 +173,24 @@ export function getTotalUsageInWindow(startMs: number, endMs: number): {
     requestCount: row.request_count,
   };
 }
+
+export interface SessionActivityPoint {
+  timestamp: number;
+  tokens: number;
+}
+
+export function getSessionActivityTimeline(sessionId: string): SessionActivityPoint[] {
+  const db = getDatabase();
+
+  const rows = db.prepare(`
+    SELECT timestamp, (input_tokens + output_tokens) AS tokens
+    FROM usage_events
+    WHERE session_id = ?
+    ORDER BY timestamp ASC
+  `).all(sessionId) as Array<{ timestamp: number; tokens: number }>;
+
+  return rows.map(r => ({
+    timestamp: r.timestamp,
+    tokens: r.tokens,
+  }));
+}

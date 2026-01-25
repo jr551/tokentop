@@ -21,7 +21,10 @@ export {
   queryUsageTimeSeries,
   calculateBurnRate,
   getTotalUsageInWindow,
+  getSessionActivityTimeline,
 } from './repos/usageEvents.ts';
+
+export type { SessionActivityPoint } from './repos/usageEvents.ts';
 
 export {
   upsertAgentSession,

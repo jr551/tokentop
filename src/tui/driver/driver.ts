@@ -1,6 +1,5 @@
 import { createTestRenderer } from '@opentui/core/testing';
 import { AppContext, createRoot } from '@opentui/react';
-import type { ReactNode } from 'react';
 import React from 'react';
 import { act } from 'react';
 import { createAppElement, type CreateAppOptions } from '../createApp.tsx';
