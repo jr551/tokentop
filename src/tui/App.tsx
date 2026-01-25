@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useRenderer, useKeyboard } from '@opentui/react';
+import { useKeyboard } from '@opentui/react';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { PATHS } from '@/storage/paths.ts';
@@ -25,6 +25,7 @@ import { ProjectsView } from './views/ProjectsView.tsx';
 import { SettingsView } from './views/SettingsView.tsx';
 import { CommandPalette, type CommandAction } from './components/CommandPalette.tsx';
 import { copyToClipboard } from '@/utils/clipboard.ts';
+import { useSafeRenderer } from './hooks/useSafeRenderer.ts';
 import type { ThemePlugin } from '@/plugins/types/theme.ts';
 
 interface AppProps {
@@ -35,7 +36,7 @@ interface AppProps {
 type View = 'dashboard' | 'providers' | 'trends' | 'projects' | 'settings';
 
 function AppContent() {
-  const renderer = useRenderer();
+  const renderer = useSafeRenderer();
   const colors = useColors();
   const { refreshAllProviders, isInitialized } = usePlugins();
   const { logs, isConsoleOpen, toggleConsole, closeConsole, clearLogs, exportLogs, info } = useLogs();
@@ -62,6 +63,7 @@ function AppContent() {
   }, [logs, showToast, config.notifications.toastsEnabled]);
 
   const handleCaptureFrame = useCallback(async () => {
+    if (!renderer) return;
     try {
       const result = await captureFrameToFile(renderer, 'manual');
       info(`Frame captured: ${result.framePath}`);
@@ -78,6 +80,7 @@ function AppContent() {
   }, [renderer, info, showToast, config.notifications.toastsEnabled]);
 
   const handleBurstRecord = useCallback(async () => {
+    if (!renderer) return;
     if (burstRecorderRef.current?.recording) {
       const frames = burstRecorderRef.current.stop();
       info(`Burst stopped: ${frames.length} frames captured`);
@@ -103,6 +106,7 @@ function AppContent() {
   }, [renderer, info, showToast, config.notifications.toastsEnabled]);
 
   const handleMouseUp = useCallback(async () => {
+    if (!renderer) return;
     const selection = renderer.getSelection();
     const text = selection?.getSelectedText();
     if (text && text.length > 0) {
@@ -134,7 +138,7 @@ function AppContent() {
     }},
     { id: 'toggle-debug', label: 'Toggle Debug Console', shortcut: '~', action: () => toggleConsole() },
     { id: 'capture-frame', label: 'Capture Frame', shortcut: 'Ctrl+P', action: () => handleCaptureFrame() },
-    { id: 'quit', label: 'Quit', shortcut: 'q', action: () => renderer.destroy() },
+    { id: 'quit', label: 'Quit', shortcut: 'q', action: () => renderer?.destroy() },
   ], [isInitialized, refreshAllProviders, info, toggleConsole, handleCaptureFrame, renderer]);
 
   useKeyboard((key) => {
@@ -213,7 +217,7 @@ function AppContent() {
     }
 
     if (key.name === 'q' || (key.ctrl && key.name === 'c')) {
-      renderer.destroy();
+      renderer?.destroy();
     }
     if (key.name === 'r' && isInitialized) {
       info('Manual refresh triggered');
