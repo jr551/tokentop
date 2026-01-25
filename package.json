@@ -15,7 +15,10 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
     "test": "bun test",
-    "test:watch": "bun test --watch"
+    "test:watch": "bun test --watch",
+    "driver": "bun src/tui/driver/cli.ts",
+    "driver:help": "bun src/tui/driver/cli.ts --help",
+    "snapshot": "bun src/tui/debug/snapshot.tsx"
   },
   "dependencies": {
     "@opentui/core": "^0.1.74",
