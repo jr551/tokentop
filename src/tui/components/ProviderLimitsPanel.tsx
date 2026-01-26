@@ -98,14 +98,17 @@ export function ProviderLimitsPanel({
         flexDirection="column" 
         border 
         borderStyle={focused ? 'double' : 'single'}
-        padding={1} 
         borderColor={focused ? colors.primary : colors.border} 
         overflow="hidden" 
-        height={5} 
+        height={4} 
         flexShrink={0}
       >
-        <text fg={colors.textMuted} height={1}>PROVIDER LIMITS {focused ? '(←→ navigate, Tab exit)' : ''}</text>
-        <box flexDirection="row" gap={3} overflow="hidden" height={1}>
+        <box flexDirection="row" paddingLeft={2} height={1}>
+          <text fg={colors.textMuted} height={1}>
+            PROVIDER LIMITS {focused ? '(←→ navigate, Tab exit)' : ''}
+          </text>
+        </box>
+        <box flexDirection="row" gap={3} overflow="hidden" height={1} paddingLeft={2}>
           {shown.map((p, idx) => (
             <LimitGauge
               key={p.id}
@@ -132,14 +135,17 @@ export function ProviderLimitsPanel({
       flexDirection="column" 
       border 
       borderStyle={focused ? 'double' : 'single'}
-      padding={1} 
       borderColor={focused ? colors.primary : colors.border} 
       overflow="hidden" 
-      height={5} 
+      height={4} 
       flexShrink={0}
     >
-      <text fg={colors.textMuted} height={1}>PROVIDER LIMITS {focused ? '(←→ navigate, Tab exit)' : ''}</text>
-      <box flexDirection="row" gap={2} overflow="hidden" height={1}>
+      <box flexDirection="row" paddingLeft={2} height={1}>
+        <text fg={colors.textMuted} height={1}>
+          PROVIDER LIMITS {focused ? '(←→ navigate, Tab exit)' : ''}
+        </text>
+      </box>
+      <box flexDirection="row" gap={2} overflow="hidden" height={1} paddingLeft={2}>
         {shown.map((p, idx) => (
           <LimitGauge
             key={p.id}
