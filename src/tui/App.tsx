@@ -20,6 +20,7 @@ import { DebugConsole, copyLogsToClipboard, type DebugConsoleHandle } from './co
 import { Toast } from './components/Toast.tsx';
 import { ToastProvider, useToastContext } from './contexts/ToastContext.tsx';
 import { DashboardRuntimeProvider } from './contexts/DashboardRuntimeContext.tsx';
+import { RealTimeActivityProvider } from './contexts/RealTimeActivityContext.tsx';
 import { RealTimeDashboard } from './views/RealTimeDashboard.tsx';
 import { Dashboard } from './views/Dashboard.tsx';
 import { HistoricalTrendsView } from './views/HistoricalTrendsView.tsx';
@@ -351,13 +352,15 @@ function ConfiguredApp() {
     <TimeWindowProvider defaultWindow={config.display.defaultTimeWindow}>
       <ToastProvider>
         <PluginProvider>
-          <AgentSessionProvider autoRefresh={true} refreshInterval={1000}>
-            <DashboardRuntimeProvider>
+          <RealTimeActivityProvider>
+            <AgentSessionProvider autoRefresh={true} refreshInterval={1000}>
+              <DashboardRuntimeProvider>
               <DrawerProvider>
                 <AppContent />
               </DrawerProvider>
-            </DashboardRuntimeProvider>
-          </AgentSessionProvider>
+              </DashboardRuntimeProvider>
+            </AgentSessionProvider>
+          </RealTimeActivityProvider>
         </PluginProvider>
       </ToastProvider>
     </TimeWindowProvider>
