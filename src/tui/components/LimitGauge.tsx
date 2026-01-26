@@ -1,4 +1,6 @@
+import type { ReactNode } from 'react';
 import { useColors } from '../contexts/ThemeContext.tsx';
+import { usePulse } from '../hooks/usePulse.ts';
 
 interface LimitGaugeProps {
   label: string;
@@ -6,6 +8,59 @@ interface LimitGaugeProps {
   color: string;
   ghost?: boolean;
   error?: string;
+  resetTime?: string;
+  compact?: boolean;
+  labelWidth?: number;
+  barWidth?: number;
+}
+
+const FRACTIONAL_BLOCKS = [' ', '▏', '▎', '▍', '▌', '▋', '▊', '▉', '█'];
+
+function renderFractionalBar(percent: number, width: number, filledColor: string, emptyColor: string): ReactNode[] {
+  const totalSegments = width * 8;
+  const filledSegments = Math.round((percent / 100) * totalSegments);
+  const fullBlocks = Math.floor(filledSegments / 8);
+  const remainder = filledSegments % 8;
+  const emptyBlocks = width - fullBlocks - (remainder > 0 ? 1 : 0);
+  
+  const elements: ReactNode[] = [];
+  
+  if (fullBlocks > 0) {
+    elements.push(<span key="full" fg={filledColor}>{'█'.repeat(fullBlocks)}</span>);
+  }
+  
+  if (remainder > 0) {
+    elements.push(<span key="partial" fg={filledColor}>{FRACTIONAL_BLOCKS[remainder]}</span>);
+  }
+  
+  if (emptyBlocks > 0) {
+    elements.push(<span key="empty" fg={emptyColor}>{'─'.repeat(emptyBlocks)}</span>);
+  }
+  
+  return elements;
+}
+
+function interpolatePulseColor(intensity: number, baseColor: string, dimColor: string): string {
+  const dimAmount = 0.4;
+  const t = intensity * dimAmount;
+  
+  const parseHex = (hex: string) => {
+    const h = hex.replace('#', '');
+    return {
+      r: parseInt(h.substring(0, 2), 16),
+      g: parseInt(h.substring(2, 4), 16),
+      b: parseInt(h.substring(4, 6), 16),
+    };
+  };
+  
+  const base = parseHex(baseColor);
+  const dim = parseHex(dimColor);
+  
+  const r = Math.round(base.r + (dim.r - base.r) * t);
+  const g = Math.round(base.g + (dim.g - base.g) * t);
+  const b = Math.round(base.b + (dim.b - base.b) * t);
+  
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
 
 export function LimitGauge({ 
@@ -14,60 +69,99 @@ export function LimitGauge({
   color,
   ghost = false,
   error,
+  resetTime,
+  compact = false,
+  labelWidth = 12,
+  barWidth = 10,
 }: LimitGaugeProps) {
   const colors = useColors();
-  const barWidth = 10;
+  
+  const percent = usedPercent ?? 0;
+  const isCritical = percent >= 95;
+  const isWarning = percent >= 80;
+  
+  const pulseStep = usePulse({ enabled: isCritical, intervalMs: 150 });
+  const pulseIntensity = isCritical ? Math.abs(Math.sin(pulseStep * 0.15)) : 0;
+  
+  const truncateLabel = (lbl: string, maxLen: number): string => {
+    if (lbl.length <= maxLen) return lbl.padEnd(maxLen);
+    return lbl.slice(0, maxLen - 1) + '…';
+  };
+  
+  if (compact) {
+    const shortLabel = truncateLabel(label, 10);
+    const percentStr = usedPercent !== null ? `${Math.round(percent)}%` : '--';
+    const statusIcon = isCritical ? '▲' : isWarning ? '▲' : '';
+    const statusColor = isCritical ? colors.error : isWarning ? colors.warning : colors.textMuted;
+    const textColor = isCritical ? colors.error : isWarning ? colors.warning : colors.text;
+    
+    return (
+      <text height={1}>
+        <span fg={textColor}>{shortLabel}</span>
+        <span fg={statusColor}> {percentStr}</span>
+        {statusIcon && <span fg={statusColor}> {statusIcon}</span>}
+      </text>
+    );
+  }
   
   if (ghost) {
-    const ghostLabel = label.length > 10 ? label.slice(0, 9) + '…' : label.padEnd(10);
+    const ghostLabel = truncateLabel(label, labelWidth);
     return (
-      <box width={30} height={1} overflow="hidden">
+      <box height={1} overflow="hidden">
         <text height={1}>
-          <span fg={colors.textSubtle}> ○ </span>
+          <span fg={colors.textSubtle}>○ </span>
           <span fg={colors.textSubtle}>{ghostLabel} </span>
-          <span fg={colors.textSubtle}>{'·'.repeat(barWidth)}</span>
-          <span fg={colors.textSubtle}> N/A</span>
+          <span fg={colors.textSubtle}>{'─'.repeat(barWidth)}</span>
+          <span fg={colors.textSubtle}>  --</span>
         </text>
       </box>
     );
   }
   
   if (error) {
-    const displayLabel = label.length > 10 ? label.slice(0, 9) + '…' : label.padEnd(10);
+    const displayLabel = truncateLabel(label, labelWidth);
     return (
-      <box width={30} height={1} overflow="hidden">
+      <box height={1} overflow="hidden">
         <text height={1}>
-          <span fg={colors.error}> ✗ </span>
+          <span fg={colors.error}>✗ </span>
           <span fg={colors.text}>{displayLabel} </span>
-          <span fg={colors.error}>{'·'.repeat(barWidth)}</span>
+          <span fg={colors.error}>{'─'.repeat(barWidth)}</span>
           <span fg={colors.error}> ERR</span>
         </text>
       </box>
     );
   }
   
-  const percent = usedPercent ?? 0;
-  const filled = Math.min(barWidth, Math.round((percent / 100) * barWidth));
-  const empty = barWidth - filled;
+  const barColor = isCritical 
+    ? interpolatePulseColor(pulseIntensity, colors.error, colors.background)
+    : isWarning 
+      ? colors.warning 
+      : color;
   
-  const isCritical = percent >= 95;
-  const isWarning = percent >= 80;
-  
-  const barColor = isCritical ? colors.error : isWarning ? colors.warning : color;
-  const statusIcon = isCritical ? '!!' : isWarning ? ' !' : ' ●';
+  const statusIcon = isCritical ? '■' : isWarning ? '▲' : '●';
   const statusColor = isCritical ? colors.error : isWarning ? colors.warning : colors.success;
   
-  const displayLabel = label.length > 10 ? label.slice(0, 9) + '…' : label.padEnd(10);
-  const percentStr = usedPercent !== null ? `${Math.round(percent)}%`.padStart(3) : ' --';
+  const displayLabel = truncateLabel(label, labelWidth);
+  const percentStr = usedPercent !== null ? `${Math.round(percent)}%`.padStart(4) : '  --';
+  
+  const percentDisplay = isCritical ? (
+    <span fg={colors.background} bg={colors.error}>{percentStr}</span>
+  ) : (
+    <span fg={isWarning ? colors.warning : colors.textMuted}>{percentStr}</span>
+  );
+  
+  const resetDisplay = resetTime ? (
+    <span fg={colors.textSubtle}> {resetTime}</span>
+  ) : null;
   
   return (
-    <box width={30} height={1} overflow="hidden">
+    <box height={1} overflow="hidden">
       <text height={1}>
         <span fg={statusColor}>{statusIcon} </span>
-        <span fg={colors.textMuted}>{displayLabel} </span>
-        <span fg={barColor}>{'█'.repeat(filled)}</span>
-        <span fg={colors.textSubtle}>{'·'.repeat(empty)}</span>
-        <span fg={isCritical ? colors.error : colors.textMuted}> {percentStr}</span>
+        <span fg={isCritical ? colors.error : isWarning ? colors.warning : colors.textMuted}>{displayLabel} </span>
+        {renderFractionalBar(percent, barWidth, barColor, colors.border)}
+        {percentDisplay}
+        {resetDisplay}
       </text>
     </box>
   );

@@ -13,7 +13,7 @@ import { useDashboardKeyboard } from '../hooks/useDashboardKeyboard.ts';
 import { KpiStrip } from '../components/KpiStrip.tsx';
 import { SessionsTable } from '../components/SessionsTable.tsx';
 import { SidebarBreakdown } from '../components/SidebarBreakdown.tsx';
-import { LimitGauge } from '../components/LimitGauge.tsx';
+import { ProviderLimitsPanel } from '../components/ProviderLimitsPanel.tsx';
 import { HelpOverlay } from '../components/HelpOverlay.tsx';
 
 export function RealTimeDashboard() {
@@ -25,16 +25,18 @@ export function RealTimeDashboard() {
   const { config } = useConfig();
   const { activity, sparkData, deltas } = useDashboardRuntime();
 
-  const showProviderLimits = terminalHeight >= 30;
   const showLargeHeader = terminalHeight >= 35;
+  const showProviderLimitsPanel = terminalHeight >= 24;
   
   const LARGE_HEADER_AREA = 16;
   const SMALL_HEADER_AREA = 9;
   const HEADER_AREA = showLargeHeader ? LARGE_HEADER_AREA : SMALL_HEADER_AREA;
-  const PROVIDER_LIMITS_AREA = 6;
+  const PROVIDER_LIMITS_COMPACT = 1;
+  const PROVIDER_LIMITS_FULL = 6;
+  const providerLimitsArea = !showProviderLimitsPanel ? 0 : (terminalHeight < 30 ? PROVIDER_LIMITS_COMPACT : PROVIDER_LIMITS_FULL);
   const TABLE_CHROME = 4;
   const FOOTER_AREA = 3;
-  const reservedLines = HEADER_AREA + (showProviderLimits ? PROVIDER_LIMITS_AREA : 0) + TABLE_CHROME + FOOTER_AREA;
+  const reservedLines = HEADER_AREA + providerLimitsArea + TABLE_CHROME + FOOTER_AREA;
   const visibleRows = Math.max(1, terminalHeight - reservedLines);
 
   const { showDrawer, isOpen: showSessionDrawer } = useDrawer();
@@ -209,25 +211,15 @@ export function RealTimeDashboard() {
         }}
       />
 
-      {showProviderLimits && (
-        <box flexDirection="column" border borderStyle="single" padding={1} borderColor={colors.border} overflow="hidden" height={5} flexShrink={0}>
-          <text fg={colors.textMuted} height={1}>PROVIDER LIMITS</text>
-          <box flexDirection="row" gap={2} overflow="hidden" height={1}>
-            {configuredProviders.slice(0, 4).map(p => (
-              <LimitGauge 
-                key={p.plugin.id} 
-                label={p.plugin.name} 
-                usedPercent={getMaxUsedPercent(p)} 
-                color={getProviderColor(p.plugin.id)}
-                {...(p.usage?.error ? { error: p.usage.error } : {})}
-              />
-            ))}
-            {configuredProviders.length === 0 && (
-              <text fg={colors.textMuted} height={1}>No providers configured with limits.</text>
-            )}
-          </box>
-        </box>
-      )}
+      <ProviderLimitsPanel
+        providers={configuredProviders.map(p => ({
+          id: p.plugin.id,
+          name: p.plugin.name,
+          usedPercent: getMaxUsedPercent(p),
+          color: getProviderColor(p.plugin.id),
+          ...(p.usage?.error ? { error: p.usage.error } : {}),
+        }))}
+      />
 
       <box flexDirection="row" gap={1} flexGrow={1} minHeight={1}>
         <SessionsTable
