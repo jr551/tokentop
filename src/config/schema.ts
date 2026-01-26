@@ -17,6 +17,15 @@ export interface AlertThresholds {
   providerLimitWarningPercent: number;
 }
 
+export type SparklineStyle = 'braille' | 'block';
+export type SparklineOrientation = 'up' | 'down';
+
+export interface SparklineConfig {
+  style: SparklineStyle;
+  orientation: SparklineOrientation;
+  showBaseline: boolean;
+}
+
 export interface AppConfig {
   configVersion: number;
   refresh: {
@@ -30,6 +39,7 @@ export interface AppConfig {
     compactMode: boolean;
     timeFormat: '12h' | '24h';
     numberFormat: 'full' | 'compact';
+    sparkline: SparklineConfig;
   };
   notifications: {
     toastsEnabled: boolean;
@@ -55,6 +65,11 @@ export const DEFAULT_CONFIG: AppConfig = {
     compactMode: false,
     timeFormat: '24h',
     numberFormat: 'compact',
+    sparkline: {
+      style: 'braille',
+      orientation: 'up',
+      showBaseline: true,
+    },
   },
   notifications: {
     toastsEnabled: true,
@@ -86,6 +101,10 @@ function deepMerge(target: AppConfig, source: Partial<AppConfig>): AppConfig {
     display: {
       ...target.display,
       ...(source.display ?? {}),
+      sparkline: {
+        ...target.display.sparkline,
+        ...(source.display?.sparkline ?? {}),
+      },
     },
     notifications: {
       ...target.notifications,

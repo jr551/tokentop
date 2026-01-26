@@ -6,7 +6,7 @@ import { useConfig } from '../contexts/ConfigContext.tsx';
 import { useDemoMode } from '../contexts/DemoModeContext.tsx';
 import { useInputFocus } from '../contexts/InputContext.tsx';
 import { ModalBackdrop, Z_INDEX } from './ModalBackdrop.tsx';
-import { type AppConfig } from '@/config/schema.ts';
+import { type AppConfig, type SparklineStyle, type SparklineOrientation } from '@/config/schema.ts';
 
 type SettingCategory = 'refresh' | 'display' | 'budgets' | 'alerts' | 'notifications';
 
@@ -80,6 +80,50 @@ const SETTINGS: SettingItem[] = [
     options: ['12h', '24h'],
     getValue: (c) => c.display.timeFormat,
     setValue: (c, v) => ({ ...c, display: { ...c.display, timeFormat: v as '12h' | '24h' } }),
+  },
+  {
+    key: 'sparklineStyle',
+    label: 'Sparkline Style',
+    category: 'display',
+    type: 'select',
+    options: ['braille', 'block'],
+    getValue: (c) => c.display.sparkline.style,
+    setValue: (c, v) => ({ 
+      ...c, 
+      display: { 
+        ...c.display, 
+        sparkline: { ...c.display.sparkline, style: v as SparklineStyle } 
+      } 
+    }),
+  },
+  {
+    key: 'sparklineOrientation',
+    label: 'Sparkline Direction',
+    category: 'display',
+    type: 'select',
+    options: ['up', 'down'],
+    getValue: (c) => c.display.sparkline.orientation,
+    setValue: (c, v) => ({ 
+      ...c, 
+      display: { 
+        ...c.display, 
+        sparkline: { ...c.display.sparkline, orientation: v as SparklineOrientation } 
+      } 
+    }),
+  },
+  {
+    key: 'sparklineBaseline',
+    label: 'Sparkline Baseline',
+    category: 'display',
+    type: 'toggle',
+    getValue: (c) => c.display.sparkline.showBaseline,
+    setValue: (c, v) => ({ 
+      ...c, 
+      display: { 
+        ...c.display, 
+        sparkline: { ...c.display.sparkline, showBaseline: v as boolean } 
+      } 
+    }),
   },
   {
     key: 'dailyBudget',
