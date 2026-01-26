@@ -255,6 +255,13 @@ async function handleCommand(cmd: Command): Promise<Response> {
         return { ok: true };
       }
 
+      case 'sleep': {
+        const ms = typeof cmd.ms === 'number' ? cmd.ms : 1000;
+        await new Promise(resolve => setTimeout(resolve, ms));
+        recorder?.addCommand('sleep', { ms });
+        return { ok: true, sleptMs: ms };
+      }
+
       case 'resize': {
         if (!driver?.isRunning()) {
           return { ok: false, error: 'Driver not running' };
@@ -573,6 +580,7 @@ async function handleCommand(cmd: Command): Promise<Response> {
             'snapshot - Save frame to file (options: dir, name)',
             'waitForText - Wait for text (options: text, timeout)',
             'waitForStable - Wait for stable frame (options: maxIterations, intervalMs)',
+            'sleep - Pause for duration (options: ms)',
             'resize - Resize terminal (options: cols, rows)',
             'status - Get driver status',
             'diff - Compare two frames (options: file1, file2 OR frame1, frame2, ignoreWhitespace, visual)',
