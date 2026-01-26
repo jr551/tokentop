@@ -4,7 +4,7 @@ import { useColors } from '../contexts/ThemeContext.tsx';
 interface HeaderProps {
   title?: string;
   subtitle?: string;
-  activeView?: 'dashboard' | 'providers' | 'trends' | 'projects' | 'settings';
+  activeView?: 'dashboard' | 'providers' | 'trends' | 'projects';
   demoMode?: boolean;
 }
 
@@ -27,7 +27,6 @@ export function Header({ title = 'tokentop', subtitle, activeView, demoMode = fa
   const isProviders = activeView === 'providers';
   const isTrends = activeView === 'trends';
   const isProjects = activeView === 'projects';
-  const isSettings = activeView === 'settings';
   const useLargeLogo = height >= MIN_HEIGHT_FOR_LARGE_LOGO;
 
   const headerHeight = useLargeLogo ? 7 : 1;
@@ -70,37 +69,30 @@ export function Header({ title = 'tokentop', subtitle, activeView, demoMode = fa
           <box flexDirection="row" gap={useLargeLogo ? 1 : 0} marginLeft={useLargeLogo ? 0 : 2} alignItems="center" height={1}>
             <text height={1}>
               {isDashboard ? (
-                <span bg={colors.primary} fg={colors.background}><strong> DASHBOARD </strong></span>
+                <span bg={colors.primary} fg={colors.background}><strong> 1 DASHBOARD </strong></span>
               ) : (
-                <span fg={colors.textMuted}> DASHBOARD </span>
+                <span fg={colors.textMuted}> 1 DASHBOARD </span>
               )}
             </text>
             <text height={1}>
               {isProviders ? (
-                <span bg={colors.primary} fg={colors.background}><strong> PROVIDERS </strong></span>
+                <span bg={colors.primary} fg={colors.background}><strong> 2 PROVIDERS </strong></span>
               ) : (
-                <span fg={colors.textMuted}> PROVIDERS </span>
+                <span fg={colors.textMuted}> 2 PROVIDERS </span>
               )}
             </text>
             <text height={1}>
               {isTrends ? (
-                <span bg={colors.primary} fg={colors.background}><strong> TRENDS </strong></span>
+                <span bg={colors.primary} fg={colors.background}><strong> 3 TRENDS </strong></span>
               ) : (
-                <span fg={colors.textMuted}> TRENDS </span>
+                <span fg={colors.textMuted}> 3 TRENDS </span>
               )}
             </text>
             <text height={1}>
               {isProjects ? (
-                <span bg={colors.primary} fg={colors.background}><strong> PROJECTS </strong></span>
+                <span bg={colors.primary} fg={colors.background}><strong> 4 PROJECTS </strong></span>
               ) : (
-                <span fg={colors.textMuted}> PROJECTS </span>
-              )}
-            </text>
-            <text height={1}>
-              {isSettings ? (
-                <span bg={colors.primary} fg={colors.background}><strong> SETTINGS </strong></span>
-              ) : (
-                <span fg={colors.textMuted}> SETTINGS </span>
+                <span fg={colors.textMuted}> 4 PROJECTS </span>
               )}
             </text>
           </box>

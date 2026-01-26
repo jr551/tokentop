@@ -14,6 +14,12 @@ interface ProjectStats {
   cost: number;
 }
 
+const COL_PROJECT = 30;
+const COL_SESSIONS = 10;
+const COL_TOKENS = 12;
+const COL_COST = 12;
+const COL_BAR = 20;
+
 function formatTokens(num: number): string {
   if (num >= 1000000) {
     return (num / 1000000).toFixed(1) + 'M';
@@ -28,11 +34,16 @@ function formatCost(num: number): string {
   return '$' + num.toFixed(2);
 }
 
+function padRight(str: string, len: number): string {
+  if (str.length >= len) return str.slice(0, len);
+  return str + ' '.repeat(len - str.length);
+}
+
 export function ProjectsView() {
   const { sessions, isLoading } = useAgentSessions();
   const colors = useColors();
   const { windowLabel, getWindowStart } = useTimeWindow();
-  
+
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [sortField, setSortField] = useState<SortField>('cost');
 
@@ -46,10 +57,10 @@ export function ProjectsView() {
       }
 
       const path = session.projectPath || 'Unknown';
-      const name = session.projectPath 
-        ? session.projectPath.split('/').pop() || session.projectPath 
+      const name = session.projectPath
+        ? session.projectPath.split('/').pop() || session.projectPath
         : 'Unknown';
-      
+
       const existing = statsMap.get(path) || {
         path,
         name,
@@ -92,11 +103,6 @@ export function ProjectsView() {
         if (prev === 'tokens') return 'sessions';
         return 'cost';
       });
-    } else if (key.name === 'enter' || key.name === 'return') {
-      const selected = sortedProjects[selectedIndex];
-      if (selected) {
-        console.log(`Selected project: ${selected.name}`);
-      }
     }
   });
 
@@ -124,65 +130,51 @@ export function ProjectsView() {
 
   return (
     <box flexDirection="column" flexGrow={1} padding={1}>
-      <box height={1} marginBottom={1}>
-        <box width={25} flexGrow={1}><text fg={colors.textMuted}>PROJECT</text></box>
-        <box width={10} justifyContent="flex-end"><text fg={colors.textMuted}>SESSIONS</text></box>
-        <box width={12} justifyContent="flex-end"><text fg={colors.textMuted}>TOKENS</text></box>
-        <box width={15} justifyContent="flex-end">
-          <text fg={colors.textMuted}>COST ({windowLabel})</text>
-        </box>
-        <box flexGrow={1} marginLeft={2}>
-           <text fg={colors.textMuted}>
-             Sorted by: <span fg={colors.primary}>{sortField.toUpperCase()}</span>
-           </text>
-        </box>
+      <box flexDirection="row" height={1} marginBottom={1}>
+        <text width={COL_PROJECT} height={1} fg={colors.textMuted}>{padRight('PROJECT', COL_PROJECT)}</text>
+        <text width={COL_SESSIONS} height={1} fg={colors.textMuted}>{padRight('SESSIONS', COL_SESSIONS)}</text>
+        <text width={COL_TOKENS} height={1} fg={colors.textMuted}>{padRight('TOKENS', COL_TOKENS)}</text>
+        <text width={COL_COST} height={1} fg={colors.textMuted}>{padRight('COST', COL_COST)}</text>
+        <text height={1} fg={colors.textMuted}>
+          ({windowLabel}) Sorted by: <span fg={colors.primary}>{sortField.toUpperCase()}</span>
+        </text>
       </box>
 
       <scrollbox flexGrow={1}>
         <box flexDirection="column">
           {sortedProjects.map((project, index) => {
             const isSelected = index === selectedIndex;
-            const barWidth = maxCost > 0 
-              ? Math.ceil((project.cost / maxCost) * 20) 
+            const barWidth = maxCost > 0
+              ? Math.ceil((project.cost / maxCost) * COL_BAR)
               : 0;
             const bar = '█'.repeat(barWidth);
 
             return (
               <box key={project.path} height={1} flexDirection="row">
-                <box width={25} flexGrow={1}>
-                  <text fg={isSelected ? colors.primary : colors.text}>
-                    {project.name.length > 50 ? project.name.substring(0, 49) + '…' : project.name}
-                  </text>
-                </box>
-
-                <box width={10} justifyContent="flex-end">
-                  <text fg={isSelected ? colors.primary : colors.text}>
-                    {project.sessionCount}
-                  </text>
-                </box>
-
-                <box width={12} justifyContent="flex-end">
-                  <text fg={isSelected ? colors.primary : colors.text}>
-                    {formatTokens(project.tokens)}
-                  </text>
-                </box>
-
-                <box width={15} justifyContent="flex-end">
-                  <text fg={isSelected ? colors.primary : colors.text}>
-                    {formatCost(project.cost)}
-                  </text>
-                </box>
-
-                <box flexGrow={1} marginLeft={2}>
-                  <text fg={isSelected ? colors.primary : colors.textMuted}>
-                    {bar}
-                  </text>
-                </box>
+                <text width={COL_PROJECT} height={1} fg={isSelected ? colors.primary : colors.text}>
+                  {padRight(project.name.slice(0, COL_PROJECT - 1), COL_PROJECT)}
+                </text>
+                <text width={COL_SESSIONS} height={1} fg={isSelected ? colors.primary : colors.text}>
+                  {padRight(String(project.sessionCount), COL_SESSIONS)}
+                </text>
+                <text width={COL_TOKENS} height={1} fg={isSelected ? colors.primary : colors.text}>
+                  {padRight(formatTokens(project.tokens), COL_TOKENS)}
+                </text>
+                <text width={COL_COST} height={1} fg={isSelected ? colors.primary : colors.text}>
+                  {padRight(formatCost(project.cost), COL_COST)}
+                </text>
+                <text height={1} fg={isSelected ? colors.primary : colors.textMuted}>
+                  {bar}
+                </text>
               </box>
             );
           })}
         </box>
       </scrollbox>
+
+      <box flexDirection="row" height={1} marginTop={1}>
+        <text fg={colors.textSubtle}>↑↓ navigate  s sort  t time window</text>
+      </box>
     </box>
   );
 }

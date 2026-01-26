@@ -574,4 +574,30 @@ export class DemoSimulator {
   getProviderIds(): string[] {
     return [...this.fixedProviderIds, ...this.fixedExtraProviders.map(p => p.id)];
   }
+
+  generateHistoricalCostData(daysBack: number): Array<{ date: number; cost: number }> {
+    const historyRng = this.rng.fork(99999);
+    const now = Date.now();
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const result: Array<{ date: number; cost: number }> = [];
+
+    const baseCost = this.presetConfig.activityMultiplier * 2.5;
+    
+    for (let i = daysBack - 1; i >= 0; i--) {
+      const dayTimestamp = now - i * msPerDay;
+      const dayRng = historyRng.fork(i);
+      
+      const isWeekend = new Date(dayTimestamp).getDay() % 6 === 0;
+      const weekendFactor = isWeekend ? 0.4 : 1.0;
+      
+      const variance = dayRng.range(0.5, 1.5);
+      const spikeFactor = dayRng.next() < 0.1 ? dayRng.range(1.5, 2.5) : 1.0;
+      
+      const cost = baseCost * variance * weekendFactor * spikeFactor;
+      
+      result.push({ date: dayTimestamp, cost: Math.round(cost * 100) / 100 });
+    }
+
+    return result;
+  }
 }

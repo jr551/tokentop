@@ -33,7 +33,6 @@ function formatSessionSummary(session: AgentSessionAggregate): string {
 
 interface DashboardKeyboardState {
   showHelp: boolean;
-  showDebugInspector: boolean;
   showSessionDrawer: boolean;
   selectedRow: number;
   focusedPanel: 'sessions' | 'sidebar';
@@ -47,7 +46,6 @@ interface DashboardKeyboardState {
 
 interface DashboardKeyboardActions {
   setShowHelp: (fn: (prev: boolean) => boolean) => void;
-  setShowDebugInspector: (fn: (prev: boolean) => boolean) => void;
   openSessionDrawer: () => void;
   closeSessionDrawer: () => void;
   setSelectedRow: (fn: (prev: number) => number) => void;
@@ -83,10 +81,10 @@ export function useDashboardKeyboard({
 
   useEffect(() => {
     isFilteringRef.current = state.isFiltering;
-    modalOpenRef.current = state.showHelp || state.showDebugInspector || state.showSessionDrawer;
+    modalOpenRef.current = state.showHelp || state.showSessionDrawer;
     pendingGRef.current = state.pendingG;
     sessionsRef.current = processedSessions;
-  }, [state.isFiltering, state.showHelp, state.showDebugInspector, state.showSessionDrawer, state.pendingG, processedSessions]);
+  }, [state.isFiltering, state.showHelp, state.showSessionDrawer, state.pendingG, processedSessions]);
 
   const { isInputFocused } = useInputFocus();
 
@@ -100,15 +98,9 @@ export function useDashboardKeyboard({
       return;
     }
 
-    if (key.shift && key.name === 'd') {
-      actions.setShowDebugInspector(prev => !prev);
-      return;
-    }
-
     if (modalOpenRef.current) {
       if (key.name === 'escape' || key.name === 'q' || key.sequence === '?') {
         actions.setShowHelp(() => false);
-        actions.setShowDebugInspector(() => false);
         actions.closeSessionDrawer();
         return;
       }

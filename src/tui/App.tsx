@@ -1,14 +1,12 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useKeyboard } from '@opentui/react';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import { PATHS } from '@/storage/paths.ts';
+
 import { captureFrameToFile, createBurstRecorder, type BurstRecorder } from './debug/captureFrame.ts';
 import { ThemeProvider, useColors } from './contexts/ThemeContext.tsx';
 import { PluginProvider, usePlugins } from './contexts/PluginContext.tsx';
 import { LogProvider, useLogs } from './contexts/LogContext.tsx';
 import { InputProvider, useInputFocus } from './contexts/InputContext.tsx';
-import { AgentSessionProvider } from './contexts/AgentSessionContext.tsx';
+import { AgentSessionProvider, useAgentSessions } from './contexts/AgentSessionContext.tsx';
 import { StorageProvider } from './contexts/StorageContext.tsx';
 import { TimeWindowProvider } from './contexts/TimeWindowContext.tsx';
 import { ConfigProvider, useConfig } from './contexts/ConfigContext.tsx';
@@ -16,17 +14,17 @@ import { DrawerProvider, useDrawer } from './contexts/DrawerContext.tsx';
 import { SessionDetailsDrawer } from './components/SessionDetailsDrawer.tsx';
 import { Header } from './components/Header.tsx';
 import { StatusBar } from './components/StatusBar.tsx';
-import { DebugConsole, copyLogsToClipboard, type DebugConsoleHandle } from './components/DebugConsole.tsx';
 import { Toast } from './components/Toast.tsx';
 import { ToastProvider, useToastContext } from './contexts/ToastContext.tsx';
-import { DashboardRuntimeProvider } from './contexts/DashboardRuntimeContext.tsx';
+import { DashboardRuntimeProvider, useDashboardRuntime } from './contexts/DashboardRuntimeContext.tsx';
 import { RealTimeActivityProvider } from './contexts/RealTimeActivityContext.tsx';
 import { RealTimeDashboard } from './views/RealTimeDashboard.tsx';
 import { Dashboard } from './views/Dashboard.tsx';
 import { HistoricalTrendsView } from './views/HistoricalTrendsView.tsx';
 import { ProjectsView } from './views/ProjectsView.tsx';
-import { SettingsView } from './views/SettingsView.tsx';
 import { CommandPalette, type CommandAction } from './components/CommandPalette.tsx';
+import { SettingsModal } from './components/SettingsModal.tsx';
+import { DebugPanel } from './components/DebugPanel.tsx';
 import { copyToClipboard } from '@/utils/clipboard.ts';
 import { useSafeRenderer } from './hooks/useSafeRenderer.ts';
 import type { ThemePlugin } from '@/plugins/types/theme.ts';
@@ -41,36 +39,44 @@ interface AppProps {
   demoPreset?: DemoPreset;
 }
 
-type View = 'dashboard' | 'providers' | 'trends' | 'projects' | 'settings';
+type View = 'dashboard' | 'providers' | 'trends' | 'projects';
 
 function AppContent() {
   const renderer = useSafeRenderer();
   const colors = useColors();
   const { refreshAllProviders, isInitialized } = usePlugins();
-  const { logs, isConsoleOpen, toggleConsole, closeConsole, clearLogs, exportLogs, info } = useLogs();
+  const { info } = useLogs();
   const { toast, showToast, dismissToast } = useToastContext();
   const { isInputFocused } = useInputFocus();
   const { config } = useConfig();
   const { demoMode } = useDemoMode();
   const { selectedSession, hideDrawer, isOpen: isDrawerOpen } = useDrawer();
-  
-  const refreshInterval = config.refresh.pauseAutoRefresh ? 0 : config.refresh.intervalMs;
-  
-  const [lastRefresh, setLastRefresh] = useState<number | null>(null);
-  const [statusMessage, setStatusMessage] = useState<string | undefined>();
-  const [activeView, setActiveView] = useState<View>('dashboard');
-  const [consoleFollow, setConsoleFollow] = useState(true);
-  const [showCommandPalette, setShowCommandPalette] = useState(false);
-  const debugConsoleRef = useRef<DebugConsoleHandle>(null);
-  const lastKeyRef = useRef<string | null>(null);
-  const burstRecorderRef = useRef<BurstRecorder | null>(null);
+  const { sessions } = useAgentSessions();
+  const { debugDataRef, activity, sparkData } = useDashboardRuntime();
+  const burstRecorderRef = { current: null as BurstRecorder | null };
 
-  const handleCopyLogs = useCallback(async () => {
-    await copyLogsToClipboard(logs);
-    if (config.notifications.toastsEnabled) {
-      showToast('Copied to clipboard');
-    }
-  }, [logs, showToast, config.notifications.toastsEnabled]);
+  const refreshInterval = config.refresh.pauseAutoRefresh ? 0 : config.refresh.intervalMs;
+
+  const [lastRefresh, setLastRefresh] = useState<number | null>(null);
+  const [activeView, setActiveView] = useState<View>('dashboard');
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
+
+  const isModalOpen = showCommandPalette || showSettings || showDebugPanel || isDrawerOpen;
+
+  const inspectorData = useMemo(() => ({
+    sessions: sessions.map(s => ({
+      sessionId: s.sessionId,
+      agentName: s.agentName,
+      status: s.status,
+      totals: s.totals,
+      lastActivityAt: s.lastActivityAt,
+    })),
+    debugData: debugDataRef.current,
+    activity,
+    sparkData,
+  }), [sessions, debugDataRef, activity, sparkData]);
 
   const handleCaptureFrame = useCallback(async () => {
     if (!renderer) return;
@@ -106,7 +112,7 @@ function AppContent() {
     if (config.notifications.toastsEnabled) {
       showToast('Recording burst...');
     }
-    
+
     const frames = await burstRecorderRef.current.start();
     info(`Burst complete: ${frames.length} frames in ${frames[0]?.framePath.split('/').slice(0, -1).join('/')}`);
     if (config.notifications.toastsEnabled) {
@@ -139,65 +145,29 @@ function AppContent() {
     { id: 'view-providers', label: 'Go to Providers', shortcut: '2', action: () => setActiveView('providers') },
     { id: 'view-trends', label: 'Go to Trends', shortcut: '3', action: () => setActiveView('trends') },
     { id: 'view-projects', label: 'Go to Projects', shortcut: '4', action: () => setActiveView('projects') },
-    { id: 'view-settings', label: 'Go to Settings', shortcut: '5', action: () => setActiveView('settings') },
+    { id: 'open-settings', label: 'Open Settings', shortcut: ',', action: () => setShowSettings(true) },
     { id: 'refresh', label: 'Refresh Data', shortcut: 'r', action: () => {
       if (isInitialized) {
         info('Manual refresh triggered');
         refreshAllProviders().then(() => setLastRefresh(Date.now()));
       }
     }},
-    { id: 'toggle-debug', label: 'Toggle Debug Console', shortcut: '~', action: () => toggleConsole() },
+    { id: 'toggle-debug', label: 'Toggle Debug Panel', shortcut: '~', action: () => setShowDebugPanel(prev => !prev) },
     { id: 'capture-frame', label: 'Capture Frame', shortcut: 'Ctrl+P', action: () => handleCaptureFrame() },
     { id: 'quit', label: 'Quit', shortcut: 'q', action: () => renderer?.destroy() },
-  ], [isInitialized, refreshAllProviders, info, toggleConsole, handleCaptureFrame, renderer]);
+  ], [isInitialized, refreshAllProviders, info, handleCaptureFrame, renderer]);
 
   useKeyboard((key) => {
-    if (showCommandPalette) {
+    if (key.ctrl && key.name === 'p') {
+      handleCaptureFrame();
       return;
     }
-    
-    if (isConsoleOpen) {
-      if (key.name === 'escape' || key.sequence === '~') {
-        closeConsole();
-        lastKeyRef.current = null;
-        return;
-      }
-      if (key.name === 'c') {
-        clearLogs();
-        info('Logs cleared');
-        lastKeyRef.current = null;
-        return;
-      }
-      if (key.name === 'f') {
-        setConsoleFollow(prev => !prev);
-        lastKeyRef.current = null;
-        return;
-      }
-      if (key.name === 'x') {
-        exportLogsToFile();
-        lastKeyRef.current = null;
-        return;
-      }
-      if (key.name === 'y') {
-        handleCopyLogs();
-        lastKeyRef.current = null;
-        return;
-      }
-      if (key.shift && key.name === 'g') {
-        debugConsoleRef.current?.scrollToBottom();
-        lastKeyRef.current = null;
-        return;
-      }
-      if (key.name === 'g') {
-        if (lastKeyRef.current === 'g') {
-          debugConsoleRef.current?.scrollToTop();
-          lastKeyRef.current = null;
-        } else {
-          lastKeyRef.current = 'g';
-        }
-        return;
-      }
-      lastKeyRef.current = null;
+    if (key.ctrl && key.shift && key.name === 'p') {
+      handleBurstRecord();
+      return;
+    }
+
+    if (isModalOpen) {
       return;
     }
 
@@ -217,10 +187,10 @@ function AppContent() {
     if (key.name === '4') {
       setActiveView('projects');
     }
-    if (key.name === '5') {
-      setActiveView('settings');
+    if (key.sequence === ',') {
+      setShowSettings(true);
     }
-    
+
     if (key.sequence === ':' || (key.shift && key.name === ';')) {
       setShowCommandPalette(true);
       return;
@@ -233,36 +203,10 @@ function AppContent() {
       info('Manual refresh triggered');
       refreshAllProviders().then(() => setLastRefresh(Date.now()));
     }
-    if (key.sequence === '~') {
-      toggleConsole();
-    }
-    if (key.ctrl && key.name === 'p') {
-      handleCaptureFrame();
-    }
-    if (key.ctrl && key.shift && key.name === 'p') {
-      handleBurstRecord();
+    if (key.sequence === '~' || (key.shift && key.name === 'd')) {
+      setShowDebugPanel(true);
     }
   });
-
-  async function exportLogsToFile() {
-    const logsDir = PATHS.data.logs;
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const logFile = path.join(logsDir, `debug-${timestamp}.log`);
-
-    try {
-      await fs.mkdir(logsDir, { recursive: true });
-      const content = exportLogs();
-      await fs.writeFile(logFile, content, 'utf-8');
-      info(`Logs exported to ${logFile}`);
-      setStatusMessage(`Logs saved: ${logFile}`);
-      setTimeout(() => setStatusMessage(undefined), 3000);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
-      info(`Failed to export logs: ${msg}`);
-      setStatusMessage(`Export failed: ${msg}`);
-      setTimeout(() => setStatusMessage(undefined), 3000);
-    }
-  }
 
   useEffect(() => {
     if (isInitialized) {
@@ -291,28 +235,19 @@ function AppContent() {
       onMouseUp={handleMouseUp}
       position="relative"
     >
-      <Header 
-        {...(isConsoleOpen ? { subtitle: '(debug)' } : {})} 
+      <Header
         activeView={activeView}
         demoMode={demoMode}
       />
-      
-      {isConsoleOpen ? (
-        <DebugConsole ref={debugConsoleRef} height={20} follow={consoleFollow} />
-      ) : (
-        <>
-          {activeView === 'dashboard' && <RealTimeDashboard />}
-          {activeView === 'providers' && <Dashboard />}
-          {activeView === 'trends' && <HistoricalTrendsView />}
-          {activeView === 'projects' && <ProjectsView />}
-          {activeView === 'settings' && <SettingsView />}
-        </>
-      )}
-      
+
+      {activeView === 'dashboard' && <RealTimeDashboard />}
+      {activeView === 'providers' && <Dashboard />}
+      {activeView === 'trends' && <HistoricalTrendsView />}
+      {activeView === 'projects' && <ProjectsView />}
+
       <StatusBar
         lastRefresh={lastRefresh ?? 0}
         nextRefresh={lastRefresh ? lastRefresh + refreshInterval : 0}
-        {...(statusMessage ? { message: statusMessage } : {})}
         demoMode={demoMode}
       />
 
@@ -331,6 +266,17 @@ function AppContent() {
         />
       )}
 
+      {showSettings && (
+        <SettingsModal onClose={() => setShowSettings(false)} />
+      )}
+
+      {showDebugPanel && (
+        <DebugPanel
+          onClose={() => setShowDebugPanel(false)}
+          inspectorData={inspectorData}
+        />
+      )}
+
       {isDrawerOpen && selectedSession && (
         <SessionDetailsDrawer
           session={selectedSession}
@@ -343,11 +289,11 @@ function AppContent() {
 
 function ConfiguredApp() {
   const { config, isLoading } = useConfig();
-  
+
   if (isLoading) {
     return null;
   }
-  
+
   return (
     <TimeWindowProvider defaultWindow={config.display.defaultTimeWindow}>
       <ToastProvider>

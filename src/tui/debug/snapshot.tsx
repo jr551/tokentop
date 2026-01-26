@@ -10,9 +10,9 @@
  * 
  * Examples:
  *   bun src/tui/debug/snapshot.tsx --list                    # List all available components
- *   bun src/tui/debug/snapshot.tsx debug-inspector           # Snapshot DebugInspectorOverlay
  *   bun src/tui/debug/snapshot.tsx header                    # Snapshot Header
  *   bun src/tui/debug/snapshot.tsx provider-card             # Snapshot ProviderCard
+ *   bun src/tui/debug/snapshot.tsx kpi-strip                 # Snapshot KpiStrip
  *   bun src/tui/debug/snapshot.tsx --width 120 --height 40   # Custom dimensions
  *   bun src/tui/debug/snapshot.tsx toast --output frame.txt  # Custom output file
  * 
@@ -30,7 +30,6 @@ import { ThemeProvider } from '../contexts/ThemeContext.tsx';
 import { LogProvider } from '../contexts/LogContext.tsx';
 import { getFramesDir } from './captureFrame.ts';
 
-import { DebugInspectorOverlay, type DebugInspectorProps } from '../components/DebugInspectorOverlay.tsx';
 import { Header } from '../components/Header.tsx';
 import { StatusBar } from '../components/StatusBar.tsx';
 import { ProviderCard } from '../components/ProviderCard.tsx';
@@ -52,49 +51,6 @@ import { ToastProvider } from '../contexts/ToastContext.tsx';
 import { ConfigProvider } from '../contexts/ConfigContext.tsx';
 import { DEFAULT_CONFIG } from '@/config/schema.ts';
 import { createDriver } from '../driver/driver.ts';
-
-function createMockDebugInspectorProps(): DebugInspectorProps {
-  const now = Date.now();
-  return {
-    sessions: [
-      {
-        sessionId: 'ses_abc123def456789012345',
-        agentName: 'opencode',
-        status: 'active',
-        totals: { input: 12345, output: 6789 },
-        lastActivityAt: now - 5000,
-      },
-      {
-        sessionId: 'ses_xyz789abc012345678901',
-        agentName: 'build',
-        status: 'completed',
-        totals: { input: 5432, output: 2109 },
-        lastActivityAt: now - 180000,
-      },
-      {
-        sessionId: 'ses_test123456789012345678',
-        agentName: 'oracle',
-        status: 'active',
-        totals: { input: 8765, output: 4321 },
-        lastActivityAt: now - 30000,
-      },
-    ],
-    debugData: {
-      lastDeltaTokens: 150,
-      lastDt: 3.0,
-      bucketsShifted: 3,
-      currentBucketValue: 50.0,
-      refreshCount: 15,
-      lastRefreshTime: now - 1500,
-    },
-    activity: {
-      instantRate: 50.0,
-      avgRate: 42.5,
-      isSpike: false,
-    },
-    sparkData: [10, 20, 30, 25, 40, 35, 50, 45, 60, 55, 70, 65, 80, 75, 90],
-  };
-}
 
 function createMockHeaderProps() {
   return {
@@ -268,13 +224,6 @@ interface ComponentEntry {
 }
 
 const COMPONENT_REGISTRY: Record<string, ComponentEntry> = {
-  'debug-inspector': {
-    name: 'DebugInspectorOverlay',
-    description: 'Full debug overlay with sessions, EMA data, and metrics',
-    defaultWidth: 120,
-    defaultHeight: 40,
-    render: () => <DebugInspectorOverlay {...createMockDebugInspectorProps()} />,
-  },
   'header': {
     name: 'Header',
     description: 'Top navigation header with title and view tabs',

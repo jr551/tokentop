@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTerminalDimensions } from '@opentui/react';
 import { useColors } from '../contexts/ThemeContext.tsx';
 
 interface StatusBarProps {
@@ -10,6 +11,7 @@ interface StatusBarProps {
 
 export function StatusBar({ lastRefresh, nextRefresh, message, demoMode = false }: StatusBarProps) {
   const colors = useColors();
+  const { width: termWidth } = useTerminalDimensions();
   const [, setTick] = useState(0);
 
   useEffect(() => {
@@ -20,13 +22,17 @@ export function StatusBar({ lastRefresh, nextRefresh, message, demoMode = false 
     return () => clearInterval(interval);
   }, []);
 
+  const isNarrow = termWidth < 100;
+
   const lastRefreshText = lastRefresh
-    ? `Last: ${formatTime(lastRefresh)}`
+    ? (isNarrow ? formatTimeShort(lastRefresh) : `Last: ${formatTime(lastRefresh)}`)
     : '';
 
   const nextRefreshText = nextRefresh
-    ? `Next: ${formatCountdown(nextRefresh)}`
+    ? `${formatCountdown(nextRefresh)}`
     : '';
+
+  const hints = isNarrow ? '? help' : '1-4 views  , settings  : cmd  ? help';
 
   return (
     <box
@@ -37,16 +43,27 @@ export function StatusBar({ lastRefresh, nextRefresh, message, demoMode = false 
       backgroundColor={colors.foreground}
       flexShrink={0}
       height={1}
+      overflow="hidden"
     >
       <text fg={colors.textMuted}>
-        {demoMode ? 'tokentop - DEMO MODE' : (message ?? 'tokentop - htop for AI usage')}
+        {demoMode ? 'tokentop DEMO' : (message ?? 'tokentop')}
       </text>
-      <box flexDirection="row" gap={2}>
+      <box flexDirection="row" gap={1} overflow="hidden">
+        <text fg={colors.textSubtle}>{hints}</text>
         {lastRefreshText && <text fg={colors.textSubtle}>{lastRefreshText}</text>}
         {nextRefreshText && <text fg={colors.textSubtle}>{nextRefreshText}</text>}
       </box>
     </box>
   );
+}
+
+function formatTimeShort(timestamp: number): string {
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
 }
 
 function formatTime(timestamp: number): string {

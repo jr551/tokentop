@@ -9,7 +9,7 @@ import { useConfig } from '../contexts/ConfigContext.tsx';
 import { useDashboardRuntime } from '../contexts/DashboardRuntimeContext.tsx';
 import { useDrawer } from '../contexts/DrawerContext.tsx';
 import { useDashboardKeyboard } from '../hooks/useDashboardKeyboard.ts';
-import { DebugInspectorOverlay } from '../components/DebugInspectorOverlay.tsx';
+
 import { KpiStrip } from '../components/KpiStrip.tsx';
 import { SessionsTable } from '../components/SessionsTable.tsx';
 import { SidebarBreakdown } from '../components/SidebarBreakdown.tsx';
@@ -23,7 +23,7 @@ export function RealTimeDashboard() {
   const { windowMs, windowLabel } = useTimeWindow();
   const { height: terminalHeight, width: terminalWidth } = useTerminalDimensions();
   const { config } = useConfig();
-  const { activity, sparkData, deltas, debugDataRef } = useDashboardRuntime();
+  const { activity, sparkData, deltas } = useDashboardRuntime();
 
   const showProviderLimits = terminalHeight >= 30;
   const showLargeHeader = terminalHeight >= 35;
@@ -40,7 +40,6 @@ export function RealTimeDashboard() {
   const { showDrawer, isOpen: showSessionDrawer } = useDrawer();
   
   const [showHelp, setShowHelp] = useState(false);
-  const [showDebugInspector, setShowDebugInspector] = useState(false);
   const [selectedRow, setSelectedRow] = useState(0);
   const [focusedPanel, setFocusedPanel] = useState<'sessions' | 'sidebar'>('sessions');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(config.display.sidebarCollapsed);
@@ -152,7 +151,6 @@ export function RealTimeDashboard() {
   useDashboardKeyboard({
     state: {
       showHelp,
-      showDebugInspector,
       showSessionDrawer,
       selectedRow,
       focusedPanel,
@@ -165,7 +163,6 @@ export function RealTimeDashboard() {
     },
     actions: {
       setShowHelp,
-      setShowDebugInspector,
       openSessionDrawer,
       closeSessionDrawer: hideDrawer,
       setSelectedRow,
@@ -180,28 +177,23 @@ export function RealTimeDashboard() {
     processedSessions,
   });
 
-  const totalCost = agentSessions.reduce((acc, s) => acc + (s.totalCostUsd ?? 0), 0);
-  const totalTokens = agentSessions.reduce((acc, s) => acc + s.totals.input + s.totals.output, 0);
-  const totalRequests = agentSessions.reduce((acc, s) => acc + s.requestCount, 0);
+  const windowedKpis = useMemo(() => ({
+    cost: processedSessions.reduce((acc, s) => acc + (s.totalCostUsd ?? 0), 0),
+    tokens: processedSessions.reduce((acc, s) => acc + s.totals.input + s.totals.output, 0),
+    requests: processedSessions.reduce((acc, s) => acc + s.requestCount, 0),
+  }), [processedSessions]);
+
   const activeCount = agentSessions.filter(s => s.status === 'active').length;
 
   return (
     <box flexDirection="column" flexGrow={1} padding={1} gap={1} overflow="hidden">
       {showHelp && <HelpOverlay />}
-      {showDebugInspector && (
-        <DebugInspectorOverlay 
-          sessions={agentSessions}
-          debugData={debugDataRef.current}
-          activity={activity}
-          sparkData={sparkData}
-        />
-      )}
 
       
       <KpiStrip
-        totalCost={totalCost}
-        totalTokens={totalTokens}
-        totalRequests={totalRequests}
+        totalCost={windowedKpis.cost}
+        totalTokens={windowedKpis.tokens}
+        totalRequests={windowedKpis.requests}
         activeCount={activeCount}
         deltaCost={deltas.cost}
         deltaTokens={deltas.tokens}
@@ -252,7 +244,7 @@ export function RealTimeDashboard() {
 
         {!effectiveSidebarCollapsed && (
           <SidebarBreakdown
-            sessions={agentSessions}
+            sessions={processedSessions}
             focusedPanel={focusedPanel}
             getProviderColor={getProviderColor}
           />

@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useKeyboard, useTerminalDimensions } from '@opentui/react';
 import { useColors } from '../contexts/ThemeContext.tsx';
 import { useStorageReady } from '../contexts/StorageContext.tsx';
+import { useDemoMode } from '../contexts/DemoModeContext.tsx';
 import { queryUsageTimeSeries, isDatabaseInitialized } from '@/storage/index.ts';
 
 type TimePeriod = '7d' | '30d' | '90d';
@@ -13,23 +14,30 @@ interface ChartPoint {
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+function getDaysBackForPeriod(period: TimePeriod): number {
+  if (period === '30d') return 30;
+  if (period === '90d') return 90;
+  return 7;
+}
+
+function formatLabel(date: Date, period: TimePeriod, index: number): string {
+  if (period === '7d') {
+    return date.toLocaleDateString('en-US', { weekday: 'short' });
+  } else if (period === '30d') {
+    return index % 5 === 0 ? date.getUTCDate().toString() : '';
+  } else {
+    return index % 15 === 0 ? `${date.getUTCMonth() + 1}/${date.getUTCDate()}` : '';
+  }
+}
+
 function getTimeSeriesData(period: TimePeriod): ChartPoint[] {
   if (!isDatabaseInitialized()) {
     return [];
   }
 
   const now = Date.now();
-  let daysBack = 7;
-  let bucketMs = MS_PER_DAY;
-  
-  if (period === '30d') {
-    daysBack = 30;
-    bucketMs = MS_PER_DAY;
-  } else if (period === '90d') {
-    daysBack = 90;
-    bucketMs = MS_PER_DAY;
-  }
-
+  const daysBack = getDaysBackForPeriod(period);
+  const bucketMs = MS_PER_DAY;
   const startMs = now - (daysBack * MS_PER_DAY);
   const endMs = now;
   
@@ -46,17 +54,8 @@ function getTimeSeriesData(period: TimePeriod): ChartPoint[] {
       const dayTimestamp = now - i * MS_PER_DAY;
       const bucketStart = Math.floor(dayTimestamp / bucketMs) * bucketMs;
       const cost = costByBucket.get(bucketStart) ?? 0;
-      
       const d = new Date(bucketStart);
-      let label = '';
-      if (period === '7d') {
-        label = d.toLocaleDateString('en-US', { weekday: 'short' });
-      } else if (period === '30d') {
-        label = i % 5 === 0 ? d.getUTCDate().toString() : '';
-      } else {
-        label = i % 15 === 0 ? `${d.getUTCMonth() + 1}/${d.getUTCDate()}` : '';
-      }
-      
+      const label = formatLabel(d, period, i);
       points.push({ label, value: cost });
     }
     
@@ -204,30 +203,36 @@ const AsciiChart = ({ data, height, width, color, labelColor, gridColor }: Chart
 export function HistoricalTrendsView() {
   const colors = useColors();
   const isStorageReady = useStorageReady();
+  const { demoMode, simulator } = useDemoMode();
   const { width: terminalWidth, height: terminalHeight } = useTerminalDimensions();
   const [period, setPeriod] = useState<TimePeriod>('7d');
   const [data, setData] = useState<ChartPoint[]>([]);
   
-  // Dynamic chart dimensions
-  // Width: Full width minus padding (2) and borders (2) -> 4
-  // Height: Full height minus header (2), footer (2), borders (2) -> 6
   const chartWidth = Math.max(40, terminalWidth - 6);
   const chartHeight = Math.max(8, terminalHeight - 8);
 
   useEffect(() => {
-    if (isStorageReady) {
+    if (demoMode && simulator) {
+      const daysBack = getDaysBackForPeriod(period);
+      const historicalData = simulator.generateHistoricalCostData(daysBack);
+      const points: ChartPoint[] = historicalData.map((item, index) => ({
+        label: formatLabel(new Date(item.date), period, daysBack - 1 - index),
+        value: item.cost,
+      }));
+      setData(points);
+    } else if (isStorageReady) {
       setData(getTimeSeriesData(period));
     }
-  }, [isStorageReady, period]);
+  }, [isStorageReady, period, demoMode, simulator]);
   
   const totalCost = useMemo(() => data.reduce((acc, p) => acc + p.value, 0), [data]);
   const hasData = data.some(p => p.value > 0);
 
   useKeyboard((key) => {
-    if (key.name === 'left') {
+    if (key.name === 'left' || key.name === 'h') {
       setPeriod(prev => prev === '90d' ? '30d' : prev === '30d' ? '7d' : '7d');
     }
-    if (key.name === 'right') {
+    if (key.name === 'right' || key.name === 'l') {
       setPeriod(prev => prev === '7d' ? '30d' : prev === '30d' ? '90d' : '90d');
     }
   });
@@ -273,7 +278,7 @@ export function HistoricalTrendsView() {
           {'  '}
           <span fg={period === '90d' ? colors.primary : colors.textSubtle}>90d</span>
           {'      '}
-          ←/→ Select Period
+          h/l ←/→ change period
         </text>
       </box>
     </box>

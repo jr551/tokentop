@@ -63,12 +63,22 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
       return;
     }
 
-    if (key.name === 'down' || key.name === 'j' || (key.ctrl && key.name === 'n')) {
+    if (query === '' && !key.ctrl && !key.meta) {
+      const keyStr = key.sequence || '';
+      const matchingCmd = commands.find(cmd => cmd.shortcut === keyStr);
+      if (matchingCmd) {
+        onClose();
+        matchingCmd.action();
+        return;
+      }
+    }
+
+    if (key.name === 'down' || (key.ctrl && key.name === 'n') || (query === '' && key.name === 'j')) {
       setSelectedIndex(i => Math.min(i + 1, filteredCommands.length - 1));
       return;
     }
 
-    if (key.name === 'up' || key.name === 'k' || (key.ctrl && key.name === 'p')) {
+    if (key.name === 'up' || (key.ctrl && key.name === 'p') || (query === '' && key.name === 'k')) {
       setSelectedIndex(i => Math.max(i - 1, 0));
       return;
     }
@@ -78,7 +88,7 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
       return;
     }
 
-    if (key.sequence && key.sequence.length === 1 && /^[a-zA-Z0-9\-_. ]$/.test(key.sequence)) {
+    if (key.sequence && key.sequence.length === 1 && /^[\w\-_., ~:;!@#$%^&*()]$/.test(key.sequence)) {
       setQuery(q => q + key.sequence);
       return;
     }
