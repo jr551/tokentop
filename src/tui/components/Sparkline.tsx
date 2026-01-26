@@ -20,9 +20,13 @@ export function Sparkline({
   const chars = ['▁', '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
   
   const peak = Math.max(...data);
+  // Use sqrt scale to expand low values and compress high values
+  // This gives more visual fidelity to low activity (10-100 tok/s range)
+  const sqrtMax = Math.sqrt(fixedMax);
   const normalized = data.map(v => {
     if (v <= 0) return 0;
-    return Math.min(8, Math.max(1, Math.floor((v / fixedMax) * 8)));
+    const sqrtValue = Math.sqrt(Math.min(v, fixedMax));
+    return Math.min(8, Math.max(1, Math.floor((sqrtValue / sqrtMax) * 8)));
   });
   
   const displayData = normalized.slice(-width);

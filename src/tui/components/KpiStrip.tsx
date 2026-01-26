@@ -126,10 +126,10 @@ export function KpiStrip({
   
   const getActivityStatus = (): ActivityStatus => {
     const { instantRate, avgRate, isSpike } = activity;
-    if (isSpike || instantRate >= 120) return { label: 'SPIKE', color: colors.error };
-    if (avgRate >= 40) return { label: 'HOT', color: colors.warning };
-    if (avgRate >= 10) return { label: 'BUSY', color: colors.success };
-    if (avgRate >= 2) return { label: 'LOW', color: colors.textMuted };
+    if (isSpike || instantRate >= 500) return { label: 'SPIKE', color: colors.error };
+    if (avgRate >= 150) return { label: 'HOT', color: colors.warning };
+    if (avgRate >= 50) return { label: 'BUSY', color: colors.success };
+    if (avgRate >= 10) return { label: 'LOW', color: colors.textMuted };
     return { label: 'IDLE', color: colors.textSubtle };
   };
 
@@ -140,9 +140,10 @@ export function KpiStrip({
   // Target: 25% of terminal width
   const sparklineWidth = Math.min(50, Math.max(20, Math.floor(terminalWidth * 0.25)));
 
-  // Dynamic max for sparkline to ensure visibility of low rates
-  // Minimum 10 to avoid noise, but scale up to peak
-  const sparkMax = Math.max(10, ...sparkData.map(v => v * 1.2));
+  // Fixed max based on thresholds so bar HEIGHT reflects actual activity level
+  // This ensures green (low), yellow (medium), red (high) show distinct bar sizes
+  // 600 = 1.2x the SPIKE threshold (500), giving headroom for extreme spikes
+  const sparkMax = 600;
 
   return (
     <>
@@ -186,7 +187,7 @@ export function KpiStrip({
             width={sparklineWidth} 
             label="tok/s" 
             fixedMax={sparkMax}
-            thresholds={{ warning: 40, error: 120 }}
+            thresholds={{ warning: 150, error: 500 }}
           />
         </box>
       </box>
