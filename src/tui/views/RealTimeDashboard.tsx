@@ -211,8 +211,8 @@ export function RealTimeDashboard() {
 
       {showProviderLimits && (
         <box flexDirection="column" border borderStyle="single" padding={1} borderColor={colors.border} overflow="hidden" height={5} flexShrink={0}>
-          <text fg={colors.textMuted} marginBottom={0}>PROVIDER LIMITS</text>
-          <box flexDirection="row" flexWrap="wrap" gap={2} overflow="hidden">
+          <text fg={colors.textMuted} height={1}>PROVIDER LIMITS</text>
+          <box flexDirection="row" gap={2} overflow="hidden" height={1}>
             {configuredProviders.slice(0, 4).map(p => (
               <LimitGauge 
                 key={p.plugin.id} 
@@ -223,7 +223,7 @@ export function RealTimeDashboard() {
               />
             ))}
             {configuredProviders.length === 0 && (
-              <text fg={colors.textMuted}>No providers configured with limits.</text>
+              <text fg={colors.textMuted} height={1}>No providers configured with limits.</text>
             )}
           </box>
         </box>

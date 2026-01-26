@@ -21,8 +21,8 @@ export function LimitGauge({
   if (ghost) {
     const ghostLabel = label.length > 10 ? label.slice(0, 9) + '…' : label.padEnd(10);
     return (
-      <box width={30} overflow="hidden">
-        <text>
+      <box width={30} height={1} overflow="hidden">
+        <text height={1}>
           <span fg={colors.textSubtle}> ○ </span>
           <span fg={colors.textSubtle}>{ghostLabel} </span>
           <span fg={colors.textSubtle}>{'·'.repeat(barWidth)}</span>
@@ -35,8 +35,8 @@ export function LimitGauge({
   if (error) {
     const displayLabel = label.length > 10 ? label.slice(0, 9) + '…' : label.padEnd(10);
     return (
-      <box width={30} overflow="hidden">
-        <text>
+      <box width={30} height={1} overflow="hidden">
+        <text height={1}>
           <span fg={colors.error}> ✗ </span>
           <span fg={colors.text}>{displayLabel} </span>
           <span fg={colors.error}>{'·'.repeat(barWidth)}</span>
@@ -61,8 +61,8 @@ export function LimitGauge({
   const percentStr = usedPercent !== null ? `${Math.round(percent)}%`.padStart(3) : ' --';
   
   return (
-    <box width={30} overflow="hidden">
-      <text>
+    <box width={30} height={1} overflow="hidden">
+      <text height={1}>
         <span fg={statusColor}>{statusIcon} </span>
         <span fg={colors.textMuted}>{displayLabel} </span>
         <span fg={barColor}>{'█'.repeat(filled)}</span>
