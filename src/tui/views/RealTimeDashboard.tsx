@@ -251,9 +251,10 @@ export function RealTimeDashboard() {
         )}
       </box>
       
-      <box flexDirection="row" paddingLeft={1}>
-        <text fg={colors.textSubtle}>
+      <box flexDirection="row" paddingLeft={1} height={1} flexShrink={0}>
+        <text fg={colors.textSubtle} height={1} flexGrow={1}>
           {isFiltering ? 'Type to filter  Esc cancel  Enter apply' : 
+           filterQuery ? `Esc clear  / edit filter  ↑↓ navigate  s sort` :
            focusedPanel === 'sessions' ? '/ filter  ↑↓ navigate  Enter details  s sort' :
            focusedPanel === 'sidebar' ? 'Tab back to sessions' :
            '/ filter  i sidebar  Tab switch  ? help'}

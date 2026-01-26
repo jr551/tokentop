@@ -214,7 +214,7 @@ export const SessionsTable = forwardRef(function SessionsTable(
     >
       <box flexDirection="row" paddingLeft={2} paddingRight={1} height={1} justifyContent="space-between" overflow="hidden">
         <text height={1} fg={colors.textMuted}>
-          SESSIONS{isFiltering ? ` (Filter: ${filterQuery})` : ''}{isLoading ? ' ⟳' : '  '}
+          SESSIONS{filterQuery ? ` [${isFiltering ? 'Filter: ' : ''}${filterQuery}]` : ''}{isLoading ? ' ⟳' : '  '}
         </text>
         <text height={1} fg={colors.textMuted}>[{windowLabel}] {sessions.length} sessions</text>
       </box>

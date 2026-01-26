@@ -89,7 +89,8 @@ export function useDashboardKeyboard({
   const { isInputFocused } = useInputFocus();
 
   useKeyboard((key) => {
-    if (isInputFocused) {
+    // Allow filter mode to handle its own input (no <input> element in RealTimeDashboard)
+    if (isInputFocused && !isFilteringRef.current) {
       return;
     }
 
@@ -165,6 +166,12 @@ export function useDashboardKeyboard({
 
     if (key.name === 's') {
       actions.setSortField(curr => curr === 'cost' ? 'tokens' : 'cost');
+      return;
+    }
+
+    // Clear applied filter with Escape (when not in typing mode)
+    if (key.name === 'escape' && state.filterQuery) {
+      actions.setFilterQuery(() => '');
       return;
     }
 
