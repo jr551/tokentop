@@ -135,7 +135,9 @@ export function useEmaActivity(totalTokens: number): UseActivityRateResult {
       return;
     }
     
-    const dt = Math.max(rawDt, 0.5);
+    // Cap dt at 10s so long idle gaps don't dilute the rate when tokens finally arrive
+    // This shows activity as a "burst" rather than averaged over idle time
+    const dt = Math.min(Math.max(rawDt, 0.5), 10);
     
     debugDataRef.current.lastDeltaTokens = deltaTokens;
     debugDataRef.current.lastDt = dt;
