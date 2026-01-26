@@ -142,7 +142,7 @@ export function useEmaActivity(totalTokens: number): UseActivityRateResult {
     debugDataRef.current.lastDeltaTokens = deltaTokens;
     debugDataRef.current.lastDt = dt;
 
-    if (deltaTokens > 0 && deltaTokens < 100000) {
+    if (deltaTokens > 0 && deltaTokens < 1000000) {
       const rate = deltaTokens / dt;
       debugDataRef.current.currentBucketValue = rate;
       
