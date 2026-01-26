@@ -58,6 +58,21 @@ export interface AgentFetchContext {
   config: Record<string, unknown>;
 }
 
+export interface ActivityUpdate {
+  sessionId: string;
+  messageId: string;
+  tokens: {
+    input: number;
+    output: number;
+    reasoning?: number;
+    cacheRead?: number;
+    cacheWrite?: number;
+  };
+  timestamp: number;
+}
+
+export type ActivityCallback = (update: ActivityUpdate) => void;
+
 export interface AgentPlugin extends BasePlugin {
   readonly type: 'agent';
   readonly agent: AgentConfig;
@@ -67,4 +82,7 @@ export interface AgentPlugin extends BasePlugin {
   readCredentials(ctx: AgentFetchContext): Promise<AgentCredentials>;
   parseSessions(options: SessionParseOptions, ctx: AgentFetchContext): Promise<SessionUsageData[]>;
   getProviders(ctx: AgentFetchContext): Promise<AgentProviderConfig[]>;
+
+  startActivityWatch?(callback: ActivityCallback): void;
+  stopActivityWatch?(): void;
 }
