@@ -1,5 +1,6 @@
 import { useTerminalDimensions } from '@opentui/react';
 import { useColors } from '../contexts/ThemeContext.tsx';
+import { useTimeWindow, type TimeWindow } from '../contexts/TimeWindowContext.tsx';
 import { Sparkline } from './Sparkline.tsx';
 import { usePulse } from '../hooks/usePulse.ts';
 
@@ -13,6 +14,43 @@ interface KPICardProps {
   subValue?: string;
   metric?: MetricType;
   budgetStatus?: BudgetStatus;
+}
+
+const TIME_WINDOW_EXPANDED: Record<TimeWindow, string> = {
+  '5m': 'Last 5 Minutes',
+  '15m': 'Last 15 Minutes',
+  '1h': 'Last Hour',
+  '24h': 'Last 24 Hours',
+  '7d': 'Last 7 Days',
+  '30d': 'Last 30 Days',
+  'all': 'All Time',
+};
+
+interface TimeWindowCardProps {
+  isCompact: boolean;
+}
+
+function TimeWindowCard({ isCompact }: TimeWindowCardProps) {
+  const colors = useColors();
+  const { window: timeWindow } = useTimeWindow();
+
+  const title = isCompact ? 'WINDOW' : 'TIME WINDOW (t)';
+  const value = isCompact ? timeWindow.toUpperCase() : TIME_WINDOW_EXPANDED[timeWindow];
+  const hint = isCompact ? '(t)' : "Press 't' to change";
+
+  return (
+    <box 
+      flexDirection="column" 
+      paddingLeft={1}
+      paddingRight={1}
+      flexShrink={0}
+      width={isCompact ? 9 : 22}
+    >
+      <text fg={colors.textMuted} height={1}>{title}</text>
+      <text fg={colors.info} height={1}><strong>{value}</strong></text>
+      <text fg={colors.textSubtle} height={1}>{hint}</text>
+    </box>
+  );
 }
 
 function KPICard({ title, value, delta, subValue, metric = 'default', budgetStatus }: KPICardProps) {
@@ -135,10 +173,10 @@ export function KpiStrip({
 
   const activityStatus = getActivityStatus();
   
-  // Calculate responsive width for sparkline
-  // Min width 20, max width 50
-  // Target: 25% of terminal width
-  const sparklineWidth = Math.min(50, Math.max(20, Math.floor(terminalWidth * 0.25)));
+  const isCompact = terminalWidth < 100;
+  const sparklineWidth = isCompact 
+    ? Math.min(25, Math.max(15, Math.floor(terminalWidth * 0.2)))
+    : Math.min(50, Math.max(20, Math.floor(terminalWidth * 0.25)));
 
   // Fixed max based on thresholds so bar HEIGHT reflects actual activity level
   // This ensures green (low), yellow (medium), red (high) show distinct bar sizes
@@ -148,6 +186,7 @@ export function KpiStrip({
   return (
     <>
       <box flexDirection="row" gap={0} height={4} flexShrink={0}>
+        <TimeWindowCard isCompact={isCompact} />
         <KPICard 
           title="COST" 
           value={formatCurrency(totalCost)} 
@@ -167,14 +206,16 @@ export function KpiStrip({
           subValue={`${activeCount} active`}
           metric="requests"
         />
-        <KPICard 
-          title="BURN RATE" 
-          value={hasEnoughHistory ? `${formatCurrency(burnRateCostPerHour)}/hr` : '--'}
-          subValue={hasEnoughHistory ? `${formatBurnTokens(burnRateTokensPerMin)} tok/min` : 'gathering...'}
-          metric="rate"
-        />
+        {!isCompact && (
+          <KPICard 
+            title="BURN RATE" 
+            value={hasEnoughHistory ? `${formatCurrency(burnRateCostPerHour)}/hr` : '--'}
+            subValue={hasEnoughHistory ? `${formatBurnTokens(burnRateTokensPerMin)} tok/min` : 'gathering...'}
+            metric="rate"
+          />
+        )}
         
-        <box flexDirection="column" flexGrow={1} paddingLeft={1} paddingRight={1}>
+        <box flexDirection="column" flexGrow={1} paddingLeft={1} paddingRight={1} overflow="hidden">
           <box flexDirection="row" justifyContent="space-between">
             <text fg={colors.textMuted}>ACTIVITY</text>
             <text>
