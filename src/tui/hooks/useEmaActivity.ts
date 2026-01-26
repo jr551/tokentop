@@ -22,15 +22,9 @@ export interface UseActivityRateResult {
   activity: ActivityState;
   sparkData: number[];
   debugDataRef: React.MutableRefObject<ActivityDebugData>;
+  injectDelta: (delta: number) => void;
 }
 
-/**
- * Token activity tracker using time-bucketed rates.
- * 
- * - When tokens arrive: calculate rate = deltaTokens/dt, put in current bucket
- * - Timer shifts buckets left every second, fills zeros for idle time
- * - instantRate = avg of last 3 buckets, avgRate = avg of last 10
- */
 export function useEmaActivity(totalTokens: number): UseActivityRateResult {
   const [buckets, setBuckets] = useState<number[]>(() => Array(BUCKET_COUNT).fill(0));
   const [activity, setActivity] = useState<ActivityState>({ 
@@ -105,6 +99,34 @@ export function useEmaActivity(totalTokens: number): UseActivityRateResult {
     }
     return newBuckets;
   }, []);
+
+  const injectDelta = useCallback((delta: number) => {
+    if (delta <= 0 || delta >= 1000000) return;
+    
+    const now = Date.now();
+    const rate = delta;
+    
+    debugDataRef.current.lastDeltaTokens = delta;
+    debugDataRef.current.lastDt = 1;
+    debugDataRef.current.currentBucketValue = rate;
+    
+    setBuckets(prev => {
+      const secSinceShift = (now - stateRef.current.lastShiftTime) / 1000;
+      const bucketsToShift = Math.floor(secSinceShift);
+      
+      let newBuckets = shiftBucketsWithDecay(prev, bucketsToShift);
+      if (bucketsToShift > 0) {
+        stateRef.current.lastShiftTime = now;
+        debugDataRef.current.bucketsShifted = bucketsToShift;
+      }
+      
+      newBuckets = applyActivityRamp(newBuckets, rate, bucketsToShift);
+      
+      const rates = calculateRates(newBuckets);
+      setActivity(rates);
+      return newBuckets;
+    });
+  }, [calculateRates, shiftBucketsWithDecay, applyActivityRamp]);
 
   useEffect(() => {
     const now = Date.now();
@@ -195,5 +217,6 @@ export function useEmaActivity(totalTokens: number): UseActivityRateResult {
     activity, 
     sparkData: buckets,
     debugDataRef,
+    injectDelta,
   };
 }
