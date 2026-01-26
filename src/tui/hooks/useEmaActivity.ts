@@ -41,10 +41,12 @@ export function useEmaActivity(totalTokens: number): UseActivityRateResult {
     lastTokens: number; 
     lastTokenTime: number;
     lastShiftTime: number;
+    initialized: boolean;
   }>({ 
     lastTokens: -1, 
     lastTokenTime: Date.now(),
     lastShiftTime: Date.now(),
+    initialized: false,
   });
   
   const debugDataRef = useRef<ActivityDebugData>({
@@ -62,20 +64,44 @@ export function useEmaActivity(totalTokens: number): UseActivityRateResult {
     const instantRate = Math.max(...recentBuckets);
     const avgRate = recentBuckets.reduce((a, b) => a + b, 0) / AVG_WINDOW;
     
-    const isSpike = instantRate >= 120 && instantRate >= avgRate * 3;
+    const isSpike = instantRate >= 500 && instantRate >= avgRate * 3;
     
     return { instantRate, avgRate, isSpike };
   }, []);
 
-  const shiftBuckets = useCallback((bucketData: number[], count: number): number[] => {
+  const shiftBucketsWithDecay = useCallback((bucketData: number[], count: number): number[] => {
     if (count <= 0) return bucketData;
     const newBuckets = [...bucketData];
     const shift = Math.min(count, BUCKET_COUNT);
+    const decayFactor = 0.7;
+    const zeroThreshold = 0.5; // Values below this become true zero (shows as dot)
+    
     for (let i = 0; i < BUCKET_COUNT - shift; i++) {
-      newBuckets[i] = bucketData[i + shift] ?? 0;
+      const val = bucketData[i + shift] ?? 0;
+      newBuckets[i] = val < zeroThreshold ? 0 : val;
     }
     for (let i = BUCKET_COUNT - shift; i < BUCKET_COUNT; i++) {
-      newBuckets[i] = 0;
+      const prevValue = bucketData[BUCKET_COUNT - shift - 1] ?? 0;
+      const decaySteps = i - (BUCKET_COUNT - shift) + 1;
+      const decayed = prevValue * Math.pow(decayFactor, decaySteps);
+      newBuckets[i] = decayed < zeroThreshold ? 0 : decayed;
+    }
+    return newBuckets;
+  }, []);
+
+  const applyActivityRamp = useCallback((bucketData: number[], peakRate: number, fillCount: number): number[] => {
+    const newBuckets = [...bucketData];
+    const rampWidth = Math.min(fillCount + 2, 6);
+    
+    for (let i = 0; i < rampWidth; i++) {
+      const bucketIdx = BUCKET_COUNT - 1 - i;
+      if (bucketIdx < 0) break;
+      
+      const distanceFromPeak = i;
+      const rampMultiplier = Math.max(0.15, 1 - (distanceFromPeak * 0.25));
+      const rampedValue = peakRate * rampMultiplier;
+      
+      newBuckets[bucketIdx] = Math.max(newBuckets[bucketIdx] ?? 0, rampedValue);
     }
     return newBuckets;
   }, []);
@@ -87,18 +113,29 @@ export function useEmaActivity(totalTokens: number): UseActivityRateResult {
     debugDataRef.current.lastRefreshTime = now;
 
     const prevTokens = stateRef.current.lastTokens;
+    const wasInitialized = stateRef.current.initialized;
     
-    if (prevTokens === -1 || prevTokens === 0) {
+    if (prevTokens === -1 || prevTokens === 0 || !wasInitialized) {
       stateRef.current = { 
         lastTokens: totalTokens, 
         lastTokenTime: now,
         lastShiftTime: now,
+        initialized: totalTokens > 0,
       };
       return;
     }
 
     const deltaTokens = Math.max(0, totalTokens - prevTokens);
-    const dt = Math.max((now - stateRef.current.lastTokenTime) / 1000, 0.1);
+    const rawDt = (now - stateRef.current.lastTokenTime) / 1000;
+    
+    // Require minimum 0.5s between rate calculations, but DON'T reset the timer
+    // This allows the time to accumulate until threshold is reached
+    if (rawDt < 0.5) {
+      stateRef.current.lastTokens = totalTokens;
+      return;
+    }
+    
+    const dt = Math.max(rawDt, 0.5);
     
     debugDataRef.current.lastDeltaTokens = deltaTokens;
     debugDataRef.current.lastDt = dt;
@@ -111,34 +148,23 @@ export function useEmaActivity(totalTokens: number): UseActivityRateResult {
         const secSinceShift = (now - stateRef.current.lastShiftTime) / 1000;
         const bucketsToShift = Math.floor(secSinceShift);
         
-        let newBuckets = shiftBuckets(prev, bucketsToShift);
+        let newBuckets = shiftBucketsWithDecay(prev, bucketsToShift);
         if (bucketsToShift > 0) {
           stateRef.current.lastShiftTime = now;
           debugDataRef.current.bucketsShifted = bucketsToShift;
         }
         
-        // Distribute rate across the active window to avoid spikes
-        if (bucketsToShift > 0) {
-          // If we shifted buckets, fill the new ones with the average rate
-          // This smooths out the graph when polling interval > 1s
-          const fillCount = Math.min(bucketsToShift, BUCKET_COUNT);
-          for (let i = 0; i < fillCount; i++) {
-            newBuckets[BUCKET_COUNT - 1 - i] = rate;
-          }
-        } else {
-          // If sub-second update, accumulate rate
-          newBuckets[BUCKET_COUNT - 1] = (newBuckets[BUCKET_COUNT - 1] ?? 0) + rate;
-        }
+        newBuckets = applyActivityRamp(newBuckets, rate, bucketsToShift);
         
         const rates = calculateRates(newBuckets);
         setActivity(rates);
         return newBuckets;
       });
+      
+      stateRef.current.lastTokens = totalTokens;
+      stateRef.current.lastTokenTime = now;
     }
-    
-    stateRef.current.lastTokens = totalTokens;
-    stateRef.current.lastTokenTime = now;
-  }, [totalTokens, calculateRates, shiftBuckets]);
+  }, [totalTokens, calculateRates, shiftBucketsWithDecay, applyActivityRamp]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -150,7 +176,7 @@ export function useEmaActivity(totalTokens: number): UseActivityRateResult {
         debugDataRef.current.bucketsShifted = bucketsToShift;
         
         setBuckets(prev => {
-          const newBuckets = shiftBuckets(prev, bucketsToShift);
+          const newBuckets = shiftBucketsWithDecay(prev, bucketsToShift);
           stateRef.current.lastShiftTime = now;
           
           const rates = calculateRates(newBuckets);
@@ -161,7 +187,7 @@ export function useEmaActivity(totalTokens: number): UseActivityRateResult {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [calculateRates, shiftBuckets]);
+  }, [calculateRates, shiftBucketsWithDecay]);
 
   return { 
     activity, 
