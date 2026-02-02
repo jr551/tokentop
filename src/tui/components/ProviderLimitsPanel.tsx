@@ -77,7 +77,7 @@ export function ProviderLimitsPanel({
       <box flexDirection="row" height={1} paddingLeft={1} paddingRight={1} gap={1} overflow="hidden">
         <text fg={colors.textMuted} height={1}>LIMITS:</text>
         {showLeftArrow && (
-          <text fg={colors.primary} height={1}>▌</text>
+          <text fg={colors.primary} height={1}>◀</text>
         )}
         {shown.map((p, idx) => (
           <LimitGauge
@@ -91,14 +91,14 @@ export function ProviderLimitsPanel({
           />
         ))}
         {showRightArrow && (
-          <text fg={colors.primary} height={1}>▐ +{remaining}</text>
+          <text fg={colors.primary} height={1}>▶ +{remaining}</text>
         )}
       </box>
     );
   }
   
   if (layoutMode === 'wide') {
-    const baseMaxShow = 6;
+    const baseMaxShow = 5;
     const hasMore = sortedProviders.length > baseMaxShow;
     const maxShow = hasMore ? baseMaxShow - 1 : baseMaxShow;
     const startIndex = Math.max(0, Math.min(safeSelectedIndex - maxShow + 1, sortedProviders.length - maxShow));
@@ -123,7 +123,7 @@ export function ProviderLimitsPanel({
         </box>
         <box flexDirection="row" gap={3} overflow="hidden" height={1} paddingLeft={2}>
           {showLeftArrow && (
-            <text fg={colors.primary} height={1}>▌</text>
+            <text fg={colors.primary} height={1}>◀</text>
           )}
           {shown.map((p, idx) => (
             <LimitGauge
@@ -139,7 +139,7 @@ export function ProviderLimitsPanel({
             />
           ))}
           {showRightArrow && (
-            <text fg={colors.primary} height={1}>▐</text>
+            <text fg={colors.primary} height={1}>▶</text>
           )}
         </box>
       </box>
@@ -171,7 +171,7 @@ export function ProviderLimitsPanel({
       </box>
       <box flexDirection="row" gap={2} overflow="hidden" height={1} paddingLeft={2}>
         {showLeftArrow && (
-          <text fg={colors.primary} height={1}>▌</text>
+          <text fg={colors.primary} height={1}>◀</text>
         )}
         {shown.map((p, idx) => (
           <LimitGauge
@@ -187,7 +187,7 @@ export function ProviderLimitsPanel({
           />
         ))}
         {showRightArrow && (
-          <text fg={colors.primary} height={1}>▐</text>
+          <text fg={colors.primary} height={1}>▶</text>
         )}
       </box>
     </box>

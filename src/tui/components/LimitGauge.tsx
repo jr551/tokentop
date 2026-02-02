@@ -122,11 +122,12 @@ export function LimitGauge({
   
   if (error) {
     const displayLabel = truncateLabel(label, labelWidth);
+    const errorIcon = selected ? '▌' : '✗';
     return (
-      <box height={1} overflow="hidden">
+      <box height={1} overflow="hidden" {...(selected ? { backgroundColor: colors.borderMuted } : {})}>
         <text height={1}>
-          <span fg={colors.error}>✗ </span>
-          <span fg={colors.text}>{displayLabel} </span>
+          <span fg={selected ? colors.primary : colors.error}>{errorIcon} </span>
+          <span fg={selected ? colors.text : colors.text}>{displayLabel} </span>
           <span fg={colors.error}>{'─'.repeat(barWidth)}</span>
           <span fg={colors.error}> ERR</span>
         </text>

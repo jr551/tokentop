@@ -37,8 +37,12 @@ function formatDuration(startedAt: number, lastActivityAt: number): string {
   return `${seconds}s`;
 }
 
-function formatTime(timestamp: number): string {
-  return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+function formatTimelineLabel(timestamp: number, isMultiDay: boolean): string {
+  const date = new Date(timestamp);
+  if (isMultiDay) {
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  }
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 const SPARK_CHARS = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
@@ -119,8 +123,9 @@ export function SessionDetailsDrawer({ session, onClose: _onClose }: SessionDeta
     return buildSparkline(activity.map(a => a.tokens), sparklineInnerWidth);
   }, [session.sessionId, sparklineInnerWidth]);
   
-  const startTimeStr = formatTime(session.startedAt);
-  const endTimeStr = formatTime(session.lastActivityAt);
+  const isMultiDay = (session.lastActivityAt - session.startedAt) > 24 * 60 * 60 * 1000;
+  const startTimeStr = formatTimelineLabel(session.startedAt, isMultiDay);
+  const endTimeStr = formatTimelineLabel(session.lastActivityAt, isMultiDay);
   const timeGap = Math.max(0, sparklineInnerWidth - startTimeStr.length - endTimeStr.length);
   const timelineLabel = startTimeStr + ' '.repeat(timeGap) + endTimeStr;
 
