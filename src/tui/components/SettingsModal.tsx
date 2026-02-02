@@ -7,6 +7,7 @@ import { useDemoMode } from '../contexts/DemoModeContext.tsx';
 import { useInputFocus } from '../contexts/InputContext.tsx';
 import { ModalBackdrop, Z_INDEX } from './ModalBackdrop.tsx';
 import { type AppConfig, type SparklineStyle, type SparklineOrientation } from '@/config/schema.ts';
+import { parseCurrencyInput, formatBudgetDisplay } from '@/utils/currency.ts';
 
 type SettingCategory = 'refresh' | 'display' | 'budgets' | 'alerts' | 'notifications';
 
@@ -16,8 +17,8 @@ interface SettingItem {
   category: SettingCategory;
   type: 'toggle' | 'select' | 'number';
   options?: string[];
-  getValue: (config: AppConfig) => string | number | boolean;
-  setValue: (config: AppConfig, value: string | number | boolean) => AppConfig;
+  getValue: (config: AppConfig) => string | number | boolean | null;
+  setValue: (config: AppConfig, value: string | number | boolean | null) => AppConfig;
 }
 
 const SETTINGS: SettingItem[] = [
@@ -129,49 +130,25 @@ const SETTINGS: SettingItem[] = [
     key: 'dailyBudget',
     label: 'Daily Budget ($)',
     category: 'budgets',
-    type: 'select',
-    options: ['None', '$10', '$25', '$50', '$100', '$200'],
-    getValue: (c) => {
-      const b = c.budgets.daily;
-      if (b === null) return 'None';
-      return `$${b}`;
-    },
-    setValue: (c, v) => {
-      const map: Record<string, number | null> = { 'None': null, '$10': 10, '$25': 25, '$50': 50, '$100': 100, '$200': 200 };
-      return { ...c, budgets: { ...c.budgets, daily: map[v as string] ?? null } };
-    },
+    type: 'number',
+    getValue: (c) => c.budgets.daily,
+    setValue: (c, v) => ({ ...c, budgets: { ...c.budgets, daily: v as number | null } }),
   },
   {
     key: 'weeklyBudget',
     label: 'Weekly Budget ($)',
     category: 'budgets',
-    type: 'select',
-    options: ['None', '$50', '$100', '$200', '$500', '$1000'],
-    getValue: (c) => {
-      const b = c.budgets.weekly;
-      if (b === null) return 'None';
-      return `$${b}`;
-    },
-    setValue: (c, v) => {
-      const map: Record<string, number | null> = { 'None': null, '$50': 50, '$100': 100, '$200': 200, '$500': 500, '$1000': 1000 };
-      return { ...c, budgets: { ...c.budgets, weekly: map[v as string] ?? null } };
-    },
+    type: 'number',
+    getValue: (c) => c.budgets.weekly,
+    setValue: (c, v) => ({ ...c, budgets: { ...c.budgets, weekly: v as number | null } }),
   },
   {
     key: 'monthlyBudget',
     label: 'Monthly Budget ($)',
     category: 'budgets',
-    type: 'select',
-    options: ['None', '$100', '$250', '$500', '$1000', '$2000'],
-    getValue: (c) => {
-      const b = c.budgets.monthly;
-      if (b === null) return 'None';
-      return `$${b}`;
-    },
-    setValue: (c, v) => {
-      const map: Record<string, number | null> = { 'None': null, '$100': 100, '$250': 250, '$500': 500, '$1000': 1000, '$2000': 2000 };
-      return { ...c, budgets: { ...c.budgets, monthly: map[v as string] ?? null } };
-    },
+    type: 'number',
+    getValue: (c) => c.budgets.monthly,
+    setValue: (c, v) => ({ ...c, budgets: { ...c.budgets, monthly: v as number | null } }),
   },
   {
     key: 'warningPercent',
@@ -237,7 +214,10 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 
   const [selectedCategory, setSelectedCategory] = useState<SettingCategory>('refresh');
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [focusedPane, setFocusedPane] = useState<'categories' | 'settings'>('settings');
+  const [focusedPane, setFocusedPane] = useState<'categories' | 'settings'>('categories');
+  
+  const [editingSettingKey, setEditingSettingKey] = useState<string | null>(null);
+  const [inputValue, setInputValue] = useState('');
 
   const width = Math.min(termWidth - 4, 100);
   const height = Math.min(termHeight - 4, 28);
@@ -263,6 +243,36 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
     showToast('Reset to defaults');
   }, [resetToDefaults, showToast]);
 
+  const startEditingNumber = useCallback(() => {
+    const setting = categorySettings[selectedIndex];
+    if (!setting || setting.type !== 'number') return;
+    
+    const currentValue = setting.getValue(config);
+    setInputValue(currentValue === null ? '' : String(currentValue));
+    setEditingSettingKey(setting.key);
+  }, [categorySettings, selectedIndex, config]);
+
+  const commitNumberEdit = useCallback(() => {
+    if (editingSettingKey === null) return;
+    
+    const setting = categorySettings.find(s => s.key === editingSettingKey);
+    if (!setting || setting.type !== 'number') {
+      setEditingSettingKey(null);
+      setInputValue('');
+      return;
+    }
+    
+    const parsed = inputValue.trim() === '' ? null : parseCurrencyInput(inputValue);
+    updateConfig(setting.setValue(config, parsed));
+    setEditingSettingKey(null);
+    setInputValue('');
+  }, [editingSettingKey, categorySettings, inputValue, config, updateConfig]);
+
+  const cancelNumberEdit = useCallback(() => {
+    setEditingSettingKey(null);
+    setInputValue('');
+  }, []);
+
   const toggleCurrentSetting = useCallback(() => {
     const setting = categorySettings[selectedIndex];
     if (!setting) return;
@@ -284,6 +294,29 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   }, [categorySettings, selectedIndex, config, updateConfig]);
 
   useKeyboard((key) => {
+    if (editingSettingKey !== null) {
+      if (key.ctrl && (key.name === 'p' || key.name === 's')) {
+        return;
+      }
+      if (key.name === 'escape') {
+        cancelNumberEdit();
+        return;
+      }
+      if (key.name === 'return') {
+        commitNumberEdit();
+        return;
+      }
+      if (key.name === 'backspace') {
+        setInputValue(prev => prev.slice(0, -1));
+        return;
+      }
+      if (key.sequence && /^[0-9.]$/.test(key.sequence)) {
+        setInputValue(prev => prev + key.sequence);
+        return;
+      }
+      return;
+    }
+
     if (key.name === 'escape') {
       onClose();
       return;
@@ -314,6 +347,8 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
         const prevIdx = Math.max(catIdx - 1, 0);
         setSelectedCategory(CATEGORIES[prevIdx]!.id);
         setSelectedIndex(0);
+      } else if (key.name === 'return' || key.name === 'right' || key.name === 'l') {
+        setFocusedPane('settings');
       }
       return;
     }
@@ -324,7 +359,12 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
       } else if (key.name === 'up' || key.name === 'k') {
         setSelectedIndex(i => Math.max(i - 1, 0));
       } else if (key.name === 'return' || key.name === 'space') {
-        toggleCurrentSetting();
+        const setting = categorySettings[selectedIndex];
+        if (setting?.type === 'number') {
+          startEditingNumber();
+        } else {
+          toggleCurrentSetting();
+        }
       } else if (key.name === 'left' || key.name === 'h') {
         const setting = categorySettings[selectedIndex];
         if (setting?.type === 'select' && setting.options) {
@@ -419,28 +459,44 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
             {categorySettings.map((setting, idx) => {
               const isSelected = idx === selectedIndex && focusedPane === 'settings';
               const value = setting.getValue(config);
+              const isEditingThis = setting.type === 'number' && editingSettingKey === setting.key;
+
+              let displayValue: string;
+              if (setting.type === 'toggle') {
+                displayValue = value ? '● ON' : '○ OFF';
+              } else if (setting.type === 'select') {
+                displayValue = `◂ ${value} ▸`;
+              } else if (setting.type === 'number' && !isEditingThis) {
+                displayValue = formatBudgetDisplay(value as number | null);
+              } else {
+                displayValue = String(value);
+              }
 
               return (
                 <box
                   key={setting.key}
                   flexDirection="row"
-                  justifyContent="space-between"
-                  height={2}
+                  height={1}
+                  marginBottom={1}
                   paddingLeft={1}
                   paddingRight={1}
-                  {...(isSelected ? { backgroundColor: colors.primary } : {})}
+                  {...(isSelected && !isEditingThis ? { backgroundColor: colors.primary } : {})}
                 >
-                  <text fg={isSelected ? colors.background : colors.text}>
+                  <text 
+                    flexGrow={1}
+                    fg={isSelected && !isEditingThis ? colors.background : colors.text}
+                  >
                     {setting.label}
                   </text>
-                  <text fg={isSelected ? colors.background : colors.textMuted}>
-                    {setting.type === 'toggle'
-                      ? (value ? '● ON' : '○ OFF')
-                      : setting.type === 'select'
-                        ? `◂ ${value} ▸`
-                        : String(value)
-                    }
-                  </text>
+                  {isEditingThis ? (
+                    <text fg={colors.text}>
+                      ${inputValue}<span fg={colors.primary}>█</span>
+                    </text>
+                  ) : (
+                    <text fg={isSelected ? colors.background : colors.textMuted}>
+                      {displayValue}
+                    </text>
+                  )}
                 </box>
               );
             })}
@@ -448,7 +504,11 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
         </box>
 
         <box flexDirection="row" height={1} paddingLeft={1} backgroundColor={colors.foreground}>
-          <text fg={colors.textSubtle}>Tab:switch  ↑↓:navigate  ←→:adjust  Enter:toggle</text>
+          <text fg={colors.textSubtle}>
+            {editingSettingKey !== null 
+              ? 'Type value  Enter:save  Esc:cancel'
+              : 'Tab:switch  ↑↓:navigate  ←→:adjust  Enter:edit'}
+          </text>
         </box>
       </box>
     </ModalBackdrop>
