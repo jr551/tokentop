@@ -199,9 +199,10 @@ function createMockKpiStripProps() {
       28, 24, 22, 20, 18, 16, 14, 18, 22, 26, 30, 34, 38, 42, 46, 50, 54,
     ],
     budget: {
-      daily: 25,
-      weekly: null,
-      monthly: null,
+      limit: 25,
+      budgetCost: 12.43,
+      budgetType: 'daily' as const,
+      budgetTypeLabel: 'Daily',
       warningPercent: 80,
       criticalPercent: 90,
     },

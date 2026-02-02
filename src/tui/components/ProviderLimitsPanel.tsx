@@ -3,6 +3,30 @@ import { useTerminalDimensions } from '@opentui/react';
 import { useColors } from '../contexts/ThemeContext.tsx';
 import { useConfig } from '../contexts/ConfigContext.tsx';
 import { LimitGauge } from './LimitGauge.tsx';
+import { usePulse } from '../hooks/usePulse.ts';
+
+function interpolatePulseColor(intensity: number, baseColor: string, dimColor: string): string {
+  const dimAmount = 0.4;
+  const t = intensity * dimAmount;
+  
+  const parseHex = (hex: string) => {
+    const h = hex.replace('#', '');
+    return {
+      r: parseInt(h.substring(0, 2), 16),
+      g: parseInt(h.substring(2, 4), 16),
+      b: parseInt(h.substring(4, 6), 16),
+    };
+  };
+  
+  const base = parseHex(baseColor);
+  const dim = parseHex(dimColor);
+  
+  const r = Math.round(base.r + (dim.r - base.r) * t);
+  const g = Math.round(base.g + (dim.g - base.g) * t);
+  const b = Math.round(base.b + (dim.b - base.b) * t);
+  
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
 
 interface ProviderData {
   id: string;
@@ -16,10 +40,22 @@ interface ProviderData {
   limitType?: string;
 }
 
+interface BudgetData {
+  totalCost: number;
+  budgetCost: number;
+  limit: number | null;
+  budgetType: 'daily' | 'weekly' | 'monthly' | 'none';
+  budgetTypeLabel: string;
+  warningPercent: number;
+  criticalPercent: number;
+}
+
 interface ProviderLimitsPanelProps {
   providers: ProviderData[];
   focused?: boolean;
   selectedIndex?: number;
+  budget?: BudgetData;
+  showBudgetBar?: boolean;
 }
 
 type LayoutMode = 'hidden' | 'compact' | 'normal' | 'wide';
@@ -51,10 +87,25 @@ function sortByUrgency(
   });
 }
 
+function formatCurrency(val: number): string {
+  if (val >= 1000) return `$${(val / 1000).toFixed(1)}k`;
+  if (val >= 100) return `$${Math.round(val)}`;
+  if (val >= 10) return `$${val.toFixed(1)}`;
+  return `$${val.toFixed(2)}`;
+}
+
+function makeProgressBar(percent: number, width: number): string {
+  const clamped = Math.max(0, Math.min(100, percent));
+  const filledWidth = Math.round((clamped / 100) * width);
+  return '█'.repeat(filledWidth) + '·'.repeat(width - filledWidth);
+}
+
 export function ProviderLimitsPanel({ 
   providers, 
   focused = false, 
   selectedIndex = 0,
+  budget,
+  showBudgetBar = false,
 }: ProviderLimitsPanelProps) {
   const colors = useColors();
   const { config } = useConfig();
@@ -62,6 +113,33 @@ export function ProviderLimitsPanel({
   
   const warningThreshold = config.alerts.warningPercent;
   const criticalThreshold = config.alerts.criticalPercent;
+  
+  const hasBudgetLimit = !!(budget?.limit && budget.budgetType !== 'none');
+  const budgetPercent = hasBudgetLimit && budget?.limit ? (budget.budgetCost / budget.limit) * 100 : 0;
+  const isBudgetCritical = hasBudgetLimit && budget && budgetPercent >= budget.criticalPercent;
+  const isBudgetWarning = hasBudgetLimit && budget && budgetPercent >= budget.warningPercent && !isBudgetCritical;
+  
+  const criticalPulseStep = usePulse({ enabled: !!isBudgetCritical, intervalMs: 80 });
+  const warningPulseStep = usePulse({ enabled: !!isBudgetWarning, intervalMs: 200 });
+  
+  const pulseIntensity = isBudgetCritical 
+    ? Math.abs(Math.sin(criticalPulseStep * 0.3)) 
+    : isBudgetWarning 
+      ? Math.abs(Math.sin(warningPulseStep * 0.25))
+      : 0;
+  
+  const getBudgetColor = () => {
+    if (!budget?.limit) return colors.textMuted;
+    if (isBudgetCritical) {
+      return interpolatePulseColor(pulseIntensity, colors.error, colors.background);
+    }
+    if (isBudgetWarning) {
+      return interpolatePulseColor(pulseIntensity, colors.warning, colors.background);
+    }
+    return colors.success;
+  };
+  
+  const budgetColor = getBudgetColor();
   
   const layoutMode = getLayoutMode(termWidth, termHeight);
   const sortedProviders = useMemo(
@@ -86,26 +164,43 @@ export function ProviderLimitsPanel({
     const remaining = sortedProviders.length - startIndex - maxShow;
     
     return (
-      <box flexDirection="row" height={1} paddingLeft={1} paddingRight={1} gap={1} overflow="hidden">
-        <text fg={colors.textMuted} height={1}>LIMITS:</text>
-        {showLeftArrow && (
-          <text fg={colors.primary} height={1}>◀</text>
-        )}
-        {shown.map((p, idx) => (
-          <LimitGauge
-            key={p.id}
-            label={p.name}
-            usedPercent={p.usedPercent}
-            color={p.color}
-            {...(p.error ? { error: p.error } : {})}
-            compact={true}
-            selected={focused && (startIndex + idx) === safeSelectedIndex}
-            warningThreshold={warningThreshold}
-            criticalThreshold={criticalThreshold}
-          />
-        ))}
-        {showRightArrow && (
-          <text fg={colors.primary} height={1}>▶ +{remaining}</text>
+      <box flexDirection="column" height={showBudgetBar && budget ? 2 : 1} overflow="hidden">
+        <box flexDirection="row" height={1} paddingLeft={1} paddingRight={1} gap={1} overflow="hidden">
+          <text fg={colors.textMuted} height={1}>LIMITS:</text>
+          {showLeftArrow && (
+            <text fg={colors.primary} height={1}>◀</text>
+          )}
+          {shown.map((p, idx) => (
+            <LimitGauge
+              key={p.id}
+              label={p.name}
+              usedPercent={p.usedPercent}
+              color={p.color}
+              {...(p.error ? { error: p.error } : {})}
+              compact={true}
+              selected={focused && (startIndex + idx) === safeSelectedIndex}
+              warningThreshold={warningThreshold}
+              criticalThreshold={criticalThreshold}
+            />
+          ))}
+          {showRightArrow && (
+            <text fg={colors.primary} height={1}>▶ +{remaining}</text>
+          )}
+        </box>
+        {showBudgetBar && budget && (
+          <box flexDirection="row" height={1} paddingLeft={1} paddingRight={1} gap={1} overflow="hidden">
+            <text fg={colors.textMuted} height={1}>{budget.budgetType === 'none' ? 'TOTAL:' : `${budget.budgetTypeLabel.toUpperCase()}:`}</text>
+            {hasBudgetLimit ? (
+              <>
+                <text fg={budgetColor} height={1}>{makeProgressBar(budgetPercent, 12)}</text>
+                <text fg={budgetColor} height={1}>{Math.round(budgetPercent)}%</text>
+                <text fg={colors.text} height={1}>{formatCurrency(budget.budgetCost)}</text>
+                <text fg={colors.textMuted} height={1}>/{formatCurrency(budget.limit!)}</text>
+              </>
+            ) : (
+              <text fg={colors.text} height={1}>{formatCurrency(budget.totalCost)}</text>
+            )}
+          </box>
         )}
       </box>
     );

@@ -109,9 +109,10 @@ export interface ActivityStatus {
 }
 
 export interface BudgetInfo {
-  daily: number | null;
-  weekly: number | null;
-  monthly: number | null;
+  limit: number | null;
+  budgetCost: number;
+  budgetType: 'daily' | 'weekly' | 'monthly' | 'none';
+  budgetTypeLabel: string;
   warningPercent: number;
   criticalPercent: number;
 }
@@ -173,10 +174,9 @@ export function KpiStrip({
   };
   
   const getBudgetStatus = (): BudgetStatus => {
-    if (!budget) return 'ok';
-    const activeBudget = budget.daily ?? budget.weekly ?? budget.monthly;
-    if (!activeBudget || activeBudget <= 0) return 'ok';
-    const percent = (totalCost / activeBudget) * 100;
+    if (!budget || budget.budgetType === 'none') return 'ok';
+    if (!budget.limit || budget.limit <= 0) return 'ok';
+    const percent = (budget.budgetCost / budget.limit) * 100;
     if (percent >= budget.criticalPercent) return 'critical';
     if (percent >= budget.warningPercent) return 'warning';
     return 'ok';

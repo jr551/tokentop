@@ -24,6 +24,25 @@ export const TIME_WINDOW_MS: Record<TimeWindow, number | null> = {
   'all': null,
 };
 
+export type BudgetType = 'daily' | 'weekly' | 'monthly' | 'none';
+
+export const TIME_WINDOW_BUDGET_TYPE: Record<TimeWindow, BudgetType> = {
+  '5m': 'daily',
+  '15m': 'daily',
+  '1h': 'daily',
+  '24h': 'daily',
+  '7d': 'weekly',
+  '30d': 'monthly',
+  'all': 'none',
+};
+
+export const BUDGET_TYPE_LABELS: Record<BudgetType, string> = {
+  daily: 'Daily',
+  weekly: 'Weekly',
+  monthly: 'Monthly',
+  none: 'Total',
+};
+
 interface TimeWindowContextValue {
   window: TimeWindow;
   setWindow: (w: TimeWindow) => void;
@@ -31,6 +50,8 @@ interface TimeWindowContextValue {
   windowMs: number | null;
   windowLabel: string;
   getWindowStart: () => number | null;
+  budgetType: BudgetType;
+  budgetTypeLabel: string;
 }
 
 const TimeWindowContext = createContext<TimeWindowContextValue | null>(null);
@@ -59,6 +80,8 @@ export function TimeWindowProvider({ children, defaultWindow = '24h' }: TimeWind
 
   const windowMs = TIME_WINDOW_MS[window];
   const windowLabel = TIME_WINDOW_LABELS[window];
+  const budgetType = TIME_WINDOW_BUDGET_TYPE[window];
+  const budgetTypeLabel = BUDGET_TYPE_LABELS[budgetType];
 
   const getWindowStart = useCallback((): number | null => {
     const ms = TIME_WINDOW_MS[window];
@@ -73,6 +96,8 @@ export function TimeWindowProvider({ children, defaultWindow = '24h' }: TimeWind
     windowMs,
     windowLabel,
     getWindowStart,
+    budgetType,
+    budgetTypeLabel,
   };
 
   return (
