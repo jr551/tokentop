@@ -79,7 +79,10 @@ function AppContent() {
   }), [sessions, debugDataRef, activity, sparkData]);
 
   const handleCaptureFrame = useCallback(async () => {
-    if (!renderer) return;
+    if (!renderer) {
+      showToast('No renderer available', 'error');
+      return;
+    }
     try {
       const result = await captureFrameToFile(renderer, 'manual');
       info(`Frame captured: ${result.framePath}`);

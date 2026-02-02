@@ -6,6 +6,7 @@ import { useToastContext } from '../contexts/ToastContext.tsx';
 import { useAgentSessions } from '../contexts/AgentSessionContext.tsx';
 import { copyToClipboard } from '@/utils/clipboard.ts';
 import type { AgentSessionAggregate } from '../../agents/types.ts';
+import type { DriverDimension, SidebarMode } from '../components/SmartSidebar.tsx';
 
 function formatSessionSummary(session: AgentSessionAggregate): string {
   const totalTokens = session.totals.input + session.totals.output;
@@ -44,6 +45,10 @@ interface DashboardKeyboardState {
   scrollOffset: number;
   limitSelectedIndex: number;
   providerCount: number;
+  driverDimension: DriverDimension;
+  selectedDriverIndex: number;
+  activeDriverFilter: string | null;
+  sidebarMode: SidebarMode;
 }
 
 interface DashboardKeyboardActions {
@@ -59,6 +64,9 @@ interface DashboardKeyboardActions {
   setPendingG: (val: boolean) => void;
   setScrollOffset: (val: number) => void;
   setLimitSelectedIndex: (fn: (prev: number) => number) => void;
+  setDriverDimension: (fn: (prev: DriverDimension) => DriverDimension) => void;
+  setSelectedDriverIndex: (fn: (prev: number) => number) => void;
+  setActiveDriverFilter: (val: string | null) => void;
 }
 
 interface UseDashboardKeyboardProps {
@@ -84,6 +92,10 @@ export function useDashboardKeyboard({
   const focusedPanelRef = useRef(state.focusedPanel);
   const providerCountRef = useRef(state.providerCount);
   const filterQueryRef = useRef(state.filterQuery);
+  const driverDimensionRef = useRef(state.driverDimension);
+  const selectedDriverIndexRef = useRef(state.selectedDriverIndex);
+  const activeDriverFilterRef = useRef(state.activeDriverFilter);
+  const sidebarModeRef = useRef(state.sidebarMode);
 
   useEffect(() => {
     isFilteringRef.current = state.isFiltering;
@@ -93,11 +105,20 @@ export function useDashboardKeyboard({
     focusedPanelRef.current = state.focusedPanel;
     providerCountRef.current = state.providerCount;
     filterQueryRef.current = state.filterQuery;
-  }, [state.isFiltering, state.showHelp, state.showSessionDrawer, state.pendingG, processedSessions, state.focusedPanel, state.providerCount, state.filterQuery]);
+    driverDimensionRef.current = state.driverDimension;
+    selectedDriverIndexRef.current = state.selectedDriverIndex;
+    activeDriverFilterRef.current = state.activeDriverFilter;
+    sidebarModeRef.current = state.sidebarMode;
+  }, [state.isFiltering, state.showHelp, state.showSessionDrawer, state.pendingG, processedSessions, state.focusedPanel, state.providerCount, state.filterQuery, state.driverDimension, state.selectedDriverIndex, state.activeDriverFilter, state.sidebarMode]);
 
   const { isInputFocused } = useInputFocus();
 
   useKeyboard((key) => {
+    // Let App.tsx handle global Ctrl+ shortcuts (Ctrl+P for capture, Ctrl+S for save, etc.)
+    if (key.ctrl) {
+      return;
+    }
+    
     // Allow filter mode to handle its own input (no <input> element in RealTimeDashboard)
     if (isInputFocused && !isFilteringRef.current) {
       return;
@@ -242,6 +263,48 @@ export function useDashboardKeyboard({
       } else if (key.name === 'escape') {
         actions.setFocusedPanel(() => 'sessions');
         actions.setLimitSelectedIndex(() => 0);
+        return;
+      }
+    }
+
+    if (focusedPanelRef.current === 'sidebar') {
+      if (key.name === 'down' || key.name === 'j') {
+        actions.setSelectedDriverIndex(curr => curr + 1);
+        return;
+      } else if (key.name === 'up' || key.name === 'k') {
+        actions.setSelectedDriverIndex(curr => Math.max(curr - 1, 0));
+        return;
+      }
+      
+      if (key.name === 'return') {
+        if (activeDriverFilterRef.current !== null) {
+          actions.setActiveDriverFilter(null);
+        } else {
+          actions.setActiveDriverFilter('__TOGGLE_SELECTED__');
+        }
+        return;
+      }
+      
+      if (key.name === 'm') {
+        actions.setDriverDimension(() => 'model');
+        actions.setSelectedDriverIndex(() => 0);
+        return;
+      } else if (key.name === 'p') {
+        actions.setDriverDimension(() => 'project');
+        actions.setSelectedDriverIndex(() => 0);
+        return;
+      } else if (key.name === 'a') {
+        actions.setDriverDimension(() => 'agent');
+        actions.setSelectedDriverIndex(() => 0);
+        return;
+      }
+      
+      if (key.name === 'escape') {
+        if (activeDriverFilterRef.current !== null) {
+          actions.setActiveDriverFilter(null);
+        } else {
+          actions.setFocusedPanel(() => 'sessions');
+        }
         return;
       }
     }
