@@ -53,12 +53,18 @@ function formatDuration(startedAt: number, endedAt?: number): string {
 }
 
 function formatCostPerHour(costUsd: number, startedAt: number): string {
-  const durationHours = (Date.now() - startedAt) / (1000 * 60 * 60);
-  if (durationHours < 0.01) return '--';
-  const rate = costUsd / durationHours;
-  if (rate < 0.01) return '$0';
-  if (rate < 10) return `$${rate.toFixed(2)}`;
-  return `$${rate.toFixed(1)}`;
+   const durationHours = (Date.now() - startedAt) / (1000 * 60 * 60);
+   if (durationHours < 0.01) return '--';
+   const rate = costUsd / durationHours;
+   if (rate < 0.01) return '$0';
+   if (rate < 10) return `$${rate.toFixed(2)}`;
+   return `$${rate.toFixed(1)}`;
+}
+
+function truncateMiddle(str: string, maxLength: number): string {
+   if (str.length <= maxLength) return str;
+   const side = Math.floor((maxLength - 1) / 2);
+   return str.slice(0, side) + '…' + str.slice(-side);
 }
 
 interface SessionRowProps {
@@ -81,14 +87,12 @@ const SessionRow = memo(function SessionRow({ session, isSelected, isWide, getPr
   const isActive = session.status === 'active';
   const entranceIntensity = useEntranceAnimation({ durationMs: 500 });
   
-  const totalTokens = session.totals.input + session.totals.output;
-  const costUsd = session.totalCostUsd ?? 0;
-  
-  const animatedTokens = useAnimatedValue(totalTokens, { durationMs: 300, precision: 0 });
-  const animatedCost = useAnimatedValue(costUsd, { durationMs: 300, precision: 2 });
-  
-  const { intensity: costFlash } = useValueFlash(costUsd, { durationMs: 400, threshold: 0.001 });
-  const { intensity: tokenFlash } = useValueFlash(totalTokens, { durationMs: 400, threshold: 10 });
+   const totalTokens = session.totals.input + session.totals.output;
+   const costUsd = session.totalCostUsd ?? 0;
+   
+   const animatedTokens = useAnimatedValue(totalTokens, { durationMs: 300, precision: 0 });
+   
+   const { intensity: tokenFlash } = useValueFlash(totalTokens, { durationMs: 400, threshold: 10 });
   
   const primaryStream = session.streams[0];
   const providerId = primaryStream?.providerId ?? 'unknown';
@@ -106,13 +110,7 @@ const SessionRow = memo(function SessionRow({ session, isSelected, isWide, getPr
     : colors.textMuted;
   const statusColor = fade(baseStatusColor);
   
-  const baseCostColor = colors.success;
-  const costColorBeforeFade = costFlash > 0
-    ? interpolateColor(costFlash, baseCostColor, '#ffffff')
-    : baseCostColor;
-  const costColor = fade(costColorBeforeFade);
-    
-  const baseTokenColor = colors.text;
+   const baseTokenColor = colors.text;
   const tokenColorBeforeFade = tokenFlash > 0
     ? interpolateColor(tokenFlash, baseTokenColor, '#ffffff')
     : baseTokenColor;
@@ -138,51 +136,52 @@ const SessionRow = memo(function SessionRow({ session, isSelected, isWide, getPr
   const duration = formatDuration(session.startedAt, session.endedAt);
   const costPerHour = formatCostPerHour(costUsd, session.startedAt);
   
-  const modelDisplay = modelId.split('/').pop()?.slice(0, 15) ?? modelId;
-  const streamCount = session.streams.length;
-  const modelWithCount = streamCount > 1 ? `${modelDisplay.slice(0, 12)}+${streamCount - 1}` : modelDisplay;
+   const modelDisplay = modelId.split('/').pop()?.slice(0, 15) ?? modelId;
+   const streamCount = session.streams.length;
+   const modelWithCount = streamCount > 1 ? `${modelDisplay.slice(0, 12)}+${streamCount - 1}` : modelDisplay;
+   
+   const baseLastColor = isActive 
+     ? getActivityFadeColor(session.lastActivityAt, colors.text, colors.textMuted)
+     : colors.textMuted;
+   const lastColor = fade(baseLastColor);
+   
+   const bgProp = rowBg ? { bg: rowBg } : {};
+   
+   const sessionIdShort = session.sessionId.slice(-7);
+   const sessionNameDisplay = session.sessionName ? truncateMiddle(session.sessionName, 25) : '—';
   
-  const baseLastColor = isActive 
-    ? getActivityFadeColor(session.lastActivityAt, colors.text, colors.textMuted)
-    : colors.textMuted;
-  const lastColor = fade(baseLastColor);
+   if (isWide) {
+     return (
+       <box flexDirection="row" paddingRight={1} height={1} gap={1} {...(rowBg ? { backgroundColor: rowBg } : {})}>
+         <text width={2} height={1} fg={railColor} {...bgProp}>{railChar}</text>
+         <text width={8} height={1} fg={textMutedColor} {...bgProp}>{sessionIdShort}</text>
+         <text width={12} height={1} fg={isSelected ? textColor : textSubtleColor} {...bgProp}>{session.agentName.padEnd(11)}</text>
+         <text width={18} height={1} fg={providerColor} {...bgProp}>{modelWithCount.padEnd(17)}</text>
+         <text width={5} height={1} fg={textMutedColor} {...bgProp}>{String(session.requestCount).padStart(4)}</text>
+         <text width={8} height={1} fg={tokenColor} {...bgProp}>{formatTokensVal(animatedTokens).padStart(7)}</text>
+         <text width={8} height={1} fg={warningColor} {...bgProp}>{costPerHour.padStart(7)}</text>
+         <text width={20} height={1} fg={textMutedColor} {...bgProp}>{sessionNameDisplay.padEnd(19)}</text>
+         <text flexGrow={1} height={1} fg={textSubtleColor} {...bgProp}>{projectDisplay}</text>
+         <text width={6} height={1} fg={textMutedColor} {...bgProp}>{duration.padStart(5)}</text>
+         <text width={5} height={1} fg={lastColor} {...bgProp}>{lastActivity.padStart(4)}</text>
+         <text width={2} height={1} fg={statusColor} {...bgProp}>{isActive ? '●' : '○'}</text>
+       </box>
+     );
+   }
   
-  const bgProp = rowBg ? { bg: rowBg } : {};
-  
-  const sessionIdShort = session.sessionId.slice(-7);
-  
-  if (isWide) {
-    return (
-      <box flexDirection="row" paddingRight={1} height={1} gap={1} {...(rowBg ? { backgroundColor: rowBg } : {})}>
-        <text width={2} height={1} fg={railColor} {...bgProp}>{railChar}</text>
-        <text width={8} height={1} fg={textMutedColor} {...bgProp}>{sessionIdShort}</text>
-        <text width={12} height={1} fg={isSelected ? textColor : textSubtleColor} {...bgProp}>{session.agentName.padEnd(11)}</text>
-        <text width={18} height={1} fg={providerColor} {...bgProp}>{modelWithCount.padEnd(17)}</text>
-        <text width={5} height={1} fg={textMutedColor} {...bgProp}>{String(session.requestCount).padStart(4)}</text>
-        <text width={8} height={1} fg={tokenColor} {...bgProp}>{formatTokensVal(animatedTokens).padStart(7)}</text>
-        <text width={8} height={1} fg={warningColor} {...bgProp}>{costPerHour.padStart(7)}</text>
-        <text width={9} height={1} fg={costColor} {...bgProp}>{`$${animatedCost.toFixed(2)}`.padStart(8)}</text>
-        <text flexGrow={1} height={1} fg={textSubtleColor} {...bgProp}>{projectDisplay}</text>
-        <text width={6} height={1} fg={textMutedColor} {...bgProp}>{duration.padStart(5)}</text>
-        <text width={5} height={1} fg={lastColor} {...bgProp}>{lastActivity.padStart(4)}</text>
-        <text width={2} height={1} fg={statusColor} {...bgProp}>{isActive ? '●' : '○'}</text>
-      </box>
-    );
-  }
-  
-  return (
-    <box flexDirection="row" paddingRight={1} height={1} {...(rowBg ? { backgroundColor: rowBg } : {})}>
-      <text width={2} height={1} fg={railColor} {...bgProp}>{railChar}</text>
-      <text width={8} height={1} fg={textMutedColor} {...bgProp}>{sessionIdShort}</text>
-      <text width={12} height={1} fg={isSelected ? textColor : textSubtleColor} {...bgProp}>{session.agentName}</text>
-      <text width={16} height={1} fg={providerColor} {...bgProp}>{modelWithCount.padEnd(15)}</text>
-      <text width={8} height={1} fg={costColor} {...bgProp}>{`$${animatedCost.toFixed(2)}`.padStart(7)}</text>
-      <text flexGrow={1} height={1} fg={textSubtleColor} paddingLeft={1} {...bgProp}>{projectDisplay}</text>
-      <text width={5} height={1} fg={lastColor} {...bgProp}>{lastActivity.padStart(4)}</text>
-      <text width={2} height={1} fg={statusColor} {...bgProp}>{isActive ? '●' : '○'}</text>
-    </box>
-  );
-});
+   return (
+     <box flexDirection="row" paddingRight={1} height={1} {...(rowBg ? { backgroundColor: rowBg } : {})}>
+       <text width={2} height={1} fg={railColor} {...bgProp}>{railChar}</text>
+       <text width={8} height={1} fg={textMutedColor} {...bgProp}>{sessionIdShort}</text>
+       <text width={12} height={1} fg={isSelected ? textColor : textSubtleColor} {...bgProp}>{session.agentName}</text>
+       <text width={16} height={1} fg={providerColor} {...bgProp}>{modelWithCount.padEnd(15)}</text>
+       <text width={15} height={1} fg={textMutedColor} {...bgProp}>{truncateMiddle(session.sessionName ?? '—', 15).padEnd(14)}</text>
+       <text flexGrow={1} height={1} fg={textSubtleColor} paddingLeft={1} {...bgProp}>{projectDisplay}</text>
+       <text width={5} height={1} fg={lastColor} {...bgProp}>{lastActivity.padStart(4)}</text>
+       <text width={2} height={1} fg={statusColor} {...bgProp}>{isActive ? '●' : '○'}</text>
+     </box>
+   );
+ });
 
 const WIDE_THRESHOLD = 140;
 
@@ -219,33 +218,33 @@ export const SessionsTable = forwardRef(function SessionsTable(
         <text height={1} fg={colors.textMuted}>[{windowLabel}] {sessions.length} sessions</text>
       </box>
 
-      {isWide ? (
-        <box flexDirection="row" paddingRight={1} height={1} gap={1}>
-          <text width={2} height={1} fg={colors.textMuted}> </text>
-          <text width={8} height={1} fg={colors.textMuted}>ID      </text>
-          <text width={12} height={1} fg={colors.textMuted}>AGENT       </text>
-          <text width={18} height={1} fg={colors.textMuted}>MODEL             </text>
-          <text width={5} height={1} fg={colors.textMuted}> REQ </text>
-          <text width={8} height={1} fg={colors.textMuted}> TOKENS </text>
-          <text width={8} height={1} fg={colors.textMuted}>   $/HR </text>
-          <text width={9} height={1} fg={colors.textMuted}>    COST </text>
-          <text flexGrow={1} height={1} fg={colors.textMuted}>PROJECT</text>
-          <text width={6} height={1} fg={colors.textMuted}>  DUR </text>
-          <text width={5} height={1} fg={colors.textMuted}>LAST </text>
-          <text width={2} height={1} fg={colors.textMuted}> </text>
-        </box>
-      ) : (
-        <box flexDirection="row" paddingRight={1} height={1}>
-          <text width={2} height={1} fg={colors.textMuted}> </text>
-          <text width={8} height={1} fg={colors.textMuted}>ID      </text>
-          <text width={12} height={1} fg={colors.textMuted}>AGENT       </text>
-          <text width={16} height={1} fg={colors.textMuted}>MODEL           </text>
-          <text width={8} height={1} fg={colors.textMuted}>COST    </text>
-          <text flexGrow={1} height={1} fg={colors.textMuted} paddingLeft={1}>PROJECT</text>
-          <text width={5} height={1} fg={colors.textMuted}>LAST </text>
-          <text width={2} height={1} fg={colors.textMuted}> </text>
-        </box>
-      )}
+       {isWide ? (
+         <box flexDirection="row" paddingRight={1} height={1} gap={1}>
+           <text width={2} height={1} fg={colors.textMuted}> </text>
+           <text width={8} height={1} fg={colors.textMuted}>ID      </text>
+           <text width={12} height={1} fg={colors.textMuted}>AGENT       </text>
+           <text width={18} height={1} fg={colors.textMuted}>MODEL             </text>
+           <text width={5} height={1} fg={colors.textMuted}> REQ </text>
+           <text width={8} height={1} fg={colors.textMuted}> TOKENS </text>
+           <text width={8} height={1} fg={colors.textMuted}>   $/HR </text>
+           <text width={20} height={1} fg={colors.textMuted}>NAME                </text>
+           <text flexGrow={1} height={1} fg={colors.textMuted}>PROJECT</text>
+           <text width={6} height={1} fg={colors.textMuted}>  DUR </text>
+           <text width={5} height={1} fg={colors.textMuted}>LAST </text>
+           <text width={2} height={1} fg={colors.textMuted}> </text>
+         </box>
+       ) : (
+         <box flexDirection="row" paddingRight={1} height={1}>
+           <text width={2} height={1} fg={colors.textMuted}> </text>
+           <text width={8} height={1} fg={colors.textMuted}>ID      </text>
+           <text width={12} height={1} fg={colors.textMuted}>AGENT       </text>
+           <text width={16} height={1} fg={colors.textMuted}>MODEL           </text>
+           <text width={15} height={1} fg={colors.textMuted}>NAME            </text>
+           <text flexGrow={1} height={1} fg={colors.textMuted} paddingLeft={1}>PROJECT</text>
+           <text width={5} height={1} fg={colors.textMuted}>LAST </text>
+           <text width={2} height={1} fg={colors.textMuted}> </text>
+         </box>
+       )}
 
       <scrollbox ref={ref} flexGrow={1}>
         <box flexDirection="column">
