@@ -680,3 +680,79 @@ This ensures demo runs don't pollute real usage data.
 - Simulator: `src/demo/simulator.ts`
 - Context: `src/tui/contexts/DemoModeContext.tsx`
 - Storage guard: `src/tui/contexts/StorageContext.tsx` (skips DB in demo mode)
+
+## Git Worktree Workflow
+
+The Git Worktree Workflow allows developers and AI agents to work on multiple branches simultaneously without the overhead of switching branches in a single working directory. This is particularly useful for AI agents that need to perform long-running tasks (like refactoring or testing) in the background while the developer continues working on the main branch.
+
+### Quick Start
+
+1. **Create** a new worktree: `bun run worktree create feature/my-new-feature`
+2. **List** active worktrees: `bun run worktree list`
+3. **Switch** to a worktree: `bun run worktree switch feature/my-new-feature`
+4. **Remove** a worktree when done: `bun run worktree remove feature/my-new-feature`
+
+### Commands
+
+| Command | Usage | Description |
+|---------|-------|-------------|
+| `create` | `bun run worktree create <branch>` | Creates a new git worktree in `../.tokentop-worktrees/<branch>` and checks out the specified branch. |
+| `list` | `bun run worktree list` | Lists all active worktrees, their paths, branches, and current git status. |
+| `remove` | `bun run worktree remove <branch> [--force] [--delete-branch]` | Removes the specified worktree. Use `--force` to remove even with uncommitted changes. |
+| `status` | `bun run worktree status [branch]` | Shows detailed status for a specific worktree or a summary of all worktrees. |
+| `switch` | `bun run worktree switch <branch>` | Provides instructions on how to switch your terminal to the specified worktree. |
+| `cleanup` | `bun run worktree cleanup [options]` | Scans for merged or stale worktrees and offers to remove them. |
+
+#### Cleanup Options
+- `--dry-run`: Preview what would be removed without actually removing anything.
+- `--stale-days <days>`: Days of inactivity to consider a worktree stale (default: 30).
+- `--force`: Skip confirmation prompts.
+- `--delete-branches`: Also delete the associated git branches if they have been merged.
+
+### Agent Workflow
+
+AI agents can leverage worktrees to perform tasks in isolation. When an agent is assigned a task, it can:
+
+1. **Isolate**: Create a new worktree for the task to avoid interfering with the developer's current work.
+2. **Execute**: Perform the work (coding, testing, refactoring) within that worktree.
+3. **Track**: Update the shared state file to signal progress and status.
+4. **Review**: Once complete, the developer can easily switch to the worktree to review changes before merging.
+
+### Shared State File (`.worktrees/state.json`)
+
+The workflow uses a shared state file to track active worktrees across different agent sessions. This ensures consistency even when multiple agents are working in parallel.
+
+```json
+{
+  "version": 1,
+  "mainWorktree": "/path/to/main/repo",
+  "worktrees": [
+    {
+      "name": "feature-branch",
+      "path": "/path/to/worktrees/feature-branch",
+      "branch": "feature-branch",
+      "createdAt": "2026-02-06T10:00:00Z",
+      "lastActivity": "2026-02-06T10:30:00Z",
+      "gitStatus": "clean"
+    }
+  ],
+  "updatedAt": "2026-02-06T10:30:00Z"
+}
+```
+
+### Port Collision Handling
+
+When running multiple instances of `tokentop` (or other services) across different worktrees, port collisions may occur.
+
+- **Automatic Detection**: The system detects if a port is already in use before starting services.
+- **Dynamic Assignment**: If a collision is detected, the system can automatically increment the port number or use a random available port.
+- **Configuration**: Users can specify port ranges in `config.json` to avoid conflicts with other system services.
+
+### Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| **Worktree already exists** | If a worktree exists on disk but not in the state file, run `git worktree prune` and then try again. |
+| **Uncommitted changes** | `remove` and `cleanup` will skip worktrees with uncommitted changes unless `--force` is used. |
+| **Main worktree** | You cannot remove the main worktree using the `worktree` command. |
+| **Stale state** | If the state file becomes out of sync, you can manually edit `.worktrees/state.json` or run `cleanup`. |
