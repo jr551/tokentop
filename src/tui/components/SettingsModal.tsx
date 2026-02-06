@@ -224,6 +224,12 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 
   const width = Math.min(termWidth - 4, 100);
   const height = Math.min(termHeight - 4, 28);
+  
+  // Calculate available height for settings list
+  // Modal height - header(1) - footer(1) - outer padding(2) - inner borders(4) - title row with margin(2)
+  const settingsAreaHeight = height - 1 - 1 - 2 - 4 - 2 - (demoMode ? 1 : 0);
+  // Each setting takes 2 rows (height=1 + marginBottom=1)
+  const visibleSettingsCount = Math.max(1, Math.floor(settingsAreaHeight / 2));
 
   const settings = useMemo(() => {
     const newSettings = [...BASE_SETTINGS];
@@ -240,6 +246,18 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   }, [themes]);
 
   const categorySettings = settings.filter(s => s.category === selectedCategory);
+  
+  // Calculate scroll offset to keep selected item visible
+  const scrollOffset = useMemo(() => {
+    if (categorySettings.length <= visibleSettingsCount) return 0;
+    const maxOffset = categorySettings.length - visibleSettingsCount;
+    if (selectedIndex < visibleSettingsCount - 1) return 0;
+    return Math.min(selectedIndex - visibleSettingsCount + 2, maxOffset);
+  }, [selectedIndex, categorySettings.length, visibleSettingsCount]);
+  
+  const visibleSettings = categorySettings.slice(scrollOffset, scrollOffset + visibleSettingsCount);
+  const hasMoreAbove = scrollOffset > 0;
+  const hasMoreBelow = scrollOffset + visibleSettingsCount < categorySettings.length;
 
   const applyThemeChange = useCallback((themeId: string) => {
     const newTheme = themes.find(t => t.id === themeId);
@@ -488,13 +506,22 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
             borderStyle={focusedPane === 'settings' ? 'double' : 'single'}
             borderColor={focusedPane === 'settings' ? colors.primary : colors.border}
             padding={1}
+            overflow="hidden"
           >
-            <text fg={colors.textMuted} marginBottom={1} height={1}>
-              {CATEGORIES.find(c => c.id === selectedCategory)?.label.toUpperCase()}
-            </text>
+            <box flexDirection="row" justifyContent="space-between" marginBottom={1} height={1}>
+              <text fg={colors.textMuted}>
+                {CATEGORIES.find(c => c.id === selectedCategory)?.label.toUpperCase()}
+              </text>
+              {(hasMoreAbove || hasMoreBelow) && (
+                <text fg={colors.textSubtle}>
+                  {hasMoreAbove ? '▲' : ' '}{hasMoreBelow ? '▼' : ' '}
+                </text>
+              )}
+            </box>
 
-            {categorySettings.map((setting, idx) => {
-              const isSelected = idx === selectedIndex && focusedPane === 'settings';
+            {visibleSettings.map((setting) => {
+              const realIdx = categorySettings.findIndex(s => s.key === setting.key);
+              const isSelected = realIdx === selectedIndex && focusedPane === 'settings';
               const value = setting.getValue(config);
               const isEditingThis = setting.type === 'number' && editingSettingKey === setting.key;
 
