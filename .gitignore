@@ -26,6 +26,9 @@ bun.lockb
 *.swo
 *~
 
+# Sisyphus
+.sisyphus/
+
 # OS
 .DS_Store
 Thumbs.db
