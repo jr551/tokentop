@@ -56,7 +56,10 @@ temp/
 # Docs (keep local, not tracked)
 docs/
 
-
 snapshots/
 golden/
 recordings/
+
+# Worktrees (ignore all except state.json)
+.worktrees/*
+!.worktrees/state.json
