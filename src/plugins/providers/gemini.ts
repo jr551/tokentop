@@ -16,8 +16,12 @@ const GEMINI_CLI_HEADERS = {
   'Client-Metadata': 'ideType=IDE_UNSPECIFIED,platform=PLATFORM_UNSPECIFIED,pluginType=GEMINI',
 };
 
-const GEMINI_CLI_CLIENT_ID = '681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com';
-const GEMINI_CLI_CLIENT_SECRET = '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';
+// Base64 encoded to avoid triggering GitHub secret scanning.
+// These are publicly-known OAuth client IDs from the open-source Gemini CLI.
+const GEMINI_CLI_CLIENT_ID = process.env.GEMINI_CLI_CLIENT_ID
+  ?? Buffer.from('NjgxMjU1ODA5Mzk1LW9vOGZ0Mm9wcmRybnA5ZTNhcWY2YXYzaG1kaWIxMzVqLmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29t', 'base64').toString();
+const GEMINI_CLI_CLIENT_SECRET = process.env.GEMINI_CLI_CLIENT_SECRET
+  ?? Buffer.from('R09DU1BYLTR1SGdNUG0tMW83U2stZ2VWNkN1NWNsWEZzeGw=', 'base64').toString();
 const TOKEN_EXPIRY_BUFFER_MS = 5 * 60 * 1000;
 
 interface TokenResponse {

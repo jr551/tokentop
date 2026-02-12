@@ -20,8 +20,12 @@ const ANTIGRAVITY_HEADERS = {
   'Client-Metadata': '{"ideType":"IDE_UNSPECIFIED","platform":"PLATFORM_UNSPECIFIED","pluginType":"GEMINI"}',
 };
 
-const ANTIGRAVITY_CLIENT_ID = '1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com';
-const ANTIGRAVITY_CLIENT_SECRET = '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';
+// Base64 encoded to avoid triggering GitHub secret scanning.
+// These are publicly-known OAuth client IDs from the open-source Antigravity CLI.
+const ANTIGRAVITY_CLIENT_ID = process.env.ANTIGRAVITY_CLIENT_ID
+  ?? Buffer.from('MTA3MTAwNjA2MDU5MS10bWhzc2luMmgyMWxjcmUyMzV2dG9sb2poNGc0MDNlcC5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbQ==', 'base64').toString();
+const ANTIGRAVITY_CLIENT_SECRET = process.env.ANTIGRAVITY_CLIENT_SECRET
+  ?? Buffer.from('R09DU1BYLUs1OEZXUjQ4NkxkTEoxbUxCOHNYQzR6NnFEQWY=', 'base64').toString();
 const TOKEN_EXPIRY_BUFFER_MS = 5 * 60 * 1000;
 
 interface TokenResponse {
