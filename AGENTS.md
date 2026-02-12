@@ -101,6 +101,35 @@ permissions: {
 }
 ```
 
+### Plugin Loading
+
+Plugins are loaded from three sources (in order):
+
+1. **Builtin plugins** — shipped with the app in `src/plugins/{providers,agents,themes,notifications}/`
+2. **Local plugins** — discovered from `~/.config/tokentop/plugins/` (files and directories), plus paths from `config.plugins.local` and `--plugin` CLI flag
+3. **npm plugins** — packages listed in `config.plugins.npm`
+
+Plugins listed in `config.plugins.disabled` are removed after loading.
+
+**CLI flag**: `ttop --plugin <path>` loads a local plugin for that run (repeatable).
+
+**Config** (`~/.config/tokentop/config.json`):
+```json
+{
+  "plugins": {
+    "local": ["~/development/my-plugin"],
+    "npm": ["@tokentop/provider-replicate"],
+    "disabled": ["perplexity"]
+  }
+}
+```
+
+**Directory-based plugins**: The loader resolves entry points by checking `package.json` main/exports, then `src/index.ts`, `index.ts`, `dist/index.js`.
+
+### Plugin SDK
+
+Community plugins depend on `@tokentop/plugin-sdk` for types and helpers. The SDK lives at `~/development/tokentop/plugin-sdk/`. See `docs/plugins.md` for the full guide.
+
 ### npm Plugin Naming
 
 - Providers: `@tokentop/provider-<name>`

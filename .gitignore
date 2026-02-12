@@ -57,7 +57,7 @@ temp/
 .temp/
 
 # Docs (keep local, not tracked)
-docs/
+ai-docs/
 
 snapshots/
 golden/
