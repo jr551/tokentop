@@ -1,3 +1,6 @@
+ > [!CAUTION]
+> **tokentop is under active development and not yet ready for general use.** There are no published releases, no install packages, and no CI/CD pipeline. APIs and configuration may change without notice. If you're interested, star the repo and check back soon.
+
 <div align="center">
 
 # tokentop
