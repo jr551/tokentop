@@ -359,78 +359,125 @@ function Divider({ width }: DividerProps) {
   );
 }
 
-interface EfficiencySectionProps {
-  sessions: AgentSessionAggregate[];
-  getProviderColor: (id: string) => string;
-  sidebarWidth: number;
+interface EfficiencyInsight {
+  type: 'cache' | 'verbosity' | 'chatty' | 'fallback';
+  primaryLabel: string;
+  primaryValue: string;
+  actionLine: string;
+  secondaryLabel?: string;
+  isWarning: boolean;
 }
 
-function EfficiencySection({ sessions, getProviderColor, sidebarWidth }: EfficiencySectionProps) {
+interface EfficiencySectionProps {
+  sessions: AgentSessionAggregate[];
+  mode: SidebarMode;
+}
+
+function EfficiencySection({ sessions, mode }: EfficiencySectionProps) {
   const colors = useColors();
   
-  const modelEfficiency = useMemo(() => {
-    const stats: Record<string, { cost: number; tokens: number }> = {};
-    let totalCost = 0;
-    let totalTokens = 0;
-    
+  const metrics = useMemo(() => {
+    let totalInput = 0, totalOutput = 0, totalCacheRead = 0;
+    let totalCost = 0, totalRequests = 0;
+    let hasCacheData = false;
+
     sessions.forEach(s => {
       s.streams.forEach((st: AgentSessionStream) => {
-        const tokens = st.tokens.input + st.tokens.output;
-        const cost = st.costUsd ?? 0;
-        
-        if (!stats[st.modelId]) {
-          stats[st.modelId] = { cost: 0, tokens: 0 };
-        }
-        const entry = stats[st.modelId]!;
-        entry.cost += cost;
-        entry.tokens += tokens;
-        totalCost += cost;
-        totalTokens += tokens;
+        totalInput += st.tokens.input;
+        totalOutput += st.tokens.output;
+        totalCacheRead += st.tokens.cacheRead ?? 0;
+        totalCost += st.costUsd ?? 0;
+        totalRequests += st.requestCount;
+        if (st.tokens.cacheRead != null && st.tokens.cacheRead > 0) hasCacheData = true;
       });
     });
-    
-    const avgCostPer1M = totalTokens > 1000 ? (totalCost / totalTokens) * 1_000_000 : 0;
-    
-    let worstModel: { id: string; costPer1M: number; ratio: number } | null = null;
-    
-    for (const [modelId, data] of Object.entries(stats)) {
-      if (data.tokens < 1000) continue;
-      const costPer1M = (data.cost / data.tokens) * 1_000_000;
-      const ratio = avgCostPer1M > 0 ? costPer1M / avgCostPer1M : 1;
-      if (!worstModel || costPer1M > worstModel.costPer1M) {
-        worstModel = { id: modelId, costPer1M, ratio };
-      }
-    }
-    
-    return worstModel;
+
+    const cacheHitRate = (totalInput + totalCacheRead) > 0
+      ? (totalCacheRead / (totalInput + totalCacheRead)) * 100 : 0;
+    const outputShare = (totalInput + totalOutput) > 0
+      ? (totalOutput / (totalInput + totalOutput)) * 100 : 0;
+    const costPerReq = totalRequests > 0 ? totalCost / totalRequests : 0;
+
+    return { totalInput, totalOutput, totalCacheRead, totalCost, totalRequests, hasCacheData, cacheHitRate, outputShare, costPerReq };
   }, [sessions]);
-  
-  if (!modelEfficiency) {
-    return null;
+
+  const insight: EfficiencyInsight = useMemo(() => {
+    // Priority 1: Cache Leverage
+    if (metrics.hasCacheData && metrics.totalInput > 1000 && metrics.cacheHitRate < 80) {
+      return {
+        type: 'cache',
+        primaryLabel: 'Cache hit:',
+        primaryValue: `${Math.round(metrics.cacheHitRate)}%`,
+        actionLine: 'Keep sessions open; avoid resets',
+        secondaryLabel: `$/req: ${formatCurrency(metrics.costPerReq)}  Out: ${Math.round(metrics.outputShare)}%`,
+        isWarning: metrics.cacheHitRate < 20,
+      };
+    }
+    // Priority 2: Output Verbosity
+    if (metrics.totalInput + metrics.totalOutput > 1000 && metrics.outputShare > 65) {
+      return {
+        type: 'verbosity',
+        primaryLabel: 'Output share:',
+        primaryValue: `${Math.round(metrics.outputShare)}%`,
+        actionLine: 'Ask for diffs; less commentary',
+        secondaryLabel: `$/req: ${formatCurrency(metrics.costPerReq)}`,
+        isWarning: metrics.outputShare > 75,
+      };
+    }
+    // Priority 3: Chatty Usage
+    if (metrics.totalRequests > 10 && metrics.costPerReq > 0.15) {
+      return {
+        type: 'chatty',
+        primaryLabel: '$/req:',
+        primaryValue: formatCurrency(metrics.costPerReq),
+        actionLine: 'Batch asks; fewer back-and-forth',
+        secondaryLabel: `${metrics.totalRequests} reqs`,
+        isWarning: metrics.costPerReq > 0.25,
+      };
+    }
+    // Priority 4: Fallback
+    return {
+      type: 'fallback',
+      primaryLabel: `$/req: ${formatCurrency(metrics.costPerReq)}`,
+      primaryValue: `Out: ${Math.round(metrics.outputShare)}%`,
+      actionLine: 'Prefer patches; reduce re-asking',
+      isWarning: false,
+    };
+  }, [metrics]);
+
+  const isFull = mode === 'full';
+  const metricColor = insight.isWarning ? colors.warning : colors.text;
+
+  if (insight.type === 'fallback') {
+    const cacheLabel = metrics.hasCacheData
+      ? `Cache: ${Math.round(metrics.cacheHitRate)}%`
+      : 'Cache: n/a';
+
+    return (
+      <box flexDirection="column" paddingLeft={1} paddingRight={1}>
+        <text fg={colors.textMuted} height={1}><strong>EFFICIENCY</strong></text>
+        <box flexDirection="row" height={1}>
+          <text fg={colors.text} height={1}>{insight.primaryLabel}    {insight.primaryValue}</text>
+        </box>
+        <text fg={colors.textSubtle} height={1}>{'-> '}{insight.actionLine}</text>
+        {isFull && (
+          <text fg={colors.textMuted} height={1}>Reqs: {metrics.totalRequests}  {cacheLabel}</text>
+        )}
+      </box>
+    );
   }
-  
-  const displayName = truncateWithEllipsis(
-    modelEfficiency.id.split('/').pop() ?? modelEfficiency.id, 
-    sidebarWidth - 8
-  );
-  
-  const ratioText = modelEfficiency.ratio >= 1.5 
-    ? ` (${modelEfficiency.ratio.toFixed(1)}x avg)`
-    : '';
-  
+
   return (
     <box flexDirection="column" paddingLeft={1} paddingRight={1}>
+      <text fg={colors.textMuted} height={1}><strong>EFFICIENCY</strong></text>
       <box flexDirection="row" height={1}>
-        <text fg={colors.textMuted}><strong>EFFICIENCY</strong></text>
+        <text fg={colors.textMuted} height={1}>{insight.primaryLabel} </text>
+        <text fg={metricColor} height={1}>{insight.primaryValue}</text>
       </box>
-      <box flexDirection="row" height={1}>
-        <text fg={colors.textMuted}>Worst: </text>
-        <text fg={getProviderColor(modelEfficiency.id)}>{displayName}</text>
-      </box>
-      <box flexDirection="row" height={1}>
-        <text fg={colors.warning}>${modelEfficiency.costPer1M.toFixed(2)}/1M tokens</text>
-        <text fg={colors.textSubtle}>{ratioText}</text>
-      </box>
+      <text fg={colors.textSubtle} height={1}>{'-> '}{insight.actionLine}</text>
+      {isFull && insight.secondaryLabel && (
+        <text fg={colors.textMuted} height={1}>{insight.secondaryLabel}</text>
+      )}
     </box>
   );
 }
@@ -582,8 +629,7 @@ export function SmartSidebar({
           <Divider width={sidebarWidth} />
           <EfficiencySection 
             sessions={sessions}
-            getProviderColor={getProviderColor}
-            sidebarWidth={sidebarWidth}
+            mode={mode}
           />
         </box>
       )}
