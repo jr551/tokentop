@@ -15,3 +15,6 @@ export type { UseAnimatedValueOptions, EasingFunction } from './useAnimatedValue
 
 export { useEntranceAnimation, applyEntranceFade } from './useEntranceAnimation.ts';
 export type { UseEntranceAnimationOptions } from './useEntranceAnimation.ts';
+
+export { useExitAnimation } from './useExitAnimation.ts';
+export type { ExitAnimationItem, UseExitAnimationOptions, UseExitAnimationResult } from './useExitAnimation.ts';

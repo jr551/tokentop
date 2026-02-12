@@ -1,4 +1,4 @@
-import { forwardRef, memo, type Ref } from 'react';
+import { forwardRef, memo, useCallback, useRef, type Ref } from 'react';
 import type { ScrollBoxRenderable } from '@opentui/core';
 import { useTerminalDimensions } from '@opentui/react';
 import { useColors } from '../contexts/ThemeContext.tsx';
@@ -6,6 +6,7 @@ import type { AgentSessionAggregate } from '../../agents/types.ts';
 import { useValueFlash, interpolateColor } from '../hooks/useValueFlash.ts';
 import { useAnimatedValue } from '../hooks/useAnimatedValue.ts';
 import { useEntranceAnimation, applyEntranceFade } from '../hooks/useEntranceAnimation.ts';
+import { useExitAnimation } from '../hooks/useExitAnimation.ts';
 
 interface SessionsTableProps {
   sessions: AgentSessionAggregate[];
@@ -81,6 +82,9 @@ interface SessionRowProps {
   isSelected: boolean;
   isWide: boolean;
   getProviderColor: (id: string) => string;
+  isExiting?: boolean;
+  exitIntensity?: number;
+  skipEntrance?: boolean;
 }
 
 function getActivityFadeColor(lastActivityAt: number, baseColor: string, dimColor: string): string {
@@ -91,10 +95,12 @@ function getActivityFadeColor(lastActivityAt: number, baseColor: string, dimColo
   return interpolateColor(t, baseColor, dimColor);
 }
 
-const SessionRow = memo(function SessionRow({ session, isSelected, isWide, getProviderColor }: SessionRowProps) {
+const SessionRow = memo(function SessionRow({ session, isSelected, isWide, getProviderColor, isExiting, exitIntensity, skipEntrance }: SessionRowProps) {
   const colors = useColors();
   const isActive = session.status === 'active';
   const entranceIntensity = useEntranceAnimation({ durationMs: 500 });
+  const skipRef = useRef(skipEntrance);
+  const currentIntensity = isExiting ? (exitIntensity ?? 0) : (skipRef.current ? 1 : entranceIntensity);
   
    const totalTokens = session.totals.input + session.totals.output;
    const costUsd = session.totalCostUsd ?? 0;
@@ -114,7 +120,7 @@ const SessionRow = memo(function SessionRow({ session, isSelected, isWide, getPr
   const projectDisplay = repoName.length > projectMaxLen ? repoName.slice(0, projectMaxLen - 1) + '…' : repoName;
   
   const dimColor = colors.background;
-  const fade = (color: string) => applyEntranceFade(entranceIntensity, color, dimColor);
+  const fade = (color: string) => applyEntranceFade(currentIntensity, color, dimColor);
   
   const baseStatusColor = isActive 
     ? getActivityFadeColor(session.lastActivityAt, colors.success, colors.textMuted)
@@ -217,6 +223,14 @@ export const SessionsTable = forwardRef(function SessionsTable(
   const { width: terminalWidth } = useTerminalDimensions();
   const isWide = terminalWidth >= WIDE_THRESHOLD;
 
+  const getSessionKey = useCallback((s: AgentSessionAggregate) => s.sessionId, []);
+  const { items: animatedSessions, isBulkChange } = useExitAnimation(sessions, {
+    durationMs: 500,
+    getKey: getSessionKey,
+  });
+
+  let activeIndex = 0;
+
   return (
     <box
       flexDirection="column"
@@ -263,20 +277,26 @@ export const SessionsTable = forwardRef(function SessionsTable(
 
       <scrollbox ref={ref} flexGrow={1}>
         <box flexDirection="column">
-          {sessions.length === 0 && (
+          {sessions.length === 0 && animatedSessions.length === 0 && (
             <box paddingLeft={2}>
               <text fg={colors.textMuted}>{isLoading ? 'Loading sessions...' : 'No sessions found'}</text>
             </box>
           )}
-          {sessions.map((session, idx) => (
-            <SessionRow
-              key={session.sessionId}
-              session={session}
-              isSelected={idx === selectedRow}
-              isWide={isWide}
-              getProviderColor={getProviderColor}
-            />
-          ))}
+          {animatedSessions.map((entry) => {
+            const isSelectedRow = !entry.isExiting && activeIndex++ === selectedRow;
+            return (
+              <SessionRow
+                key={entry.item.sessionId}
+                session={entry.item}
+                isSelected={isSelectedRow}
+                isWide={isWide}
+                getProviderColor={getProviderColor}
+                isExiting={entry.isExiting}
+                exitIntensity={entry.exitIntensity}
+                skipEntrance={isBulkChange}
+              />
+            );
+          })}
         </box>
       </scrollbox>
     </box>

@@ -59,6 +59,7 @@ interface TimeWindowContextValue {
   window: TimeWindow;
   setWindow: (w: TimeWindow) => void;
   cycleWindow: () => void;
+  cycleWindowBack: () => void;
   windowMs: number | null;
   windowLabel: string;
   getWindowStart: () => number | null;
@@ -83,6 +84,12 @@ function getNextWindow(current: TimeWindow): TimeWindow {
   return TIME_WINDOW_OPTIONS[nextIdx] as TimeWindow;
 }
 
+function getPrevWindow(current: TimeWindow): TimeWindow {
+  const idx = TIME_WINDOW_OPTIONS.indexOf(current);
+  const prevIdx = (idx - 1 + TIME_WINDOW_OPTIONS.length) % TIME_WINDOW_OPTIONS.length;
+  return TIME_WINDOW_OPTIONS[prevIdx] as TimeWindow;
+}
+
 export function TimeWindowProvider({ children, defaultWindow = '24h' }: TimeWindowProviderProps) {
   const [window, setWindowState] = useState<TimeWindow>(defaultWindow);
   const [budgetLock, setBudgetLock] = useState<BudgetLock>('sync');
@@ -93,6 +100,10 @@ export function TimeWindowProvider({ children, defaultWindow = '24h' }: TimeWind
 
   const cycleWindow = useCallback(() => {
     setWindowState(getNextWindow);
+  }, []);
+
+  const cycleWindowBack = useCallback(() => {
+    setWindowState(getPrevWindow);
   }, []);
 
   const cycleBudgetLock = useCallback(() => {
@@ -119,6 +130,7 @@ export function TimeWindowProvider({ children, defaultWindow = '24h' }: TimeWind
     window,
     setWindow,
     cycleWindow,
+    cycleWindowBack,
     windowMs,
     windowLabel,
     getWindowStart,

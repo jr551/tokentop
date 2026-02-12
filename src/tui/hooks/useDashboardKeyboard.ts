@@ -81,7 +81,7 @@ export function useDashboardKeyboard({
   processedSessions,
 }: UseDashboardKeyboardProps) {
   const { setInputFocused } = useInputFocus();
-  const { cycleWindow, cycleBudgetLock } = useTimeWindow();
+  const { cycleWindow, cycleWindowBack, cycleBudgetLock } = useTimeWindow();
   const { showToast } = useToastContext();
   const { refreshSessions } = useAgentSessions();
 
@@ -219,6 +219,11 @@ export function useDashboardKeyboard({
     // Clear applied filter with Escape (when not in typing mode)
     if (key.name === 'escape' && filterQueryRef.current) {
       actions.setFilterQuery(() => '');
+      return;
+    }
+
+    if (key.name === 't' && key.shift) {
+      cycleWindowBack();
       return;
     }
 
