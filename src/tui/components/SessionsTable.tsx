@@ -190,7 +190,7 @@ const SessionRow = memo(function SessionRow({ session, isSelected, isWide, getPr
         <text width={9} height={1} fg={isSelected ? textColor : textSubtleColor} {...bgProp}>{session.agentName.length > 8 ? session.agentName.slice(0, 8) + '…' : session.agentName.padEnd(8)}</text>
         <text width={16} height={1} fg={providerColor} {...bgProp}>{modelWithCount.padEnd(15)}</text>
         <text width={8} height={1} fg={tokenColor} {...bgProp}>{formatTokensVal(animatedTokens).padStart(7)}</text>
-        <text width={7} height={1} fg={warningColor} {...bgProp}>{formatCostVal(costUsd).padStart(6)}</text>
+        <text width={7} height={1} fg={costColor} {...bgProp}>{formatCostVal(costUsd).padStart(6)}</text>
         <text flexGrow={1} height={1} fg={textSubtleColor} {...bgProp}>{projectDisplay}</text>
         <text width={5} height={1} fg={lastColor} {...bgProp}>{lastActivity.padStart(4)}</text>
         <text width={2} height={1} fg={statusColor} {...bgProp}>{isActive ? '●' : '○'}</text>
