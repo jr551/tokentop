@@ -4,6 +4,7 @@ import type {
   AgentName,
   AgentSessionAggregate,
   AgentSessionStream,
+  StreamWindowedTokens,
   TokenCounts,
 } from './types.ts';
 
@@ -41,15 +42,32 @@ function sumTokens(a: TokenCounts, b: TokenCounts): TokenCounts {
   return result;
 }
 
+function computeWindowBoundaries(now: number) {
+  const nowDate = new Date(now);
+  const startOfDay = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate()).getTime();
+  const dayOfWeek = nowDate.getDay();
+  const startOfWeek = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate() - dayOfWeek).getTime();
+  const startOfMonth = new Date(nowDate.getFullYear(), nowDate.getMonth(), 1).getTime();
+  return { startOfDay, startOfWeek, startOfMonth };
+}
+
+interface StreamAccumulator {
+  key: StreamKey;
+  tokens: TokenCounts;
+  requestCount: number;
+  windowed: StreamWindowedTokens;
+}
+
 export function aggregateSessionUsage(options: AggregateOptions): AgentSessionAggregate[] {
   const { agentId, agentName, rows, now = Date.now(), activeThresholdMs = ACTIVE_THRESHOLD_MS } = options;
+  const { startOfDay, startOfWeek, startOfMonth } = computeWindowBoundaries(now);
 
   const sessionMap = new Map<string, {
     sessionName?: string;
     projectPath?: string;
     timestamps: number[];
     sessionUpdatedAt?: number;
-    streamMap: Map<string, { key: StreamKey; tokens: TokenCounts; requestCount: number }>;
+    streamMap: Map<string, StreamAccumulator>;
   }>();
 
   for (const row of rows) {
@@ -60,7 +78,7 @@ export function aggregateSessionUsage(options: AggregateOptions): AgentSessionAg
         projectPath?: string;
         timestamps: number[];
         sessionUpdatedAt?: number;
-        streamMap: Map<string, { key: StreamKey; tokens: TokenCounts; requestCount: number }>;
+        streamMap: Map<string, StreamAccumulator>;
       } = {
         timestamps: [],
         streamMap: new Map(),
@@ -93,12 +111,19 @@ export function aggregateSessionUsage(options: AggregateOptions): AgentSessionAg
         key: streamKey,
         tokens: { input: 0, output: 0 },
         requestCount: 0,
+        windowed: { dayTokens: 0, weekTokens: 0, monthTokens: 0, totalTokens: 0 },
       };
       session.streamMap.set(streamKeyStr, stream);
     }
 
     stream.tokens = sumTokens(stream.tokens, row.tokens);
     stream.requestCount += 1;
+
+    const msgTokens = row.tokens.input + row.tokens.output;
+    stream.windowed.totalTokens += msgTokens;
+    if (row.timestamp >= startOfDay) stream.windowed.dayTokens += msgTokens;
+    if (row.timestamp >= startOfWeek) stream.windowed.weekTokens += msgTokens;
+    if (row.timestamp >= startOfMonth) stream.windowed.monthTokens += msgTokens;
   }
 
   const results: AgentSessionAggregate[] = [];
@@ -110,10 +135,11 @@ export function aggregateSessionUsage(options: AggregateOptions): AgentSessionAg
     const status = (now - lastSeenAt) <= activeThresholdMs ? 'active' : 'idle';
 
     const streams: AgentSessionStream[] = [];
+    const streamWindowedTokens = new Map<string, StreamWindowedTokens>();
     let totals: TokenCounts = { input: 0, output: 0 };
     let totalRequestCount = 0;
 
-    for (const stream of session.streamMap.values()) {
+    for (const [streamKeyStr, stream] of session.streamMap) {
       streams.push({
         providerId: stream.key.providerId,
         modelId: stream.key.modelId,
@@ -122,6 +148,7 @@ export function aggregateSessionUsage(options: AggregateOptions): AgentSessionAg
       });
       totals = sumTokens(totals, stream.tokens);
       totalRequestCount += stream.requestCount;
+      streamWindowedTokens.set(streamKeyStr, stream.windowed);
     }
 
     const aggregate: AgentSessionAggregate = {
@@ -134,6 +161,10 @@ export function aggregateSessionUsage(options: AggregateOptions): AgentSessionAg
       totals,
       requestCount: totalRequestCount,
       streams,
+      costInDay: 0,
+      costInWeek: 0,
+      costInMonth: 0,
+      _streamWindowedTokens: streamWindowedTokens,
     };
     if (session.sessionName) aggregate.sessionName = session.sessionName;
     if (session.projectPath) aggregate.projectPath = session.projectPath;

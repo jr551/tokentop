@@ -27,11 +27,35 @@ export async function priceSession(session: AgentSessionAggregate): Promise<Agen
 
   const hasAnyCost = pricedStreams.some(s => s.costUsd !== undefined);
 
+  let costInDay = 0;
+  let costInWeek = 0;
+  let costInMonth = 0;
+
+  if (hasAnyCost && session._streamWindowedTokens) {
+    for (const stream of pricedStreams) {
+      const streamCost = stream.costUsd ?? 0;
+      if (streamCost === 0) continue;
+
+      const keyStr = `${stream.providerId}::${stream.modelId}`;
+      const windowed = session._streamWindowedTokens.get(keyStr);
+      if (!windowed || windowed.totalTokens === 0) continue;
+
+      const ratio = 1 / windowed.totalTokens;
+      costInDay += streamCost * windowed.dayTokens * ratio;
+      costInWeek += streamCost * windowed.weekTokens * ratio;
+      costInMonth += streamCost * windowed.monthTokens * ratio;
+    }
+  }
+
   const result: AgentSessionAggregate = {
     ...session,
     streams: pricedStreams,
+    costInDay,
+    costInWeek,
+    costInMonth,
   };
   if (hasAnyCost) result.totalCostUsd = totalCostUsd;
+  delete result._streamWindowedTokens;
 
   return result;
 }
