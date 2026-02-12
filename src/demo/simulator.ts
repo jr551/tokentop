@@ -268,6 +268,16 @@ export class DemoSimulator {
         ? startedAt + this.rng.range(30, 120) * 60 * 1000
         : now - this.rng.range(10_000, 50_000);
 
+      const nowDate = new Date(now);
+      const startOfDay = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate()).getTime();
+      const dayOfWeek = nowDate.getDay();
+      const startOfWeek = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate() - dayOfWeek).getTime();
+      const startOfMonth = new Date(nowDate.getFullYear(), nowDate.getMonth(), 1).getTime();
+
+      const costInDay = lastActivityAt >= startOfDay ? cost : 0;
+      const costInWeek = lastActivityAt >= startOfWeek ? cost : 0;
+      const costInMonth = lastActivityAt >= startOfMonth ? cost : 0;
+
       const baseSession: Omit<AgentSessionAggregate, 'endedAt'> = {
         sessionId: seedSession.sessionId,
         agentId: seedSession.agentId,
@@ -285,6 +295,9 @@ export class DemoSimulator {
         totalCostUsd: cost,
         requestCount: Math.max(1, Math.floor(tokens / 700)),
         streams,
+        costInDay,
+        costInWeek,
+        costInMonth,
       };
       if (seedSession.sessionName) {
         baseSession.sessionName = seedSession.sessionName;
@@ -562,6 +575,9 @@ export class DemoSimulator {
         totalCostUsd: (session.totalCostUsd ?? 0) + costDelta,
         requestCount: session.requestCount + Math.max(1, Math.floor(deltaTokens / 700)),
         streams: updatedStreams,
+        costInDay: session.costInDay + costDelta,
+        costInWeek: session.costInWeek + costDelta,
+        costInMonth: session.costInMonth + costDelta,
       } satisfies AgentSessionAggregate;
     });
 

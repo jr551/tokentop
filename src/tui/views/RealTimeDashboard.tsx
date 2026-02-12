@@ -259,24 +259,15 @@ export function RealTimeDashboard() {
   }), [processedSessions]);
 
   const budgetPeriodCost = useMemo(() => {
-    const now = new Date();
-    
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const dayOfWeek = now.getDay();
-    const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek).getTime();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
 
     let dailyCost = 0;
     let weeklyCost = 0;
     let monthlyCost = 0;
 
     for (const session of agentSessions) {
-      const cost = session.totalCostUsd ?? 0;
-      const startedAt = session.startedAt ?? session.lastActivityAt;
-      
-      if (startedAt >= startOfDay) dailyCost += cost;
-      if (startedAt >= startOfWeek) weeklyCost += cost;
-      if (startedAt >= startOfMonth) monthlyCost += cost;
+      dailyCost += session.costInDay;
+      weeklyCost += session.costInWeek;
+      monthlyCost += session.costInMonth;
     }
 
     return { daily: dailyCost, weekly: weeklyCost, monthly: monthlyCost };

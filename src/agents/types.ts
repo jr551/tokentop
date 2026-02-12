@@ -26,6 +26,13 @@ export interface AgentSessionStream {
   pricingSource?: 'models.dev' | 'fallback' | 'unknown';
 }
 
+export interface StreamWindowedTokens {
+  dayTokens: number;
+  weekTokens: number;
+  monthTokens: number;
+  totalTokens: number;
+}
+
 export interface AgentSessionAggregate {
   sessionId: string;
   sessionName?: string;
@@ -40,6 +47,13 @@ export interface AgentSessionAggregate {
   totalCostUsd?: number;
   requestCount: number;
   streams: AgentSessionStream[];
+
+  costInDay: number;
+  costInWeek: number;
+  costInMonth: number;
+
+  /** @internal Keyed by `providerId::modelId`. Set by aggregator, consumed by costing. */
+  _streamWindowedTokens?: Map<string, StreamWindowedTokens>;
 }
 
 export interface AgentInfo {
