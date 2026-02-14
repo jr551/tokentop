@@ -2,6 +2,7 @@ import type { PluginPermissions } from './types/base.ts';
 import type { PluginContext, PluginStorage } from './types/provider.ts';
 import { createAuthSources } from './auth-sources.ts';
 import { createSandboxedHttpClient, createPluginLogger } from './sandbox.ts';
+import { deepFreeze } from './sandbox-guard.ts';
 import {
   pluginStorageGet,
   pluginStorageSet,
@@ -53,7 +54,7 @@ export function createPluginContext(
   permissions: PluginPermissions,
   signal?: AbortSignal
 ): PluginContext {
-  return {
+  const ctx: PluginContext = {
     config: {},
     logger: createPluginLogger(pluginId),
     http: createSandboxedHttpClient(pluginId, permissions),
@@ -61,4 +62,6 @@ export function createPluginContext(
     storage: createPluginStorage(pluginId),
     signal: signal ?? AbortSignal.timeout(30_000),
   };
+  deepFreeze(ctx.config);
+  return ctx;
 }
