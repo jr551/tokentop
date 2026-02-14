@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
 import { pluginRegistry } from '@/plugins/registry.ts';
 import type { ActivityUpdate } from '@/plugins/types/agent.ts';
+import { createPluginContext } from '@/plugins/plugin-context-factory.ts';
 import { usePlugins } from './PluginContext.tsx';
 import { useLogs } from './LogContext.tsx';
 import { useDemoMode } from './DemoModeContext.tsx';
@@ -58,12 +59,13 @@ export function RealTimeActivityProvider({ children }: { children: ReactNode }) 
 
     for (const plugin of agentPlugins) {
       if (plugin.capabilities.realTimeTracking && plugin.startActivityWatch) {
+        const ctx = createPluginContext(plugin.id, plugin.permissions);
         info(`Starting real-time activity watch for ${plugin.id}`, undefined, 'realtime');
-        plugin.startActivityWatch(handleActivityUpdate);
+        plugin.startActivityWatch(ctx, handleActivityUpdate);
         
         if (plugin.stopActivityWatch) {
-          const stop = plugin.stopActivityWatch.bind(plugin);
-          cleanups.push(stop);
+          const stopFn = plugin.stopActivityWatch.bind(plugin, ctx);
+          cleanups.push(stopFn);
         }
       }
     }

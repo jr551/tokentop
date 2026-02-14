@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { BasePlugin, PluginHttpClient, PluginLogger } from './base.ts';
-import type { Credentials, OAuthCredentials } from './provider.ts';
+import type { Credentials, OAuthCredentials, PluginContext } from './provider.ts';
 
 export const AgentCapabilitiesSchema = z.object({
   sessionParsing: z.boolean(),
@@ -12,9 +12,15 @@ export const AgentCapabilitiesSchema = z.object({
 export type AgentCapabilities = z.infer<typeof AgentCapabilitiesSchema>;
 
 export interface AgentConfig {
+  /** Display name for this coding agent (e.g. "OpenCode", "Cursor"). */
+  name: string;
+  /** CLI command that launches the agent (for display/detection). */
   command?: string;
+  /** Path to the agent's config directory (for display/debugging). */
   configPath?: string;
+  /** Path to the agent's session storage. */
   sessionPath?: string;
+  /** Path to the agent's auth file (for credential reading). */
   authPath?: string;
 }
 
@@ -56,9 +62,10 @@ export interface SessionUsageData {
 }
 
 export interface AgentFetchContext {
-  http: PluginHttpClient;
-  log: PluginLogger;
-  config: Record<string, unknown>;
+  readonly http: PluginHttpClient;
+  readonly logger: PluginLogger;
+  readonly config: Record<string, unknown>;
+  readonly signal: AbortSignal;
 }
 
 export interface ActivityUpdate {
@@ -81,11 +88,21 @@ export interface AgentPlugin extends BasePlugin {
   readonly agent: AgentConfig;
   readonly capabilities: AgentCapabilities;
 
-  isInstalled(): Promise<boolean>;
-  readCredentials(ctx: AgentFetchContext): Promise<AgentCredentials>;
-  parseSessions(options: SessionParseOptions, ctx: AgentFetchContext): Promise<SessionUsageData[]>;
-  getProviders(ctx: AgentFetchContext): Promise<AgentProviderConfig[]>;
+  /** Check if this coding agent is installed on the user's machine. */
+  isInstalled(ctx: PluginContext): Promise<boolean>;
 
-  startActivityWatch?(callback: ActivityCallback): void;
-  stopActivityWatch?(): void;
+  /** Read credentials that the coding agent has stored. */
+  readCredentials?(ctx: AgentFetchContext): Promise<AgentCredentials>;
+
+  /** Parse session usage data from the agent's local storage. */
+  parseSessions(options: SessionParseOptions, ctx: AgentFetchContext): Promise<SessionUsageData[]>;
+
+  /** List which model providers this agent is configured to use. */
+  getProviders?(ctx: AgentFetchContext): Promise<AgentProviderConfig[]>;
+
+  /** Start watching for real-time activity updates. */
+  startActivityWatch?(ctx: PluginContext, callback: ActivityCallback): void;
+
+  /** Stop watching for real-time activity updates. */
+  stopActivityWatch?(ctx: PluginContext): void;
 }

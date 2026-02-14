@@ -5,6 +5,7 @@ import { aggregateSessionUsage } from '@/agents/aggregator.ts';
 import { priceSessions } from '@/agents/costing.ts';
 import { pluginRegistry } from '@/plugins/registry.ts';
 import { createSandboxedHttpClient, createPluginLogger } from '@/plugins/sandbox.ts';
+import { createPluginContext } from '@/plugins/plugin-context-factory.ts';
 import { useLogs } from './LogContext.tsx';
 import { usePlugins } from './PluginContext.tsx';
 import { useStorage } from './StorageContext.tsx';
@@ -59,9 +60,10 @@ export function AgentSessionProvider({
     for (const plugin of agentPlugins) {
       const agentId = plugin.id;
       const agentName = plugin.name;
+      const ctx = createPluginContext(plugin.id, plugin.permissions);
 
       try {
-        const installed = await plugin.isInstalled();
+        const installed = await plugin.isInstalled(ctx);
         const agentInfo: AgentInfo = {
           agentId,
           name: agentName,
@@ -92,8 +94,8 @@ export function AgentSessionProvider({
     const agentName = plugin.name;
 
     const http = createSandboxedHttpClient(plugin.id, plugin.permissions);
-    const log = createPluginLogger(plugin.id);
-    const ctx = { http, log, config: {} };
+    const logger = createPluginLogger(plugin.id);
+    const ctx = { http, logger, config: {}, signal: AbortSignal.timeout(60_000) };
 
     const rawSessions = await plugin.parseSessions(options, ctx);
 
@@ -142,7 +144,8 @@ export function AgentSessionProvider({
         }
 
         try {
-          const installed = await plugin.isInstalled();
+          const pluginCtx = createPluginContext(plugin.id, plugin.permissions);
+          const installed = await plugin.isInstalled(pluginCtx);
           if (!installed) {
             debug(`Skipping ${plugin.id}: not installed`, undefined, 'agent-sessions');
             continue;

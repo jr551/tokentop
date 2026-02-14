@@ -1,1 +1,1 @@
-export { opencodeAgentPlugin } from './opencode.ts';
+export { default as opencodeAgentPlugin } from '@tokentop/agent-opencode';

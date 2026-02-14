@@ -75,14 +75,14 @@ export async function validatePlugin(plugin: unknown): Promise<PluginValidationR
     if (typeof p.isInstalled !== 'function') {
       errors.push('Agent plugin must implement "isInstalled" method');
     }
-    if (typeof p.readCredentials !== 'function') {
-      errors.push('Agent plugin must implement "readCredentials" method');
-    }
     if (typeof p.parseSessions !== 'function') {
       errors.push('Agent plugin must implement "parseSessions" method');
     }
-    if (typeof p.getProviders !== 'function') {
-      errors.push('Agent plugin must implement "getProviders" method');
+    if (p.readCredentials !== undefined && typeof p.readCredentials !== 'function') {
+      errors.push('Agent plugin "readCredentials" must be a function if provided');
+    }
+    if (p.getProviders !== undefined && typeof p.getProviders !== 'function') {
+      errors.push('Agent plugin "getProviders" must be a function if provided');
     }
   }
 
