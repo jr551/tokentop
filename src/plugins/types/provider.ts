@@ -208,14 +208,15 @@ export interface ProviderUsageData {
 // ---------------------------------------------------------------------------
 
 export interface ProviderFetchContext {
-  credentials: Credentials;
-  options?: {
+  readonly credentials: Credentials;
+  readonly http: PluginHttpClient;
+  readonly logger: PluginLogger;
+  readonly config: Record<string, unknown>;
+  readonly signal: AbortSignal;
+  readonly options?: {
     timePeriod?: 'session' | 'daily' | 'weekly' | 'monthly';
     sessionId?: string;
   };
-  http: PluginHttpClient;
-  log: PluginLogger;
-  config: Record<string, unknown>;
 }
 
 // ---------------------------------------------------------------------------
@@ -226,7 +227,7 @@ export interface ProviderPlugin extends BasePlugin {
   readonly type: 'provider';
   readonly capabilities: ProviderCapabilities;
   readonly auth: ProviderAuth;
-  readonly pricing?: Record<string, ModelPricing> | ProviderPricing;
+  readonly pricing?: ProviderPricing;
   fetchUsage(ctx: ProviderFetchContext): Promise<ProviderUsageData>;
   refreshToken?(auth: OAuthCredentials): Promise<RefreshedCredentials>;
 }

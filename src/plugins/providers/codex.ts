@@ -56,6 +56,7 @@ interface CodexUsageResponse {
 }
 
 export const codexPlugin: ProviderPlugin = {
+  apiVersion: 2,
   id: 'codex',
   type: 'provider',
   name: 'Codex',
@@ -64,7 +65,7 @@ export const codexPlugin: ProviderPlugin = {
   meta: {
     description: 'OpenAI Codex subscription usage tracking (OAuth)',
     homepage: 'https://openai.com/codex',
-    color: '#10a37f',
+    brandColor: '#10a37f',
   },
 
   permissions: {
@@ -143,7 +144,7 @@ export const codexPlugin: ProviderPlugin = {
   } satisfies ProviderAuth,
 
   async fetchUsage(ctx: ProviderFetchContext): Promise<ProviderUsageData> {
-    const { credentials, http, log } = ctx;
+    const { credentials, http, logger: log } = ctx;
 
     if (!credentials.oauth?.accessToken) {
       return {

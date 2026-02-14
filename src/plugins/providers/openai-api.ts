@@ -50,6 +50,7 @@ interface CostsResponse {
 }
 
 export const openaiApiPlugin: ProviderPlugin = {
+  apiVersion: 2,
   id: 'openai-api',
   type: 'provider',
   name: 'OpenAI API',
@@ -58,7 +59,7 @@ export const openaiApiPlugin: ProviderPlugin = {
   meta: {
     description: 'OpenAI API usage tracking (tokens and costs)',
     homepage: 'https://platform.openai.com',
-    color: '#10a37f',
+    brandColor: '#10a37f',
   },
 
   permissions: {
@@ -115,7 +116,7 @@ export const openaiApiPlugin: ProviderPlugin = {
   } satisfies ProviderAuth,
 
   async fetchUsage(ctx: ProviderFetchContext): Promise<ProviderUsageData> {
-    const { credentials, http, log } = ctx;
+    const { credentials, http, logger: log } = ctx;
 
     if (!credentials.apiKey) {
       return {

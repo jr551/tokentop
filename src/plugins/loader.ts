@@ -7,6 +7,7 @@ import type {
   PluginValidationResult,
   AnyPlugin,
 } from './types/index.ts';
+import { CURRENT_API_VERSION } from './types/base.ts';
 import { PATHS } from '@/storage/paths.ts';
 
 const CUSTOM_PLUGINS_DIR = PATHS.config.plugins;
@@ -45,9 +46,25 @@ export async function validatePlugin(plugin: unknown): Promise<PluginValidationR
     errors.push('Plugin must declare "permissions" object');
   }
 
+  if (p.apiVersion !== CURRENT_API_VERSION) {
+    if (typeof p.apiVersion === 'number') {
+      errors.push(`Plugin apiVersion ${p.apiVersion} is not compatible (expected ${CURRENT_API_VERSION})`);
+    } else {
+      errors.push(`Plugin must declare "apiVersion: ${CURRENT_API_VERSION}"`);
+    }
+  }
+
   if (p.type === 'provider') {
-    if (typeof p.isConfigured !== 'function') {
-      errors.push('Provider plugin must implement "isConfigured" method');
+    if (!p.auth || typeof p.auth !== 'object') {
+      errors.push('Provider plugin must declare "auth" object with discover() and isConfigured()');
+    } else {
+      const auth = p.auth as Record<string, unknown>;
+      if (typeof auth.discover !== 'function') {
+        errors.push('Provider plugin auth must implement "discover" method');
+      }
+      if (typeof auth.isConfigured !== 'function') {
+        errors.push('Provider plugin auth must implement "isConfigured" method');
+      }
     }
     if (typeof p.fetchUsage !== 'function') {
       errors.push('Provider plugin must implement "fetchUsage" method');
@@ -84,9 +101,6 @@ export async function validatePlugin(plugin: unknown): Promise<PluginValidationR
     }
     if (typeof p.notify !== 'function') {
       errors.push('Notification plugin must implement "notify" method');
-    }
-    if (typeof p.test !== 'function') {
-      errors.push('Notification plugin must implement "test" method');
     }
   }
 

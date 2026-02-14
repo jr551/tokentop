@@ -27,6 +27,7 @@ interface ZaiUsageResponse {
 }
 
 export const zaiCodingPlanPlugin: ProviderPlugin = {
+  apiVersion: 2,
   id: 'zai-coding-plan',
   type: 'provider',
   name: 'Z.ai Coding Plan',
@@ -35,7 +36,7 @@ export const zaiCodingPlanPlugin: ProviderPlugin = {
   meta: {
     description: 'Z.ai coding plan usage and quota tracking',
     homepage: 'https://z.ai',
-    color: '#10b981',
+    brandColor: '#10b981',
   },
 
   permissions: {
@@ -91,7 +92,7 @@ export const zaiCodingPlanPlugin: ProviderPlugin = {
   } satisfies ProviderAuth,
 
   async fetchUsage(ctx: ProviderFetchContext): Promise<ProviderUsageData> {
-    const { credentials, http, log } = ctx;
+    const { credentials, http, logger: log } = ctx;
 
     const token = credentials.apiKey || credentials.oauth?.accessToken;
 

@@ -9,6 +9,7 @@ import type {
 } from '../types/provider.ts';
 
 export const opencodeZenPlugin: ProviderPlugin = {
+  apiVersion: 2,
   id: 'opencode-zen',
   type: 'provider',
   name: 'OpenCode Zen',
@@ -17,7 +18,7 @@ export const opencodeZenPlugin: ProviderPlugin = {
   meta: {
     description: 'OpenCode Zen - curated AI models for coding agents',
     homepage: 'https://opencode.ai/zen',
-    color: '#6366f1',
+    brandColor: '#6366f1',
   },
 
   permissions: {
@@ -74,7 +75,7 @@ export const opencodeZenPlugin: ProviderPlugin = {
   } satisfies ProviderAuth,
 
   async fetchUsage(ctx: ProviderFetchContext): Promise<ProviderUsageData> {
-    const { credentials, http, log } = ctx;
+    const { credentials, http, logger: log } = ctx;
 
     if (!credentials.apiKey) {
       return {

@@ -1,6 +1,7 @@
 import type { ThemePlugin } from '../types/theme.ts';
 
 export const tokyoNightTheme: ThemePlugin = {
+  apiVersion: 2,
   id: 'tokyo-night',
   type: 'theme',
   name: 'Tokyo Night',

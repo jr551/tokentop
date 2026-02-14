@@ -23,6 +23,7 @@ import type {
  */
 
 export const perplexityPlugin: ProviderPlugin = {
+  apiVersion: 2,
   id: 'perplexity',
   type: 'provider',
   name: 'Perplexity',
@@ -31,7 +32,7 @@ export const perplexityPlugin: ProviderPlugin = {
   meta: {
     description: 'Perplexity AI API usage (credit-based)',
     homepage: 'https://www.perplexity.ai',
-    color: '#20b2aa',
+    brandColor: '#20b2aa',
   },
 
   permissions: {
@@ -80,7 +81,7 @@ export const perplexityPlugin: ProviderPlugin = {
   } satisfies ProviderAuth,
 
   async fetchUsage(ctx: ProviderFetchContext): Promise<ProviderUsageData> {
-    const { credentials, http, log } = ctx;
+    const { credentials, http, logger: log } = ctx;
 
     if (!credentials.apiKey) {
       return {

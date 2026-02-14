@@ -5,5 +5,5 @@ export function getProviderColor(
   providers: Map<string, ProviderState>,
   fallback: string,
 ): string {
-  return providers.get(providerId)?.plugin.meta?.color ?? fallback;
+  return providers.get(providerId)?.plugin.meta?.brandColor ?? fallback;
 }

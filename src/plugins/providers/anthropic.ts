@@ -116,6 +116,7 @@ interface AnthropicUsageResponse {
 }
 
 export const anthropicPlugin: ProviderPlugin = {
+  apiVersion: 2,
   id: 'anthropic',
   type: 'provider',
   name: 'Anthropic',
@@ -124,7 +125,7 @@ export const anthropicPlugin: ProviderPlugin = {
   meta: {
     description: 'Anthropic Claude subscription usage tracking',
     homepage: 'https://anthropic.com',
-    color: '#d4a27f',
+    brandColor: '#d4a27f',
   },
 
   permissions: {
@@ -179,7 +180,7 @@ export const anthropicPlugin: ProviderPlugin = {
   } satisfies ProviderAuth,
 
   async fetchUsage(ctx: ProviderFetchContext): Promise<ProviderUsageData> {
-    const { credentials, http, log } = ctx;
+    const { credentials, http, logger: log } = ctx;
 
     const hasOAuth = !!credentials.oauth?.accessToken;
     const hasApiKey = !!credentials.apiKey;

@@ -1,13 +1,30 @@
 /**
  * Base plugin types and interfaces for the tokentop plugin system.
+ *
+ * These types mirror the Plugin SDK (@tokentop/plugin-sdk) — the SDK is the
+ * authoritative contract for community developers; core adapts to match.
  */
 
 import { z } from 'zod';
+
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
 
 /**
  * Plugin type discriminator
  */
 export type PluginType = 'provider' | 'agent' | 'theme' | 'notification';
+
+/**
+ * Current API contract version.
+ * Core checks this at load time to ensure compatibility.
+ */
+export const CURRENT_API_VERSION = 2;
+
+// ---------------------------------------------------------------------------
+// Permissions
+// ---------------------------------------------------------------------------
 
 /**
  * Plugin permissions schema - defines what a plugin can access
@@ -34,6 +51,10 @@ export const PluginPermissionsSchema = z.object({
 
 export type PluginPermissions = z.infer<typeof PluginPermissionsSchema>;
 
+// ---------------------------------------------------------------------------
+// Metadata
+// ---------------------------------------------------------------------------
+
 /**
  * Plugin metadata
  */
@@ -43,15 +64,74 @@ export const PluginMetaSchema = z.object({
   homepage: z.string().url().optional(),
   repository: z.string().url().optional(),
   license: z.string().optional(),
-  color: z.string().optional(),
+  /**
+   * Brand color as a hex string (e.g. `"#d97757"`).
+   * Used by the TUI for provider cards, charts, and status indicators.
+   */
+  brandColor: z.string().optional(),
+  /**
+   * Single-character icon or short glyph for compact displays.
+   * Example: `"◆"`, `"▲"`, `"⚡"`
+   */
+  icon: z.string().optional(),
 });
 
 export type PluginMeta = z.infer<typeof PluginMetaSchema>;
 
+// ---------------------------------------------------------------------------
+// Configuration
+// ---------------------------------------------------------------------------
+
 /**
- * Base plugin interface - all plugins must implement this
+ * Plugin configuration field definition (for plugin settings UI)
+ */
+export interface ConfigField {
+  /** Data type of the setting value. */
+  type: 'string' | 'number' | 'boolean' | 'select';
+  /** Label shown in the settings UI. */
+  label?: string;
+  /** Help text shown below the field. */
+  description?: string;
+  /** Whether the field must have a value. */
+  required?: boolean;
+  /** Default value when no user config exists. */
+  default?: unknown;
+  /** Available options (for `select` type only). */
+  options?: Array<{ value: string; label: string }>;
+  /** Minimum value (for `number` type only). */
+  min?: number;
+  /** Maximum value (for `number` type only). */
+  max?: number;
+}
+
+// ---------------------------------------------------------------------------
+// Lifecycle Context
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimal context provided to lifecycle hooks.
+ */
+export interface PluginLifecycleContext {
+  /** Plugin's validated configuration values. */
+  readonly config: Record<string, unknown>;
+  /** Scoped logger that prefixes all output with the plugin ID. */
+  readonly logger: PluginLogger;
+}
+
+// ---------------------------------------------------------------------------
+// Base Plugin
+// ---------------------------------------------------------------------------
+
+/**
+ * Base plugin interface - all plugins must implement this.
+ *
+ * Provides identity, metadata, permissions, optional configuration schema,
+ * and lifecycle hooks.
  */
 export interface BasePlugin {
+  /** API version this plugin targets. Must equal {@link CURRENT_API_VERSION}. */
+  readonly apiVersion: 2;
+
   /** Unique plugin identifier (kebab-case) */
   readonly id: string;
 
@@ -72,18 +152,49 @@ export interface BasePlugin {
 
   /** Plugin-declared configuration fields, rendered in Settings UI */
   readonly configSchema?: Record<string, ConfigField>;
+
+  /**
+   * Default config values. Used when no user configuration exists.
+   * Keys must match those in {@link configSchema}.
+   */
+  readonly defaultConfig?: Record<string, unknown>;
+
+  // -- Lifecycle Hooks (all optional) -------------------------------------
+
+  /**
+   * Called once after the plugin is loaded and validated.
+   * Use for one-time setup (open connections, allocate resources).
+   */
+  initialize?(ctx: PluginLifecycleContext): Promise<void>;
+
+  /**
+   * Called when the plugin should begin active work (e.g. polling).
+   * Called after `initialize()` during app startup, and after re-enable.
+   */
+  start?(ctx: PluginLifecycleContext): Promise<void>;
+
+  /**
+   * Called when the plugin should pause active work.
+   * Called before `destroy()` during app shutdown, and on disable.
+   */
+  stop?(ctx: PluginLifecycleContext): Promise<void>;
+
+  /**
+   * Called once before the plugin is unloaded.
+   * Use for cleanup (close connections, flush buffers).
+   */
+  destroy?(ctx: PluginLifecycleContext): Promise<void>;
+
+  /**
+   * Called when the user changes this plugin's configuration.
+   * Receive the new validated config values.
+   */
+  onConfigChange?(config: Record<string, unknown>, ctx: PluginLifecycleContext): Promise<void> | void;
 }
 
-/**
- * Plugin configuration field definition (for plugin settings UI)
- */
-export interface ConfigField {
-  type: 'string' | 'number' | 'boolean' | 'select';
-  required?: boolean;
-  default?: unknown;
-  description?: string;
-  options?: Array<{ value: string; label: string }>; // For select type
-}
+// ---------------------------------------------------------------------------
+// Logger
+// ---------------------------------------------------------------------------
 
 /**
  * Logger interface provided to plugins
@@ -95,12 +206,20 @@ export interface PluginLogger {
   error(message: string, data?: Record<string, unknown>): void;
 }
 
+// ---------------------------------------------------------------------------
+// HTTP Client
+// ---------------------------------------------------------------------------
+
 /**
  * HTTP client interface provided to plugins (sandboxed)
  */
 export interface PluginHttpClient {
   fetch(url: string, init?: RequestInit): Promise<Response>;
 }
+
+// ---------------------------------------------------------------------------
+// Validation
+// ---------------------------------------------------------------------------
 
 /**
  * Plugin validation result
@@ -120,6 +239,10 @@ export interface PluginLoadResult<T extends BasePlugin = BasePlugin> {
   error?: string;
   source: 'builtin' | 'local' | 'npm';
 }
+
+// ---------------------------------------------------------------------------
+// Errors
+// ---------------------------------------------------------------------------
 
 /**
  * Plugin permission error

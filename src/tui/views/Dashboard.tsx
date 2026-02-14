@@ -249,7 +249,7 @@ export function Dashboard() {
                       configured={state.configured}
                       loading={state.loading}
                       usage={state.usage}
-                      color={state.plugin.meta?.color}
+                      color={state.plugin.meta?.brandColor}
                       focused={focusedIndex === index && !isFiltering}
                       onFocus={() => setFocusedIndex(index)}
                     />

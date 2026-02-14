@@ -1,6 +1,7 @@
 import type { ThemePlugin } from '../types/theme.ts';
 
 export const draculaTheme: ThemePlugin = {
+  apiVersion: 2,
   id: 'dracula',
   type: 'theme',
   name: 'Dracula',

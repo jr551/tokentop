@@ -1,6 +1,7 @@
 import type { ThemePlugin } from '../types/theme.ts';
 
 export const nordTheme: ThemePlugin = {
+  apiVersion: 2,
   id: 'nord',
   type: 'theme',
   name: 'Nord',

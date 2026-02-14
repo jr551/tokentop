@@ -60,6 +60,7 @@ interface LoadCodeAssistResponse {
 }
 
 export const geminiPlugin: ProviderPlugin = {
+  apiVersion: 2,
   id: 'gemini',
   type: 'provider',
   name: 'Gemini',
@@ -68,7 +69,7 @@ export const geminiPlugin: ProviderPlugin = {
   meta: {
     description: 'Gemini CLI usage tracking',
     homepage: 'https://cloud.google.com/gemini',
-    color: '#4285f4',
+    brandColor: '#4285f4',
   },
 
   permissions: {
@@ -149,7 +150,7 @@ export const geminiPlugin: ProviderPlugin = {
   },
 
   async fetchUsage(ctx: ProviderFetchContext): Promise<ProviderUsageData> {
-    const { credentials, http, log } = ctx;
+    const { credentials, http, logger: log } = ctx;
 
     if (!credentials.oauth?.accessToken && !credentials.oauth?.refreshToken) {
       return {
@@ -306,7 +307,7 @@ export const geminiPlugin: ProviderPlugin = {
 async function ensureProjectContext(
   accessToken: string,
   http: ProviderFetchContext['http'],
-  log: ProviderFetchContext['log']
+  log: ProviderFetchContext['logger']
 ): Promise<string> {
   const configuredProjectId = process.env.GOOGLE_CLOUD_PROJECT ?? 
                               process.env.GCP_PROJECT ?? 
@@ -354,7 +355,7 @@ async function ensureProjectContext(
 async function onboardToFreeProject(
   accessToken: string,
   http: ProviderFetchContext['http'],
-  log: ProviderFetchContext['log']
+  log: ProviderFetchContext['logger']
 ): Promise<string> {
   const response = await http.fetch(`${GOOGLE_ENDPOINT}/v1internal:onboardUser`, {
     method: 'POST',

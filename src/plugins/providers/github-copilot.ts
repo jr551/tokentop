@@ -28,6 +28,7 @@ interface CopilotQuotaSnapshot {
 }
 
 export const githubCopilotPlugin: ProviderPlugin = {
+  apiVersion: 2,
   id: 'github-copilot',
   type: 'provider',
   name: 'GitHub Copilot',
@@ -36,7 +37,7 @@ export const githubCopilotPlugin: ProviderPlugin = {
   meta: {
     description: 'GitHub Copilot usage tracking including premium requests',
     homepage: 'https://github.com/features/copilot',
-    color: '#6e40c9',
+    brandColor: '#6e40c9',
   },
 
   permissions: {
@@ -106,7 +107,7 @@ export const githubCopilotPlugin: ProviderPlugin = {
   } satisfies ProviderAuth,
 
   async fetchUsage(ctx: ProviderFetchContext): Promise<ProviderUsageData> {
-    const { credentials, http, log } = ctx;
+    const { credentials, http, logger: log } = ctx;
     const token = credentials.apiKey ?? credentials.oauth?.accessToken;
 
     if (!token) {

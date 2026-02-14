@@ -67,6 +67,7 @@ interface AntigravityModelsResponse {
 }
 
 export const antigravityPlugin: ProviderPlugin = {
+  apiVersion: 2,
   id: 'antigravity',
   type: 'provider',
   name: 'Antigravity',
@@ -75,7 +76,7 @@ export const antigravityPlugin: ProviderPlugin = {
   meta: {
     description: 'Antigravity (Google Gemini Advanced) subscription usage tracking',
     homepage: 'https://one.google.com/explore-plan/gemini-advanced',
-    color: '#4285f4',
+    brandColor: '#4285f4',
   },
 
   permissions: {
@@ -173,7 +174,7 @@ export const antigravityPlugin: ProviderPlugin = {
   },
 
   async fetchUsage(ctx: ProviderFetchContext): Promise<ProviderUsageData> {
-    const { credentials, http, log } = ctx;
+    const { credentials, http, logger: log } = ctx;
 
     if (!credentials.oauth?.accessToken && !credentials.oauth?.refreshToken) {
       return {

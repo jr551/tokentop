@@ -1001,6 +1001,7 @@ async function readJsonFile<T>(filePath: string): Promise<T | null> {
 }
 
 export const opencodeAgentPlugin: AgentPlugin = {
+  apiVersion: 2,
   id: 'opencode',
   type: 'agent',
   name: 'OpenCode',

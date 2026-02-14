@@ -273,10 +273,10 @@ export function PluginProvider({ children, cliPlugins }: PluginProviderProps) {
       }
 
       const http = createSandboxedHttpClient(providerId, state.plugin.permissions);
-      const log = createPluginLogger(providerId);
+      const logger = createPluginLogger(providerId);
 
       const fetchResult = await safeInvoke(providerId, 'fetchUsage', () =>
-        state.plugin.fetchUsage({ credentials: creds, http, log, config: {} }),
+        state.plugin.fetchUsage({ credentials: creds, http, logger, config: {}, signal: AbortSignal.timeout(30_000) }),
       );
 
       if (!fetchResult.ok) {

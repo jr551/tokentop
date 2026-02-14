@@ -27,6 +27,7 @@ interface MinimaxUsageResponse {
 
 function createMinimaxPlugin(id: string, name: string): ProviderPlugin {
   return {
+    apiVersion: 2,
     id,
     type: 'provider',
     name,
@@ -35,7 +36,7 @@ function createMinimaxPlugin(id: string, name: string): ProviderPlugin {
     meta: {
       description: `${name} usage and quota tracking`,
       homepage: 'https://platform.minimax.io',
-      color: '#6366f1',
+      brandColor: '#6366f1',
     },
 
     permissions: {
@@ -110,7 +111,7 @@ function createMinimaxPlugin(id: string, name: string): ProviderPlugin {
     } satisfies ProviderAuth,
 
     async fetchUsage(ctx: ProviderFetchContext): Promise<ProviderUsageData> {
-      const { credentials, http, log, config } = ctx;
+      const { credentials, http, logger: log, config } = ctx;
 
       const apiKey = credentials.apiKey;
       if (!apiKey) {

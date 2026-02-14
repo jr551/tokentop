@@ -78,7 +78,7 @@ export function ProvidersList({ providers, selectedIndex, onSelect }: ProvidersL
   };
 
   const getProviderColor = (state: ProviderState): string => {
-    return state.plugin.meta?.color ?? colors.primary;
+    return state.plugin.meta?.brandColor ?? colors.primary;
   };
 
   return (
