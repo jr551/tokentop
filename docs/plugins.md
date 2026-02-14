@@ -9,7 +9,7 @@ tokentop's plugin system lets you add new providers, coding agents, themes, and 
 ttop --plugin ./my-plugin
 
 # Or install a community plugin
-bun add @tokentop/provider-replicate
+bun add tokentop-provider-replicate
 ```
 
 Then add it to your config so it loads every time:
@@ -18,19 +18,45 @@ Then add it to your config so it loads every time:
 // ~/.config/tokentop/config.json
 {
   "plugins": {
-    "npm": ["@tokentop/provider-replicate"]
+    "npm": ["tokentop-provider-replicate"]
   }
 }
 ```
 
 ## Plugin Types
 
-| Type | Purpose | npm prefix |
-|------|---------|------------|
-| **Provider** | Fetch usage data from an AI model provider | `@tokentop/provider-*` |
-| **Agent** | Parse coding agent sessions for token tracking | `@tokentop/agent-*` |
-| **Theme** | Color scheme for the TUI | `@tokentop/theme-*` |
-| **Notification** | Alert delivery (Slack, Discord, terminal bell, etc.) | `@tokentop/notification-*` |
+| Type | Purpose |
+|------|---------|
+| **Provider** | Fetch usage data from an AI model provider |
+| **Agent** | Parse coding agent sessions for token tracking |
+| **Theme** | Color scheme for the TUI |
+| **Notification** | Alert delivery (Slack, Discord, terminal bell, etc.) |
+
+## Naming Convention
+
+### Official plugins (`@tokentop/*`)
+
+Maintained by the tokentop team or trusted contributors. Published under the `@tokentop` npm org.
+
+| Type | npm name |
+|------|----------|
+| Provider | `@tokentop/provider-anthropic` |
+| Agent | `@tokentop/agent-opencode` |
+| Theme | `@tokentop/theme-dracula` |
+| Notification | `@tokentop/notification-slack` |
+
+### Community plugins (`tokentop-*`)
+
+Published by anyone — no npm org membership needed. Use the `tokentop-{type}-` prefix:
+
+| Type | npm name |
+|------|----------|
+| Provider | `tokentop-provider-replicate` |
+| Agent | `tokentop-agent-windsurf` |
+| Theme | `tokentop-theme-catppuccin` |
+| Notification | `tokentop-notification-ntfy` |
+
+Scoped community plugins also work: `@yourname/tokentop-provider-foo`
 
 ## Loading Plugins
 
@@ -68,8 +94,8 @@ Persistent plugin configuration lives in `~/.config/tokentop/config.json`:
 
     // npm packages -- must be installed in node_modules
     "npm": [
-      "@tokentop/provider-replicate",
-      "@tokentop/theme-catppuccin"
+      "tokentop-provider-replicate",
+      "tokentop-theme-catppuccin"
     ],
 
     // Disable specific plugins by ID (including builtins)
@@ -199,18 +225,20 @@ ttop --plugin ./tokentop-theme-monokai
 
 ### Publish It
 
+Use the `tokentop-{type}-` prefix for community plugins:
+
 ```json
 {
-  "name": "@tokentop/theme-monokai",
+  "name": "tokentop-theme-monokai",
   "main": "src/index.ts",
-  "dependencies": {
+  "peerDependencies": {
     "@tokentop/plugin-sdk": "^0.1.0"
   }
 }
 ```
 
 ```bash
-npm publish --access public
+npm publish
 ```
 
 ## SDK Reference

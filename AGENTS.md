@@ -118,7 +118,7 @@ Plugins listed in `config.plugins.disabled` are removed after loading.
 {
   "plugins": {
     "local": ["~/development/my-plugin"],
-    "npm": ["@tokentop/provider-replicate"],
+    "npm": ["tokentop-provider-replicate"],
     "disabled": ["perplexity"]
   }
 }
@@ -132,10 +132,13 @@ Community plugins depend on `@tokentop/plugin-sdk` for types and helpers. The SD
 
 ### npm Plugin Naming
 
-- Providers: `@tokentop/provider-<name>`
-- Agents: `@tokentop/agent-<name>`
-- Themes: `@tokentop/theme-<name>`
-- Notifications: `@tokentop/notification-<name>`
+`@tokentop/*` is reserved for official plugins. Community plugins use the `tokentop-{type}-` prefix.
+
+| Tier | Pattern | Example |
+|------|---------|---------|
+| Official | `@tokentop/{type}-<name>` | `@tokentop/agent-opencode` |
+| Community | `tokentop-{type}-<name>` | `tokentop-provider-replicate` |
+| Scoped community | `@scope/tokentop-{type}-<name>` | `@myname/tokentop-theme-catppuccin` |
 
 ## OpenTUI Guidelines
 

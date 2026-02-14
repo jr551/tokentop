@@ -189,18 +189,25 @@ export async function loadLocalPlugin(filePath: string): Promise<PluginLoadResul
 }
 
 export async function loadNpmPlugin(packageName: string): Promise<PluginLoadResult<AnyPlugin>> {
-  const validPrefixes = [
-    '@tokentop/provider-',
-    '@tokentop/agent-',
-    '@tokentop/theme-',
-    '@tokentop/notification-',
-  ];
+  // Official plugins: @tokentop/provider-*, @tokentop/agent-*, etc.
+  // Community plugins: tokentop-provider-*, tokentop-agent-*, etc.
+  // Scoped community: @scope/tokentop-provider-*, @scope/tokentop-agent-*, etc.
+  const pluginTypes = ['provider', 'agent', 'theme', 'notification'];
 
-  const hasValidPrefix = validPrefixes.some((prefix) => packageName.startsWith(prefix));
-  if (!hasValidPrefix) {
+  const isOfficial = pluginTypes.some((t) => packageName.startsWith(`@tokentop/${t}-`));
+  const isCommunity = pluginTypes.some((t) => packageName.startsWith(`tokentop-${t}-`));
+  const isScopedCommunity = pluginTypes.some((t) => {
+    const match = packageName.match(/^@[^/]+\/tokentop-(\w+)-/);
+    return match?.[1] === t;
+  });
+
+  if (!isOfficial && !isCommunity && !isScopedCommunity) {
     return {
       success: false,
-      error: `Invalid npm plugin name. Must start with: ${validPrefixes.join(', ')}`,
+      error: `Invalid npm plugin name "${packageName}". Expected one of:\n` +
+        `  Official:   @tokentop/{provider,agent,theme,notification}-*\n` +
+        `  Community:  tokentop-{provider,agent,theme,notification}-*\n` +
+        `  Scoped:     @yourname/tokentop-{provider,agent,theme,notification}-*`,
       source: 'npm',
     };
   }

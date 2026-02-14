@@ -189,14 +189,14 @@ OAuth tokens are preferred over API keys because provider usage-tracking APIs (l
 
 tokentop is built on a plugin architecture with four extension points:
 
-| Type | Purpose | npm namespace |
-|------|---------|---------------|
-| **Provider** | Add a model provider | `@tokentop/provider-*` |
-| **Agent** | Support a coding agent | `@tokentop/agent-*` |
-| **Theme** | Custom color schemes | `@tokentop/theme-*` |
-| **Notification** | Alert delivery (Slack, Discord, etc.) | `@tokentop/notification-*` |
+| Type | Purpose | Official | Community |
+|------|---------|----------|-----------|
+| **Provider** | Add a model provider | `@tokentop/provider-*` | `tokentop-provider-*` |
+| **Agent** | Support a coding agent | `@tokentop/agent-*` | `tokentop-agent-*` |
+| **Theme** | Custom color schemes | `@tokentop/theme-*` | `tokentop-theme-*` |
+| **Notification** | Alert delivery (Slack, Discord, etc.) | `@tokentop/notification-*` | `tokentop-notification-*` |
 
-All plugins run in a **permission sandbox** — they must declare network, filesystem, and environment access upfront.
+All plugins run in a **permission sandbox** — they must declare network, filesystem, and environment access upfront. Anyone can publish community plugins to npm — no org membership needed.
 
 See the [Plugin Guide](docs/plugins.md) for installation, configuration, and development details.
 
