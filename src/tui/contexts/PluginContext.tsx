@@ -5,6 +5,7 @@ import type { NotificationPlugin } from '@/plugins/types/notification.ts';
 import { pluginRegistry } from '@/plugins/registry.ts';
 import { createSandboxedHttpClient, createPluginLogger } from '@/plugins/sandbox.ts';
 import { createPluginContext } from '@/plugins/plugin-context-factory.ts';
+import { safeInvoke, safeInvokeSync } from '@/plugins/plugin-host.ts';
 import { initPricingFromPlugins } from '@/pricing/index.ts';
 import { useLogs } from './LogContext.tsx';
 import { useStorage } from './StorageContext.tsx';
@@ -121,14 +122,12 @@ export function PluginProvider({ children, cliPlugins }: PluginProviderProps) {
       const credentials = new Map<string, Credentials>();
       if (!demoMode) {
         await Promise.all(providerPlugins.map(async (p) => {
-          try {
-            const ctx = createPluginContext(p.id, p.permissions);
-            const result = await p.auth.discover(ctx);
-            if (result.ok && result.credentials) {
-              credentials.set(p.id, result.credentials);
-            }
-          } catch (err) {
-            logError(`Credential discovery failed for ${p.id}`, { error: String(err) }, 'credentials');
+          const ctx = createPluginContext(p.id, p.permissions);
+          const result = await safeInvoke(p.id, 'auth.discover', () => p.auth.discover(ctx));
+          if (result.ok && result.value.ok && result.value.credentials) {
+            credentials.set(p.id, result.value.credentials);
+          } else if (!result.ok) {
+            logError(`Credential discovery failed for ${p.id}`, { error: result.error.message }, 'credentials');
           }
         }));
       }
@@ -139,7 +138,13 @@ export function PluginProvider({ children, cliPlugins }: PluginProviderProps) {
 
       for (const plugin of providerPlugins) {
         const creds = credentials.get(plugin.id);
-        const configured = demoMode ? true : (creds ? plugin.auth.isConfigured(creds) : false);
+        let configured = false;
+        if (demoMode) {
+          configured = true;
+        } else if (creds) {
+          const check = safeInvokeSync(plugin.id, 'auth.isConfigured', () => plugin.auth.isConfigured(creds));
+          configured = check.ok ? check.value : false;
+        }
         providerStates.set(plugin.id, {
           plugin,
           configured,
@@ -252,8 +257,12 @@ export function PluginProvider({ children, cliPlugins }: PluginProviderProps) {
       }
 
       const ctx = createPluginContext(providerId, state.plugin.permissions);
-      const result = await state.plugin.auth.discover(ctx);
-      const creds = result.ok ? result.credentials : undefined;
+      const discoverResult = await safeInvoke(providerId, 'auth.discover', () => state.plugin.auth.discover(ctx));
+
+      if (!discoverResult.ok) {
+        throw discoverResult.error;
+      }
+      const creds = discoverResult.value.ok ? discoverResult.value.credentials : undefined;
 
       if (!creds) {
         throw new Error('Credentials not found');
@@ -262,12 +271,15 @@ export function PluginProvider({ children, cliPlugins }: PluginProviderProps) {
       const http = createSandboxedHttpClient(providerId, state.plugin.permissions);
       const log = createPluginLogger(providerId);
 
-      const usage = await state.plugin.fetchUsage({
-        credentials: creds,
-        http,
-        log,
-        config: {},
-      });
+      const fetchResult = await safeInvoke(providerId, 'fetchUsage', () =>
+        state.plugin.fetchUsage({ credentials: creds, http, log, config: {} }),
+      );
+
+      if (!fetchResult.ok) {
+        throw fetchResult.error;
+      }
+
+      const usage = fetchResult.value;
 
       if (usage.error) {
         warn(`${providerId} returned error: ${usage.error}`, undefined, 'refresh');
