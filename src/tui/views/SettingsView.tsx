@@ -72,6 +72,21 @@ const SETTINGS: SettingItem[] = [
     setValue: (c, v) => ({ ...c, display: { ...c.display, timeFormat: v as '12h' | '24h' } }),
   },
   {
+    key: 'colorScheme',
+    label: 'Color Scheme',
+    category: 'display',
+    type: 'select',
+    options: ['Auto', 'Light', 'Dark'],
+    getValue: (c) => {
+      const v = c.display.colorScheme;
+      return v === 'auto' ? 'Auto' : v === 'light' ? 'Light' : 'Dark';
+    },
+    setValue: (c, v) => {
+      const map: Record<string, 'auto' | 'light' | 'dark'> = { 'Auto': 'auto', 'Light': 'light', 'Dark': 'dark' };
+      return { ...c, display: { ...c.display, colorScheme: map[v as string] ?? 'auto' } };
+    },
+  },
+  {
     key: 'dailyBudget',
     label: 'Daily Budget ($)',
     category: 'budgets',
@@ -343,15 +358,14 @@ export function SettingsView() {
             const value = setting.getValue(config);
             
             return (
-              <box 
-                key={setting.key} 
-                flexDirection="row" 
-                justifyContent="space-between" 
-                height={2}
-                paddingLeft={1}
-                paddingRight={1}
-                {...(isSelected ? { backgroundColor: colors.primary } : {})}
-              >
+               <box 
+                 key={setting.key} 
+                 flexDirection="row" 
+                 justifyContent="space-between" 
+                 height={2}
+                 paddingX={1}
+                 {...(isSelected ? { backgroundColor: colors.primary } : {})}
+               >
                 <text fg={isSelected ? colors.background : colors.text}>
                   {setting.label}
                 </text>

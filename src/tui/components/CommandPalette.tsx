@@ -134,15 +134,14 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
               filteredCommands.map((cmd, idx) => {
                 const isSelected = idx === selectedIndex;
                 return (
-                  <box
-                    key={cmd.id}
-                    flexDirection="row"
-                    justifyContent="space-between"
-                    paddingLeft={1}
-                    paddingRight={1}
-                    height={1}
-                    {...(isSelected ? { backgroundColor: colors.primary } : {})}
-                  >
+                   <box
+                     key={cmd.id}
+                     flexDirection="row"
+                     justifyContent="space-between"
+                     paddingX={1}
+                     height={1}
+                     {...(isSelected ? { backgroundColor: colors.primary } : {})}
+                   >
                     <text height={1} fg={isSelected ? colors.background : colors.text}>
                       {cmd.label}
                     </text>
@@ -158,9 +157,9 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
           </box>
         </scrollbox>
 
-        <box paddingLeft={1} paddingRight={1} height={1}>
-          <text height={1} fg={colors.textSubtle}>↑↓ navigate  Enter select  Esc close</text>
-        </box>
+         <box paddingX={1} height={1}>
+           <text height={1} fg={colors.textSubtle}>↑↓ navigate  Enter select  Esc close</text>
+         </box>
       </box>
     </box>
   );

@@ -106,6 +106,21 @@ const BASE_SETTINGS: SettingItem[] = [
     }),
   },
   {
+    key: 'colorScheme',
+    label: 'Color Scheme',
+    category: 'display',
+    type: 'select',
+    options: ['Auto', 'Light', 'Dark'],
+    getValue: (c) => {
+      const v = c.display.colorScheme;
+      return v === 'auto' ? 'Auto' : v === 'light' ? 'Light' : 'Dark';
+    },
+    setValue: (c, v) => {
+      const map: Record<string, 'auto' | 'light' | 'dark'> = { 'Auto': 'auto', 'Light': 'light', 'Dark': 'dark' };
+      return { ...c, display: { ...c.display, colorScheme: map[v as string] ?? 'auto' } };
+    },
+  },
+  {
     key: 'sparklineBaseline',
     label: 'Sparkline Baseline',
     category: 'display',
@@ -444,18 +459,17 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
         backgroundColor={colors.background}
         overflow="hidden"
       >
-        <box
-          flexDirection="row"
-          justifyContent="space-between"
-          paddingLeft={1}
-          paddingRight={1}
-          backgroundColor={colors.foreground}
-          height={1}
-          flexShrink={0}
-        >
-          <text fg={colors.primary}><strong>SETTINGS</strong></text>
-          <text fg={colors.textSubtle}>Esc:close  ^S:save  Shift+R:reset</text>
-        </box>
+         <box
+           flexDirection="row"
+           justifyContent="space-between"
+           paddingX={1}
+           backgroundColor={colors.foreground}
+           height={1}
+           flexShrink={0}
+         >
+           <text fg={colors.primary}><strong>SETTINGS</strong></text>
+           <text fg={colors.textSubtle}>Esc:close  ^S:save  Shift+R:reset</text>
+         </box>
 
         {demoMode && (
           <box flexDirection="row" height={1} paddingLeft={1} gap={2}>
@@ -534,8 +548,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                   flexDirection="row"
                   height={1}
                   marginBottom={1}
-                  paddingLeft={1}
-                  paddingRight={1}
+                  paddingX={1}
                   {...(isSelected && !isEditingThis ? { backgroundColor: colors.primary } : {})}
                 >
                   <text 
@@ -559,13 +572,13 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
           </box>
         </box>
 
-        <box flexDirection="row" height={1} paddingLeft={1} backgroundColor={colors.foreground}>
-          <text fg={colors.textSubtle}>
-            {editingSettingKey !== null 
-              ? 'Type value  Enter:save  Esc:cancel'
-              : 'Tab:switch  ↑↓:navigate  ←→:adjust  Enter:edit'}
-          </text>
-        </box>
+         <box flexDirection="row" height={1} paddingX={1} backgroundColor={colors.foreground}>
+           <text fg={colors.textSubtle}>
+             {editingSettingKey !== null 
+               ? 'Type value  Enter:save  Esc:cancel'
+               : 'Tab:switch  ↑↓:navigate  ←→:adjust  Enter:edit'}
+           </text>
+         </box>
       </box>
     </ModalBackdrop>
   );

@@ -32,15 +32,14 @@ export function Header({ title = 'tokentop', subtitle, activeView, demoMode = fa
   const headerHeight = useLargeLogo ? 7 : 1;
 
   return (
-    <box
-      flexDirection="column"
-      backgroundColor={colors.foreground}
-      flexShrink={0}
-      height={headerHeight}
-      paddingLeft={1}
-      paddingRight={1}
-      overflow="hidden"
-    >
+     <box
+       flexDirection="column"
+       backgroundColor={colors.foreground}
+       flexShrink={0}
+       height={headerHeight}
+       paddingX={1}
+       overflow="hidden"
+     >
       {useLargeLogo && (
         <box flexDirection="column" alignItems="center" height={6}>
           {ASCII_LOGO.map((line, idx) => (

@@ -64,15 +64,14 @@ export const DebugConsole = forwardRef<DebugConsoleHandle, DebugConsoleProps>(fu
       borderColor={colors.border}
       backgroundColor={colors.background}
     >
-      <box
-        flexDirection="row"
-        justifyContent="space-between"
-        paddingLeft={1}
-        paddingRight={1}
-        backgroundColor={colors.foreground}
-        height={1}
-        flexShrink={0}
-      >
+       <box
+         flexDirection="row"
+         justifyContent="space-between"
+         paddingX={1}
+         backgroundColor={colors.foreground}
+         height={1}
+         flexShrink={0}
+       >
         <text>
           <span fg={colors.primary}>
             <strong>Debug Console</strong>

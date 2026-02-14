@@ -168,16 +168,16 @@ function BudgetSection({ totalCost, budgetCost, mode, sidebarWidth }: BudgetSect
   
   if (budgetType === 'none') {
     if (mode === 'micro') {
-      return (
-        <box flexDirection="row" height={1} paddingLeft={1} paddingRight={1}>
-          <text fg={colors.textMuted} height={1}>Total: </text>
-          <text fg={colors.text} height={1}><strong>{formatCurrency(totalCost)}</strong></text>
-        </box>
-      );
+       return (
+         <box flexDirection="row" height={1} paddingX={1}>
+           <text fg={colors.textMuted} height={1}>Total: </text>
+           <text fg={colors.text} height={1}><strong>{formatCurrency(totalCost)}</strong></text>
+         </box>
+       );
     }
     
     return (
-      <box flexDirection="column" paddingLeft={1} paddingRight={1}>
+      <box flexDirection="column" paddingX={1}>
         <text fg={colors.textMuted} height={1}><strong>{headerLabel}</strong></text>
         <text fg={colors.text} height={1}><strong>{formatCurrency(totalCost)}</strong></text>
       </box>
@@ -186,52 +186,52 @@ function BudgetSection({ totalCost, budgetCost, mode, sidebarWidth }: BudgetSect
   
   if (!activeBudget) {
     if (mode === 'micro') {
-      return (
-        <box flexDirection="row" height={1} paddingLeft={1} paddingRight={1}>
-          <text fg={colors.textMuted} height={1}>No {budgetTypeLabel.toLowerCase()} budget</text>
-        </box>
-      );
+       return (
+         <box flexDirection="row" height={1} paddingX={1}>
+           <text fg={colors.textMuted} height={1}>No {budgetTypeLabel.toLowerCase()} budget</text>
+         </box>
+       );
     }
     
-    return (
-      <box flexDirection="column" paddingLeft={1} paddingRight={1}>
-        <text fg={colors.textMuted} height={1}><strong>{headerLabel}</strong></text>
-        <text fg={colors.textSubtle} height={1}>Not set</text>
-        <text fg={colors.textSubtle} height={1}>(, to configure)</text>
-      </box>
-    );
+     return (
+       <box flexDirection="column" paddingX={1}>
+         <text fg={colors.textMuted} height={1}><strong>{headerLabel}</strong></text>
+         <text fg={colors.textSubtle} height={1}>Not set</text>
+         <text fg={colors.textSubtle} height={1}>(, to configure)</text>
+       </box>
+     );
   }
   
   if (mode === 'micro') {
-    return (
-      <box flexDirection="column" paddingLeft={1} paddingRight={1}>
-        <box flexDirection="row" height={1}>
-          <text fg={colors.textMuted} height={1}>{budgetTypeLabel} </text>
-          <text fg={statusColor} height={1}><strong>{formatPercent(budgetUsedPercent)}</strong></text>
-          <text fg={colors.textMuted} height={1}> {formatBudget(budgetCost)}/{formatBudget(activeBudget)}</text>
-        </box>
-      </box>
-    );
+     return (
+       <box flexDirection="column" paddingX={1}>
+         <box flexDirection="row" height={1}>
+           <text fg={colors.textMuted} height={1}>{budgetTypeLabel} </text>
+           <text fg={statusColor} height={1}><strong>{formatPercent(budgetUsedPercent)}</strong></text>
+           <text fg={colors.textMuted} height={1}> {formatBudget(budgetCost)}/{formatBudget(activeBudget)}</text>
+         </box>
+       </box>
+     );
   }
   
-  return (
-    <box flexDirection="column" paddingLeft={1} paddingRight={1}>
-      <box flexDirection="row" height={1}>
-        <text fg={colors.textMuted}><strong>{headerLabel}</strong></text>
-        <text flexGrow={1}></text>
-        <text fg={statusColor}><strong>{formatPercent(budgetUsedPercent)}</strong></text>
-      </box>
-      
-      <box flexDirection="row" height={1}>
-        <text fg={statusColor}>{bar}</text>
-      </box>
-      
-      <box flexDirection="row" height={1}>
-        <text fg={colors.text}><strong>{formatBudget(budgetCost)}</strong></text>
-        <text fg={colors.textMuted}>/{formatBudget(activeBudget)}</text>
-      </box>
-    </box>
-  );
+   return (
+     <box flexDirection="column" paddingX={1}>
+       <box flexDirection="row" height={1}>
+         <text fg={colors.textMuted}><strong>{headerLabel}</strong></text>
+         <text flexGrow={1}></text>
+         <text fg={statusColor}><strong>{formatPercent(budgetUsedPercent)}</strong></text>
+       </box>
+       
+       <box flexDirection="row" height={1}>
+         <text fg={statusColor}>{bar}</text>
+       </box>
+       
+       <box flexDirection="row" height={1}>
+         <text fg={colors.text}><strong>{formatBudget(budgetCost)}</strong></text>
+         <text fg={colors.textMuted}>/{formatBudget(activeBudget)}</text>
+       </box>
+     </box>
+   );
 }
 
 interface TopDriversSectionProps {
@@ -285,13 +285,13 @@ function TopDriversSection({
     return isActive ? k.toUpperCase() : k;
   }).join('/');
   
-  return (
-    <box flexDirection="column" paddingLeft={1} paddingRight={1}>
-      <box flexDirection="row" height={1}>
-        <text fg={colors.textMuted}><strong>TOP {DIMENSION_LABELS[dimension]}</strong></text>
-        <text flexGrow={1}></text>
-        <text fg={colors.textSubtle}>[{dimensionToggle}]</text>
-      </box>
+   return (
+     <box flexDirection="column" paddingX={1}>
+       <box flexDirection="row" height={1}>
+         <text fg={colors.textMuted}><strong>TOP {DIMENSION_LABELS[dimension]}</strong></text>
+         <text flexGrow={1}></text>
+         <text fg={colors.textSubtle}>[{dimensionToggle}]</text>
+       </box>
       
       {displayDrivers.length === 0 ? (
         <text fg={colors.textSubtle} height={1}>No data</text>
@@ -352,11 +352,11 @@ interface DividerProps {
 
 function Divider({ width }: DividerProps) {
   const colors = useColors();
-  return (
-    <box paddingLeft={1} paddingRight={1} height={1}>
-      <text fg={colors.border} height={1}>{makeDivider(width)}</text>
-    </box>
-  );
+   return (
+     <box paddingX={1} height={1}>
+       <text fg={colors.border} height={1}>{makeDivider(width)}</text>
+     </box>
+   );
 }
 
 interface EfficiencyInsight {
@@ -453,33 +453,33 @@ function EfficiencySection({ sessions, mode }: EfficiencySectionProps) {
       ? `Cache: ${Math.round(metrics.cacheHitRate)}%`
       : 'Cache: n/a';
 
-    return (
-      <box flexDirection="column" paddingLeft={1} paddingRight={1}>
-        <text fg={colors.textMuted} height={1}><strong>EFFICIENCY</strong></text>
-        <box flexDirection="row" height={1}>
-          <text fg={colors.text} height={1}>{insight.primaryLabel}    {insight.primaryValue}</text>
-        </box>
-        <text fg={colors.textSubtle} height={1}>{'-> '}{insight.actionLine}</text>
-        {isFull && (
-          <text fg={colors.textMuted} height={1}>Reqs: {metrics.totalRequests}  {cacheLabel}</text>
-        )}
-      </box>
-    );
+     return (
+       <box flexDirection="column" paddingX={1}>
+         <text fg={colors.textMuted} height={1}><strong>EFFICIENCY</strong></text>
+         <box flexDirection="row" height={1}>
+           <text fg={colors.text} height={1}>{insight.primaryLabel}    {insight.primaryValue}</text>
+         </box>
+         <text fg={colors.textSubtle} height={1}>{'-> '}{insight.actionLine}</text>
+         {isFull && (
+           <text fg={colors.textMuted} height={1}>Reqs: {metrics.totalRequests}  {cacheLabel}</text>
+         )}
+       </box>
+     );
   }
 
-  return (
-    <box flexDirection="column" paddingLeft={1} paddingRight={1}>
-      <text fg={colors.textMuted} height={1}><strong>EFFICIENCY</strong></text>
-      <box flexDirection="row" height={1}>
-        <text fg={colors.textMuted} height={1}>{insight.primaryLabel} </text>
-        <text fg={metricColor} height={1}>{insight.primaryValue}</text>
-      </box>
-      <text fg={colors.textSubtle} height={1}>{'-> '}{insight.actionLine}</text>
-      {isFull && insight.secondaryLabel && (
-        <text fg={colors.textMuted} height={1}>{insight.secondaryLabel}</text>
-      )}
-    </box>
-  );
+   return (
+     <box flexDirection="column" paddingX={1}>
+       <text fg={colors.textMuted} height={1}><strong>EFFICIENCY</strong></text>
+       <box flexDirection="row" height={1}>
+         <text fg={colors.textMuted} height={1}>{insight.primaryLabel} </text>
+         <text fg={metricColor} height={1}>{insight.primaryValue}</text>
+       </box>
+       <text fg={colors.textSubtle} height={1}>{'-> '}{insight.actionLine}</text>
+       {isFull && insight.secondaryLabel && (
+         <text fg={colors.textMuted} height={1}>{insight.secondaryLabel}</text>
+       )}
+     </box>
+   );
 }
 
 export function SmartSidebar({
@@ -612,16 +612,16 @@ export function SmartSidebar({
           />
         )}
         
-        {mode === 'micro' && drivers[0] && (
-          <box flexDirection="row" paddingLeft={1} paddingRight={1} height={1}>
-            <text fg={colors.textMuted} height={1}>Top: </text>
-            <text fg={getProviderColor(drivers[0].id)} height={1}>
-              {truncateWithEllipsis(drivers[0].displayName, 10)}
-            </text>
-            <text fg={colors.text} height={1}> {formatCurrency(drivers[0].cost)}</text>
-            {drivers[0].isHot && <text fg={colors.warning} height={1}>▲</text>}
-          </box>
-        )}
+         {mode === 'micro' && drivers[0] && (
+           <box flexDirection="row" paddingX={1} height={1}>
+             <text fg={colors.textMuted} height={1}>Top: </text>
+             <text fg={getProviderColor(drivers[0].id)} height={1}>
+               {truncateWithEllipsis(drivers[0].displayName, 10)}
+             </text>
+             <text fg={colors.text} height={1}> {formatCurrency(drivers[0].cost)}</text>
+             {drivers[0].isHot && <text fg={colors.warning} height={1}>▲</text>}
+           </box>
+         )}
       </box>
       
       {showEfficiency && mode !== 'micro' && (

@@ -83,14 +83,14 @@ export function ProvidersList({ providers, selectedIndex, onSelect }: ProvidersL
 
   return (
     <box flexDirection="column" flexGrow={1}>
-      <box flexDirection="row" paddingLeft={1} paddingRight={1} height={1}>
-        <text width={16} fg={colors.textMuted}>NAME</text>
-        <text width={8} fg={colors.textMuted}>STATUS</text>
-        <text width={8} fg={colors.textMuted}>MAX%</text>
-        <text width={10} fg={colors.textMuted}>RESET</text>
-        <text width={12} fg={colors.textMuted}>CREDITS</text>
-        <text flexGrow={1} fg={colors.textMuted}>LAST FETCH</text>
-      </box>
+       <box flexDirection="row" paddingX={1} height={1}>
+         <text width={16} fg={colors.textMuted}>NAME</text>
+         <text width={8} fg={colors.textMuted}>STATUS</text>
+         <text width={8} fg={colors.textMuted}>MAX%</text>
+         <text width={10} fg={colors.textMuted}>RESET</text>
+         <text width={12} fg={colors.textMuted}>CREDITS</text>
+         <text flexGrow={1} fg={colors.textMuted}>LAST FETCH</text>
+       </box>
       
       <scrollbox flexGrow={1}>
         <box flexDirection="column">
@@ -104,16 +104,16 @@ export function ProvidersList({ providers, selectedIndex, onSelect }: ProvidersL
               ? (credits.unlimited ? '∞' : credits.balance ?? '—')
               : '—';
             
-            return (
-              <box 
-                key={state.plugin.id}
-                flexDirection="row" 
-                paddingLeft={1} 
-                paddingRight={1}
-                height={1}
-                onMouseDown={() => onSelect(idx)}
-                {...(isSelected ? { backgroundColor: colors.primary } : {})}
-              >
+             return (
+               <box 
+                 key={state.plugin.id}
+                 flexDirection="row" 
+                 paddingX={1}
+                 height={1}
+                 focusable
+                 onMouseDown={() => onSelect(idx)}
+                 {...(isSelected ? { backgroundColor: colors.primary } : {})}
+               >
                 <text width={16} fg={isSelected ? colors.background : providerColor}>
                   {state.plugin.name.slice(0, 15).padEnd(15)}
                 </text>

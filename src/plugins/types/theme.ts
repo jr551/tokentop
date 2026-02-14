@@ -49,6 +49,8 @@ export type ThemeComponents = z.infer<typeof ThemeComponentsSchema>;
 
 export type ColorScheme = 'light' | 'dark';
 
+export type ColorSchemePreference = 'auto' | 'light' | 'dark';
+
 export interface ThemePlugin extends BasePlugin {
   readonly type: 'theme';
   readonly colorScheme: ColorScheme;

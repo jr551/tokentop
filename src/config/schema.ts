@@ -45,6 +45,7 @@ export interface AppConfig {
     numberFormat: 'full' | 'compact';
     sparkline: SparklineConfig;
     theme: string;
+    colorScheme: 'auto' | 'light' | 'dark';
   };
   notifications: {
     toastsEnabled: boolean;
@@ -75,8 +76,9 @@ export const DEFAULT_CONFIG: AppConfig = {
        orientation: 'up',
        showBaseline: true,
      },
-     theme: 'tokyo-night',
-   },
+      theme: 'tokyo-night',
+      colorScheme: 'auto',
+    },
   notifications: {
     toastsEnabled: true,
     soundEnabled: false,

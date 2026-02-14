@@ -17,6 +17,7 @@ export interface TuiOptions {
 export async function startTui(options: TuiOptions = {}) {
   const renderer = await createCliRenderer({
     exitOnCtrlC: false,
+    autoFocus: true,
   });
 
   const root = createRoot(renderer);

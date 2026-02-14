@@ -36,16 +36,15 @@ export function StatusBar({ lastRefresh, nextRefresh, demoMode = false }: Status
   const timeLabel = timeWindow.toUpperCase();
 
   return (
-    <box
-      flexDirection="row"
-      justifyContent="space-between"
-      paddingLeft={1}
-      paddingRight={1}
-      backgroundColor={colors.foreground}
-      flexShrink={0}
-      height={1}
-      overflow="hidden"
-    >
+     <box
+       flexDirection="row"
+       justifyContent="space-between"
+       paddingX={1}
+       backgroundColor={colors.foreground}
+       flexShrink={0}
+       height={1}
+       overflow="hidden"
+     >
       <box flexDirection="row" gap={2} overflow="hidden">
         <text fg={colors.textSubtle}>1-4 views</text>
         <text fg={colors.text}>

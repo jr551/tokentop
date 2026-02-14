@@ -219,7 +219,7 @@ export function SessionDetailsDrawer({ session, onClose: _onClose }: SessionDeta
         </box>
       </box>
       
-      <box flexDirection="column" height={4} marginBottom={1} border borderColor={colors.border} paddingLeft={1} paddingRight={1}>
+       <box flexDirection="column" height={4} marginBottom={1} border borderColor={colors.border} paddingX={1}>
         <text height={1} fg={colors.primary} overflow="hidden">{sparkline}</text>
         <text height={1} fg={colors.textMuted} overflow="hidden">{timelineLabel}</text>
       </box>
@@ -235,7 +235,7 @@ export function SessionDetailsDrawer({ session, onClose: _onClose }: SessionDeta
           {session.streams.map((stream, idx) => {
             const modelName = stream.modelId.split('/').pop() ?? stream.modelId;
             return (
-              <box key={`${stream.modelId}-${idx}`} flexDirection="row" height={1} paddingLeft={1} paddingRight={1}>
+               <box key={`${stream.modelId}-${idx}`} flexDirection="row" height={1} paddingX={1}>
                 <text flexGrow={1} height={1} fg={colors.text} overflow="hidden">
                   {truncateMiddle(modelName, contentWidth - 25)}
                 </text>

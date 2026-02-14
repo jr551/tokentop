@@ -39,14 +39,13 @@ function TimeWindowCard({ isCompact }: TimeWindowCardProps) {
   const value = isCompact ? timeWindow.toUpperCase() : TIME_WINDOW_EXPANDED[timeWindow];
   const hint = isCompact ? '(t)' : "Press 't' to change";
 
-  return (
-    <box 
-      flexDirection="column" 
-      paddingLeft={1}
-      paddingRight={1}
-      flexShrink={0}
-      width={isCompact ? 9 : 22}
-    >
+   return (
+     <box 
+       flexDirection="column" 
+       paddingX={1}
+       flexShrink={0}
+       width={isCompact ? 9 : 22}
+     >
       <text fg={colors.textMuted} height={1}>{title}</text>
       <text fg={colors.info} height={1}><strong>{value}</strong></text>
       <text fg={colors.textSubtle} height={1}>{hint}</text>
@@ -218,7 +217,7 @@ export function KpiStrip({
           />
         )}
         
-        <box flexDirection="column" flexGrow={1} paddingLeft={1} paddingRight={1} overflow="hidden">
+         <box flexDirection="column" flexGrow={1} paddingX={1} overflow="hidden">
           <box flexDirection="row" justifyContent="space-between">
             <text fg={colors.textMuted}>ACTIVITY</text>
             <text>

@@ -189,15 +189,14 @@ export function DebugPanel({ onClose, inspectorData }: DebugPanelProps) {
         backgroundColor={colors.background}
         overflow="hidden"
       >
-        <box
-          flexDirection="row"
-          justifyContent="space-between"
-          paddingLeft={1}
-          paddingRight={1}
-          backgroundColor={colors.foreground}
-          height={1}
-          flexShrink={0}
-        >
+         <box
+           flexDirection="row"
+           justifyContent="space-between"
+           paddingX={1}
+           backgroundColor={colors.foreground}
+           height={1}
+           flexShrink={0}
+         >
           <box flexDirection="row" gap={2}>
             <text
               fg={activeTab === 'logs' ? colors.background : colors.textMuted}
@@ -230,14 +229,13 @@ export function DebugPanel({ onClose, inspectorData }: DebugPanelProps) {
           <InspectorTab data={inspectorData} colors={colors} scrollboxRef={inspectorScrollboxRef} />
         )}
 
-        <box
-          flexDirection="row"
-          paddingLeft={1}
-          paddingRight={1}
-          backgroundColor={colors.foreground}
-          height={1}
-          flexShrink={0}
-        >
+         <box
+           flexDirection="row"
+           paddingX={1}
+           backgroundColor={colors.foreground}
+           height={1}
+           flexShrink={0}
+         >
           {activeTab === 'logs' ? (
             <text fg={colors.textSubtle}>
               j/k:scroll  f:follow{follow ? '(on)' : '(off)'}  c:clear  gg:top  G:bottom
@@ -365,7 +363,7 @@ function InspectorTab({ data, colors, scrollboxRef }: InspectorTabProps) {
 
   if (isCompact) {
     return (
-      <box flexDirection="column" flexGrow={1} paddingLeft={1} paddingRight={1} overflow="hidden">
+       <box flexDirection="column" flexGrow={1} paddingX={1} overflow="hidden">
         <box flexDirection="row" height={1} gap={2} flexShrink={0}>
           <text fg={colors.textMuted}>rate:{(activity.instantRate || 0).toFixed(0)}/s</text>
           <text fg={colors.textMuted}>avg:{(activity.avgRate || 0).toFixed(0)}/s</text>

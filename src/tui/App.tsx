@@ -215,18 +215,32 @@ function AppContent() {
   });
 
   useEffect(() => {
-    if (themes.length > 0 && config.display.theme && !themeInitialized) {
-      const matchedTheme = themes.find(t => t.id === config.display.theme);
-      if (matchedTheme) {
-        setTheme(matchedTheme);
+    if (themes.length === 0 || themeInitialized) return;
+
+    const colorSchemePref = config.display.colorScheme;
+    const detectedMode = renderer?.themeMode ?? null;
+
+    const targetScheme: 'light' | 'dark' | null =
+      colorSchemePref === 'auto' ? detectedMode :
+      colorSchemePref === 'light' ? 'light' :
+      colorSchemePref === 'dark' ? 'dark' :
+      null;
+
+    const configuredTheme = themes.find(t => t.id === config.display.theme);
+
+    if (targetScheme) {
+      if (configuredTheme && configuredTheme.colorScheme === targetScheme) {
+        setTheme(configuredTheme);
       } else {
-        // Fallback to first theme if saved theme invalid
-        const firstTheme = themes[0];
-        if (firstTheme) setTheme(firstTheme);
+        const schemeMatch = themes.find(t => t.colorScheme === targetScheme);
+        setTheme(schemeMatch ?? configuredTheme ?? themes[0]!);
       }
-      setThemeInitialized(true);
+    } else {
+      setTheme(configuredTheme ?? themes[0]!);
     }
-  }, [themes, config.display.theme, themeInitialized, setTheme]);
+
+    setThemeInitialized(true);
+  }, [themes, config.display.theme, config.display.colorScheme, themeInitialized, setTheme, renderer]);
 
   useEffect(() => {
     if (isInitialized) {

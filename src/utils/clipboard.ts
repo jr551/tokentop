@@ -2,6 +2,21 @@ import { $ } from 'bun';
 import { platform } from 'os';
 
 /**
+ * Custom clipboard implementation with platform-specific fallbacks.
+ *
+ * NOTE: OpenTUI 0.1.76+ has native OSC 52 clipboard support via a private
+ * `Clipboard` class on the renderer (renderer.copyToClipboardOSC52). However,
+ * we keep our own implementation because:
+ *   1. The renderer's clipboard is a private property — not part of the public API.
+ *   2. Our implementation handles tmux/screen DCS passthrough for OSC 52.
+ *   3. We provide platform-specific fallbacks (osascript on macOS, xclip/xsel/
+ *      wl-copy on Linux, PowerShell on Windows) for terminals that don't support
+ *      OSC 52, giving broader cross-platform coverage.
+ *
+ * If OpenTUI exposes a public clipboard API in the future, revisit this.
+ */
+
+/**
  * Writes text to clipboard via OSC 52 escape sequence.
  * This allows clipboard operations to work over SSH by having
  * the terminal emulator handle the clipboard locally.

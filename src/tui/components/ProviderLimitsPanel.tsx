@@ -165,7 +165,7 @@ export function ProviderLimitsPanel({
     
     return (
       <box flexDirection="column" height={showBudgetBar && budget ? 2 : 1} overflow="hidden">
-        <box flexDirection="row" height={1} paddingLeft={1} paddingRight={1} gap={1} overflow="hidden">
+           <box flexDirection="row" height={1} paddingX={1} gap={1} overflow="hidden">
           <text fg={colors.textMuted} height={1}>LIMITS:</text>
           {showLeftArrow && (
             <text fg={colors.primary} height={1}>◀</text>
@@ -188,7 +188,7 @@ export function ProviderLimitsPanel({
           )}
         </box>
         {showBudgetBar && budget && (
-          <box flexDirection="row" height={1} paddingLeft={1} paddingRight={1} gap={1} overflow="hidden">
+          <box flexDirection="row" height={1} paddingX={1} gap={1} overflow="hidden">
             <text fg={colors.textMuted} height={1}>{budget.budgetType === 'none' ? 'TOTAL:' : `${budget.budgetTypeLabel.toUpperCase()}:`}</text>
             {hasBudgetLimit ? (
               <>
