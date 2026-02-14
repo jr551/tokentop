@@ -19,6 +19,7 @@ export const opencodeZenPlugin: ProviderPlugin = {
     description: 'OpenCode Zen - curated AI models for coding agents',
     homepage: 'https://opencode.ai/zen',
     brandColor: '#6366f1',
+    providerAliases: ['opencode'],
   },
 
   permissions: {

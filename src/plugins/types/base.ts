@@ -74,6 +74,14 @@ export const PluginMetaSchema = z.object({
    * Example: `"◆"`, `"▲"`, `"⚡"`
    */
   icon: z.string().optional(),
+  /**
+   * Additional provider IDs that should resolve to this plugin.
+   * Coding agents may tag sessions with provider IDs that differ from
+   * the plugin's `id` (e.g. OpenCode uses `"openai"` but the plugin
+   * registers as `"openai-api"`). List those alternate IDs here so the
+   * TUI can resolve brand colors and other metadata correctly.
+   */
+  providerAliases: z.array(z.string()).optional(),
 });
 
 export type PluginMeta = z.infer<typeof PluginMetaSchema>;

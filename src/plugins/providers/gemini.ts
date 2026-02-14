@@ -70,6 +70,7 @@ export const geminiPlugin: ProviderPlugin = {
     description: 'Gemini CLI usage tracking',
     homepage: 'https://cloud.google.com/gemini',
     brandColor: '#4285f4',
+    providerAliases: ['google'],
   },
 
   permissions: {

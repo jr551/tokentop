@@ -57,9 +57,10 @@ export const openaiApiPlugin: ProviderPlugin = {
   version: '1.0.0',
 
   meta: {
-    description: 'OpenAI API usage tracking (tokens and costs)',
-    homepage: 'https://platform.openai.com',
+    description: 'OpenAI Codex subscription usage tracking (OAuth)',
+    homepage: 'https://openai.com/codex',
     brandColor: '#10a37f',
+    providerAliases: ['openai'],
   },
 
   permissions: {
