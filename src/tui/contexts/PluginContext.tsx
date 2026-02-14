@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import type { ProviderPlugin, ProviderUsageData, Credentials } from '@/plugins/types/provider.ts';
 import type { ThemePlugin } from '@/plugins/types/theme.ts';
 import type { NotificationPlugin } from '@/plugins/types/notification.ts';
@@ -7,6 +7,8 @@ import { createSandboxedHttpClient, createPluginLogger } from '@/plugins/sandbox
 import { createPluginContext } from '@/plugins/plugin-context-factory.ts';
 import { safeInvoke, safeInvokeSync } from '@/plugins/plugin-host.ts';
 import { notificationBus } from '@/plugins/notification-bus.ts';
+import { pluginLifecycle } from '@/plugins/lifecycle.ts';
+import { installGlobalFetchGuard, runInPluginGuard } from '@/plugins/sandbox-guard.ts';
 import { initPricingFromPlugins } from '@/pricing/index.ts';
 import { useLogs } from './LogContext.tsx';
 import { useStorage } from './StorageContext.tsx';
@@ -85,6 +87,7 @@ export function PluginProvider({ children, cliPlugins }: PluginProviderProps) {
 
   useEffect(() => {
     async function initialize() {
+      installGlobalFetchGuard();
       debug('Initializing plugin registry...', undefined, 'plugins');
 
       try {
@@ -118,13 +121,19 @@ export function PluginProvider({ children, cliPlugins }: PluginProviderProps) {
         notifications: notificationPlugins.length,
       }, 'plugins');
 
+      await pluginLifecycle.initializeAll();
+      await pluginLifecycle.startAll();
+      debug('Plugin lifecycle: all plugins initialized and started', undefined, 'plugins');
+
       debug('Discovering credentials...', undefined, 'credentials');
 
       const credentials = new Map<string, Credentials>();
       if (!demoMode) {
         await Promise.all(providerPlugins.map(async (p) => {
           const ctx = createPluginContext(p.id, p.permissions);
-          const result = await safeInvoke(p.id, 'auth.discover', () => p.auth.discover(ctx));
+          const result = await safeInvoke(p.id, 'auth.discover', () =>
+            runInPluginGuard(p.id, p.permissions, () => p.auth.discover(ctx)),
+          );
           if (result.ok && result.value.ok && result.value.credentials) {
             credentials.set(p.id, result.value.credentials);
           } else if (!result.ok) {
@@ -186,7 +195,6 @@ export function PluginProvider({ children, cliPlugins }: PluginProviderProps) {
       }
 
       notificationBus.registerPlugins(notificationPlugins);
-      await notificationBus.initializePlugins();
 
       setProviders(providerStates);
       setThemes(themePlugins);
@@ -197,7 +205,23 @@ export function PluginProvider({ children, cliPlugins }: PluginProviderProps) {
     initialize();
   }, []);
 
+  const prevPluginConfigRef = useRef<Record<string, Record<string, unknown>>>({});
+  useEffect(() => {
+    if (!isInitialized) return;
+    const prev = prevPluginConfigRef.current;
+    const next = config.pluginConfig ?? {};
+    const allIds = new Set([...Object.keys(prev), ...Object.keys(next)]);
 
+    for (const pluginId of allIds) {
+      const prevStr = JSON.stringify(prev[pluginId] ?? {});
+      const nextStr = JSON.stringify(next[pluginId] ?? {});
+      if (prevStr !== nextStr) {
+        debug(`Plugin config changed for ${pluginId}`, undefined, 'plugins');
+        pluginLifecycle.notifyConfigChange(pluginId, next[pluginId] ?? {});
+      }
+    }
+    prevPluginConfigRef.current = { ...next };
+  }, [config.pluginConfig, isInitialized]);
 
   const refreshProvider = useCallback(async (providerId: string) => {
     const state = providers.get(providerId);
@@ -261,7 +285,9 @@ export function PluginProvider({ children, cliPlugins }: PluginProviderProps) {
       }
 
       const ctx = createPluginContext(providerId, state.plugin.permissions);
-      const discoverResult = await safeInvoke(providerId, 'auth.discover', () => state.plugin.auth.discover(ctx));
+      const discoverResult = await safeInvoke(providerId, 'auth.discover', () =>
+        runInPluginGuard(providerId, state.plugin.permissions, () => state.plugin.auth.discover(ctx)),
+      );
 
       if (!discoverResult.ok) {
         throw discoverResult.error;
@@ -276,7 +302,9 @@ export function PluginProvider({ children, cliPlugins }: PluginProviderProps) {
       const logger = createPluginLogger(providerId);
 
       const fetchResult = await safeInvoke(providerId, 'fetchUsage', () =>
-        state.plugin.fetchUsage({ credentials: creds, http, logger, config: {}, signal: AbortSignal.timeout(30_000) }),
+        runInPluginGuard(providerId, state.plugin.permissions, () =>
+          state.plugin.fetchUsage({ credentials: creds, http, logger, config: {}, signal: AbortSignal.timeout(30_000) }),
+        ),
       );
 
       if (!fetchResult.ok) {

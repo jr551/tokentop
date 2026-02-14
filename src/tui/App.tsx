@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useKeyboard } from '@opentui/react';
 
 import { captureFrameToFile, createBurstRecorder, type BurstRecorder } from './debug/captureFrame.ts';
+import { pluginLifecycle } from '@/plugins/lifecycle.ts';
 import { ThemeProvider, useColors, useTheme } from './contexts/ThemeContext.tsx';
 import { PluginProvider, usePlugins } from './contexts/PluginContext.tsx';
 import { LogProvider, useLogs } from './contexts/LogContext.tsx';
@@ -67,6 +68,17 @@ function AppContent() {
   const [themeInitialized, setThemeInitialized] = useState(false);
 
   const isModalOpen = showCommandPalette || showSettings || showDebugPanel || isDrawerOpen;
+
+  const shutdownPromiseRef = { current: null as Promise<void> | null };
+  const gracefulShutdown = useCallback(async () => {
+    if (shutdownPromiseRef.current) return shutdownPromiseRef.current;
+    shutdownPromiseRef.current = (async () => {
+      await pluginLifecycle.stopAll();
+      await pluginLifecycle.destroyAll();
+      renderer?.destroy();
+    })();
+    return shutdownPromiseRef.current;
+  }, [renderer]);
 
   const inspectorData = useMemo(() => ({
     sessions: sessions.map(s => ({
@@ -160,8 +172,8 @@ function AppContent() {
     }},
     { id: 'toggle-debug', label: 'Toggle Debug Panel', shortcut: '~', action: () => setShowDebugPanel(prev => !prev) },
     { id: 'capture-frame', label: 'Capture Frame', shortcut: 'Ctrl+P', action: () => handleCaptureFrame() },
-    { id: 'quit', label: 'Quit', shortcut: 'q', action: () => renderer?.destroy() },
-  ], [isInitialized, refreshAllProviders, info, handleCaptureFrame, renderer]);
+    { id: 'quit', label: 'Quit', shortcut: 'q', action: () => void gracefulShutdown() },
+  ], [isInitialized, refreshAllProviders, info, handleCaptureFrame, renderer, gracefulShutdown]);
 
   useKeyboard((key) => {
     if (key.ctrl && key.name === 'p') {
@@ -203,7 +215,7 @@ function AppContent() {
     }
 
     if (key.name === 'q' || (key.ctrl && key.name === 'c')) {
-      renderer?.destroy();
+      void gracefulShutdown();
     }
     if (key.name === 'r' && isInitialized) {
       info('Manual refresh triggered');

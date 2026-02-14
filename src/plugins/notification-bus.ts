@@ -29,14 +29,10 @@ class NotificationBus {
     this.pluginConfigs.set(pluginId, config);
   }
 
+  /** @deprecated Lifecycle hooks are now managed by pluginLifecycle. This is a no-op. */
   async initializePlugins(): Promise<void> {
-    for (const plugin of this.plugins) {
-      const config = this.pluginConfigs.get(plugin.id) ?? { enabled: true };
-      const logger = createPluginLogger(plugin.id);
-      await safeInvoke(plugin.id, 'initialize', () =>
-        plugin.initialize({ logger, config, signal: AbortSignal.timeout(10_000) }),
-      );
-    }
+    // No-op: lifecycle manager calls initialize/start on all plugins.
+    // Kept for API compatibility — callers can be removed gradually.
   }
 
   async checkProviderUsage(
