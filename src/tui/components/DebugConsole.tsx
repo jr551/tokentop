@@ -7,6 +7,7 @@ import { copyToClipboard } from '@/utils/clipboard.ts';
 interface DebugConsoleProps {
   height?: number;
   follow?: boolean;
+  minLevel?: LogLevel;
 }
 
 export interface DebugConsoleHandle {
@@ -14,7 +15,9 @@ export interface DebugConsoleHandle {
   scrollToBottom: () => void;
 }
 
-export const DebugConsole = forwardRef<DebugConsoleHandle, DebugConsoleProps>(function DebugConsole({ height = 15, follow = true }, ref) {
+const LOG_LEVEL_RANK: Record<LogLevel, number> = { debug: 0, info: 1, warn: 2, error: 3 };
+
+export const DebugConsole = forwardRef<DebugConsoleHandle, DebugConsoleProps>(function DebugConsole({ height = 15, follow = true, minLevel = 'info' }, ref) {
   const colors = useColors();
   const { logs } = useLogs();
   const scrollboxRef = useRef<ScrollBoxRenderable>(null);
@@ -54,7 +57,9 @@ export const DebugConsole = forwardRef<DebugConsoleHandle, DebugConsoleProps>(fu
     error: 'ERR',
   };
 
-  const visibleLogs = logs.slice(-50);
+  const minRank = LOG_LEVEL_RANK[minLevel];
+  const filtered = minRank === 0 ? logs : logs.filter(e => LOG_LEVEL_RANK[e.level] >= minRank);
+  const visibleLogs = filtered.slice(-50);
 
   return (
     <box

@@ -1,12 +1,15 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useKeyboard, useTerminalDimensions } from '@opentui/react';
 import type { ScrollBoxRenderable } from '@opentui/core';
 import { useColors } from '../contexts/ThemeContext.tsx';
 import { useLogs, type LogEntry, type LogLevel } from '../contexts/LogContext.tsx';
 import { useInputFocus } from '../contexts/InputContext.tsx';
+import { pluginRegistry } from '@/plugins/registry.ts';
+import { checkAllPluginUpdates, type PluginUpdateInfo } from '@/plugins/update-checker.ts';
 import { ModalBackdrop, Z_INDEX } from './ModalBackdrop.tsx';
 
-type DebugTab = 'logs' | 'inspector';
+type DebugTab = 'logs' | 'inspector' | 'plugins';
+type PluginSort = 'name' | 'type' | 'official';
 
 interface DebugInspectorData {
   sessions: Array<{
@@ -41,6 +44,20 @@ function padRight(str: string, len: number): string {
   return str.length >= len ? str.slice(0, len) : str + ' '.repeat(len - str.length);
 }
 
+const LOG_LEVELS: LogLevel[] = ['debug', 'info', 'warn', 'error'];
+const LOG_LEVEL_RANK: Record<LogLevel, number> = { debug: 0, info: 1, warn: 2, error: 3 };
+
+function filterByLevel(logs: LogEntry[], minLevel: LogLevel): LogEntry[] {
+  const minRank = LOG_LEVEL_RANK[minLevel];
+  if (minRank === 0) return logs;
+  return logs.filter(e => LOG_LEVEL_RANK[e.level] >= minRank);
+}
+
+function nextLevel(current: LogLevel): LogLevel {
+  const idx = LOG_LEVELS.indexOf(current);
+  return LOG_LEVELS[(idx + 1) % LOG_LEVELS.length] ?? 'debug';
+}
+
 export function DebugPanel({ onClose, inspectorData }: DebugPanelProps) {
   const colors = useColors();
   const { width: termWidth, height: termHeight } = useTerminalDimensions();
@@ -48,8 +65,11 @@ export function DebugPanel({ onClose, inspectorData }: DebugPanelProps) {
   const { setInputFocused } = useInputFocus();
   const [activeTab, setActiveTab] = useState<DebugTab>('logs');
   const [follow, setFollow] = useState(true);
+  const [minLevel, setMinLevel] = useState<LogLevel>('info');
+  const [pluginSort, setPluginSort] = useState<PluginSort>('type');
   const scrollboxRef = useRef<ScrollBoxRenderable>(null);
   const inspectorScrollboxRef = useRef<ScrollBoxRenderable>(null);
+  const pluginsScrollboxRef = useRef<ScrollBoxRenderable>(null);
   const lastKeyRef = useRef<string | null>(null);
 
   const width = Math.min(termWidth - 4, 120);
@@ -76,8 +96,9 @@ export function DebugPanel({ onClose, inspectorData }: DebugPanelProps) {
       return;
     }
 
+    const tabs: DebugTab[] = ['logs', 'inspector', 'plugins'];
     if (key.name === 'tab' || key.sequence === '[' || key.sequence === ']') {
-      setActiveTab(prev => prev === 'logs' ? 'inspector' : 'logs');
+      setActiveTab(prev => tabs[(tabs.indexOf(prev) + 1) % tabs.length] ?? 'logs');
       lastKeyRef.current = null;
       return;
     }
@@ -91,10 +112,19 @@ export function DebugPanel({ onClose, inspectorData }: DebugPanelProps) {
       lastKeyRef.current = null;
       return;
     }
+    if (key.name === '3') {
+      setActiveTab('plugins');
+      lastKeyRef.current = null;
+      return;
+    }
 
     if (activeTab === 'logs') {
       if (key.name === 'f') {
         setFollow(prev => !prev);
+        return;
+      }
+      if (key.name === 'l') {
+        setMinLevel(prev => nextLevel(prev));
         return;
       }
       if (key.name === 'c') {
@@ -160,6 +190,42 @@ export function DebugPanel({ onClose, inspectorData }: DebugPanelProps) {
       }
     }
 
+    if (activeTab === 'plugins') {
+      if (key.name === 's') {
+        setPluginSort(prev => {
+          const order: PluginSort[] = ['name', 'type', 'official'];
+          return order[(order.indexOf(prev) + 1) % order.length] ?? 'name';
+        });
+        return;
+      }
+      if (key.name === 'down' || key.name === 'j') {
+        const box = pluginsScrollboxRef.current;
+        if (box) box.scrollTo(Math.min(box.scrollTop + SCROLL_STEP, box.scrollHeight));
+        lastKeyRef.current = null;
+        return;
+      }
+      if (key.name === 'up' || key.name === 'k') {
+        const box = pluginsScrollboxRef.current;
+        if (box) box.scrollTo(Math.max(box.scrollTop - SCROLL_STEP, 0));
+        lastKeyRef.current = null;
+        return;
+      }
+      if (key.shift && key.name === 'g') {
+        pluginsScrollboxRef.current?.scrollTo(pluginsScrollboxRef.current.scrollHeight);
+        lastKeyRef.current = null;
+        return;
+      }
+      if (key.name === 'g') {
+        if (lastKeyRef.current === 'g') {
+          pluginsScrollboxRef.current?.scrollTo(0);
+          lastKeyRef.current = null;
+        } else {
+          lastKeyRef.current = 'g';
+        }
+        return;
+      }
+    }
+
     lastKeyRef.current = null;
   });
 
@@ -210,13 +276,19 @@ export function DebugPanel({ onClose, inspectorData }: DebugPanelProps) {
             >
               {' INSPECTOR '}
             </text>
+            <text
+              fg={activeTab === 'plugins' ? colors.background : colors.textMuted}
+              {...(activeTab === 'plugins' ? { bg: colors.primary } : {})}
+            >
+              {' PLUGINS '}
+            </text>
           </box>
-          <text fg={colors.textSubtle}>1/2:switch  Esc:close</text>
+          <text fg={colors.textSubtle}>1/2/3:switch  Esc:close</text>
         </box>
 
         {activeTab === 'logs' && (
           <LogsTab
-            logs={logs}
+            logs={filterByLevel(logs, minLevel)}
             follow={follow}
             scrollboxRef={scrollboxRef}
             levelColors={levelColors}
@@ -229,6 +301,10 @@ export function DebugPanel({ onClose, inspectorData }: DebugPanelProps) {
           <InspectorTab data={inspectorData} colors={colors} scrollboxRef={inspectorScrollboxRef} />
         )}
 
+        {activeTab === 'plugins' && (
+          <PluginsTab colors={colors} scrollboxRef={pluginsScrollboxRef} sortBy={pluginSort} />
+        )}
+
          <box
            flexDirection="row"
            paddingX={1}
@@ -236,13 +312,19 @@ export function DebugPanel({ onClose, inspectorData }: DebugPanelProps) {
            height={1}
            flexShrink={0}
          >
-          {activeTab === 'logs' ? (
+          {activeTab === 'logs' && (
             <text fg={colors.textSubtle}>
-              j/k:scroll  f:follow{follow ? '(on)' : '(off)'}  c:clear  gg:top  G:bottom
+              j/k:scroll  f:follow{follow ? '(on)' : '(off)'}  l:{minLevel.toUpperCase()}  c:clear  gg:top  G:bottom
             </text>
-          ) : (
+          )}
+          {activeTab === 'inspector' && (
             <text fg={colors.textSubtle}>
-              j/k:scroll sessions  gg:top  G:bottom
+              j/k:scroll  gg:top  G:bottom
+            </text>
+          )}
+          {activeTab === 'plugins' && (
+            <text fg={colors.textSubtle}>
+              j/k:scroll  s:sort({pluginSort})  gg:top  G:bottom
             </text>
           )}
         </box>
@@ -261,13 +343,25 @@ interface LogsTabProps {
 }
 
 function LogsTab({ logs, follow, scrollboxRef, levelColors, levelLabels, colors }: LogsTabProps) {
-  const visibleLogs = logs.slice(-100);
+  const frozenLogsRef = useRef<LogEntry[] | null>(null);
+  const frozenAtCountRef = useRef(0);
+
+  if (follow) {
+    frozenLogsRef.current = null;
+    frozenAtCountRef.current = 0;
+  } else if (frozenLogsRef.current === null) {
+    frozenLogsRef.current = logs.slice(-200);
+    frozenAtCountRef.current = logs.length;
+  }
+
+  const visibleLogs = frozenLogsRef.current ?? logs.slice(-200);
+  const pendingCount = frozenLogsRef.current ? Math.max(0, logs.length - frozenAtCountRef.current) : 0;
 
   return (
     <box flexDirection="column" flexGrow={1} overflow="hidden">
       <box paddingLeft={1} height={1} flexShrink={0}>
         <text fg={colors.textMuted}>
-          {logs.length} entries{follow && ' [FOLLOW]'}
+          {logs.length} entries{follow ? ' [FOLLOW]' : ` [PAUSED${pendingCount > 0 ? ` +${pendingCount} new` : ''}]`}
         </text>
       </box>
       <scrollbox
@@ -445,6 +539,122 @@ function InspectorTab({ data, colors, scrollboxRef }: InspectorTabProps) {
           })}
         </scrollbox>
       </box>
+    </box>
+  );
+}
+
+interface PluginsTabProps {
+  colors: ReturnType<typeof useColors>;
+  scrollboxRef: React.RefObject<ScrollBoxRenderable | null>;
+  sortBy: PluginSort;
+}
+
+const TYPE_ORDER: Record<string, number> = { provider: 0, agent: 1, theme: 2, notification: 3 };
+
+function isOfficialPlugin(pluginId: string, pluginType: string): boolean {
+  const source = pluginRegistry.getSource(pluginType as 'provider' | 'agent' | 'theme' | 'notification', pluginId);
+  return source === 'builtin';
+}
+
+function PluginsTab({ colors, scrollboxRef, sortBy }: PluginsTabProps) {
+  const allPlugins = useMemo(() => {
+    const plugins = pluginRegistry.getAllPlugins();
+    return [...plugins].sort((a, b) => {
+      if (sortBy === 'name') {
+        return a.name.localeCompare(b.name);
+      }
+      if (sortBy === 'official') {
+        const aOfficial = isOfficialPlugin(a.id, a.type) ? 0 : 1;
+        const bOfficial = isOfficialPlugin(b.id, b.type) ? 0 : 1;
+        if (aOfficial !== bOfficial) return aOfficial - bOfficial;
+        return a.name.localeCompare(b.name);
+      }
+      const typeA = TYPE_ORDER[a.type] ?? 99;
+      const typeB = TYPE_ORDER[b.type] ?? 99;
+      if (typeA !== typeB) return typeA - typeB;
+      return a.name.localeCompare(b.name);
+    });
+  }, [sortBy]);
+
+  const [updates, setUpdates] = useState<Map<string, PluginUpdateInfo>>(new Map());
+
+  useEffect(() => {
+    const npmPlugins = allPlugins.filter(
+      (p) => pluginRegistry.getSource(p.type, p.id) === 'npm',
+    );
+    if (npmPlugins.length === 0) return;
+
+    checkAllPluginUpdates(
+      npmPlugins.map((p) => ({ id: p.id, type: p.type, version: p.version })),
+    ).then(setUpdates);
+  }, [allPlugins]);
+
+  const typeCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const p of allPlugins) {
+      counts[p.type] = (counts[p.type] ?? 0) + 1;
+    }
+    return counts;
+  }, [allPlugins]);
+
+  const typeColors: Record<string, string> = {
+    provider: colors.info,
+    agent: colors.success,
+    theme: colors.warning,
+    notification: colors.primary,
+  };
+
+  const summary = Object.entries(typeCounts)
+    .map(([type, count]) => `${count} ${type}${count !== 1 ? 's' : ''}`)
+    .join(', ');
+
+  const updatesAvailable = [...updates.values()].filter((u) => u.hasUpdate).length;
+
+  return (
+    <box flexDirection="column" flexGrow={1} overflow="hidden">
+      <box paddingLeft={1} height={1} flexShrink={0}>
+        <text fg={colors.textMuted}>
+          {allPlugins.length} plugins ({summary})
+          {updatesAvailable > 0 ? ` · ${updatesAvailable} update${updatesAvailable !== 1 ? 's' : ''} available` : ''}
+        </text>
+      </box>
+      <box flexDirection="row" paddingX={1} height={1} flexShrink={0}>
+        <text width={22} fg={colors.textSubtle}>{padRight('PLUGIN', 22)}</text>
+        <text width={14} fg={colors.textSubtle}>{padRight('TYPE', 14)}</text>
+        <text width={14} fg={colors.textSubtle}>{padRight('VERSION', 14)}</text>
+        <text fg={colors.textSubtle}>DESCRIPTION</text>
+      </box>
+      <scrollbox ref={scrollboxRef} flexGrow={1}>
+        <box flexDirection="column" paddingX={1}>
+          {allPlugins.map((plugin) => {
+            const key = `${plugin.type}-${plugin.id}`;
+            const updateInfo = updates.get(key);
+            const official = isOfficialPlugin(plugin.id, plugin.type);
+
+            let versionSuffix = '';
+            let versionColor = colors.textMuted;
+            if (updateInfo?.hasUpdate && updateInfo.latestVersion) {
+              versionSuffix = ' ↑';
+              versionColor = colors.warning;
+            } else if (updateInfo && !updateInfo.hasUpdate && updateInfo.latestVersion) {
+              versionSuffix = ' ✓';
+              versionColor = colors.success;
+            }
+
+            return (
+              <box key={key} flexDirection="row" height={1}>
+                <text width={22}>
+                  {official && <span fg={colors.success}>❖ </span>}
+                  <span fg={colors.text}>{padRight(plugin.name, official ? 20 : 22)}</span>
+                </text>
+                <text width={14} fg={typeColors[plugin.type] ?? colors.textMuted}>{padRight(plugin.type, 14)}</text>
+                <text width={14} fg={versionColor}>{padRight(plugin.version + versionSuffix, 14)}</text>
+                <text fg={colors.textSubtle}>{plugin.meta?.description ?? ''}</text>
+              </box>
+            );
+          })}
+        </box>
+      </scrollbox>
     </box>
   );
 }

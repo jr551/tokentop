@@ -11,6 +11,8 @@ import { loadLocalPlugin, loadNpmPlugin, discoverLocalPlugins, resolvePluginPath
 import { installAllNpmPlugins, resolveNpmPluginPath } from './npm-installer.ts';
 import type { PluginsConfig } from '@/config/schema.ts';
 
+export type PluginSource = 'builtin' | 'local' | 'npm';
+
 type PluginStore = {
   provider: Map<string, ProviderPlugin>;
   agent: Map<string, AgentPlugin>;
@@ -26,9 +28,15 @@ class PluginRegistryImpl {
     notification: new Map(),
   };
 
+  private sources = new Map<string, PluginSource>();
   private initialized = false;
 
-  register(plugin: AnyPlugin): void {
+  private sourceKey(type: string, id: string): string {
+    return `${type}-${id}`;
+  }
+
+  register(plugin: AnyPlugin, source: PluginSource = 'builtin'): void {
+    this.sources.set(this.sourceKey(plugin.type, plugin.id), source);
     switch (plugin.type) {
       case 'provider':
         if (this.plugins.provider.has(plugin.id)) {
@@ -94,6 +102,10 @@ class PluginRegistryImpl {
     );
   }
 
+  getSource(type: PluginType, id: string): PluginSource | undefined {
+    return this.sources.get(this.sourceKey(type, id));
+  }
+
   async loadBuiltinPlugins(): Promise<void> {
     const [providers, agents, themes, notifications] = await Promise.all([
       import('./providers/index.ts'),
@@ -103,19 +115,19 @@ class PluginRegistryImpl {
     ]);
 
     for (const plugin of Object.values(providers)) {
-      if (isProviderPlugin(plugin)) this.register(plugin);
+      if (isProviderPlugin(plugin)) this.register(plugin, 'builtin');
     }
 
     for (const plugin of Object.values(agents)) {
-      if (isAgentPlugin(plugin)) this.register(plugin);
+      if (isAgentPlugin(plugin)) this.register(plugin, 'builtin');
     }
 
     for (const plugin of Object.values(themes)) {
-      if (isThemePlugin(plugin)) this.register(plugin);
+      if (isThemePlugin(plugin)) this.register(plugin, 'builtin');
     }
 
     for (const plugin of Object.values(notifications)) {
-      if (isNotificationPlugin(plugin)) this.register(plugin);
+      if (isNotificationPlugin(plugin)) this.register(plugin, 'builtin');
     }
   }
 
@@ -127,7 +139,7 @@ class PluginRegistryImpl {
     for (const pluginPath of allPaths) {
       const result = await loadLocalPlugin(pluginPath);
       if (result.success && result.plugin) {
-        this.register(result.plugin);
+        this.register(result.plugin, 'local');
         console.info(`Loaded local plugin: ${result.plugin.name} (${result.plugin.id})`);
       } else {
         console.warn(`Failed to load plugin from ${pluginPath}: ${result.error}`);
@@ -151,7 +163,7 @@ class PluginRegistryImpl {
       const resolvedPath = resolveNpmPluginPath(packageName);
       const result = await loadNpmPlugin(packageName, resolvedPath);
       if (result.success && result.plugin) {
-        this.register(result.plugin);
+        this.register(result.plugin, 'npm');
         console.info(`Loaded npm plugin: ${result.plugin.name} (${packageName})`);
       } else {
         console.warn(`Failed to load npm plugin ${packageName}: ${result.error}`);
