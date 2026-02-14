@@ -79,6 +79,10 @@ export const openaiApiPlugin: ProviderPlugin = {
     actualCosts: true,
   },
 
+  pricing: {
+    modelsDevProviderId: 'openai',
+  },
+
   auth: {
     async discover(ctx: PluginContext): Promise<CredentialResult> {
       const entry = await ctx.authSources.opencode.getProviderEntry('openai');

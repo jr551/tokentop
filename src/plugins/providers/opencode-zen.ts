@@ -42,6 +42,10 @@ export const opencodeZenPlugin: ProviderPlugin = {
     actualCosts: true,
   },
 
+  pricing: {
+    modelsDevProviderId: 'anthropic',
+  },
+
   auth: {
     async discover(ctx: PluginContext): Promise<CredentialResult> {
       // 1. Try OpenCode auth (getProviderEntry reads auth.json and config)

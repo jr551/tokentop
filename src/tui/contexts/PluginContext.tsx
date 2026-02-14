@@ -5,6 +5,7 @@ import type { NotificationPlugin } from '@/plugins/types/notification.ts';
 import { pluginRegistry } from '@/plugins/registry.ts';
 import { createSandboxedHttpClient, createPluginLogger } from '@/plugins/sandbox.ts';
 import { createPluginContext } from '@/plugins/plugin-context-factory.ts';
+import { initPricingFromPlugins } from '@/pricing/index.ts';
 import { useLogs } from './LogContext.tsx';
 import { useStorage } from './StorageContext.tsx';
 import type { ProviderSnapshotInsert } from '@/storage/types.ts';
@@ -104,6 +105,10 @@ export function PluginProvider({ children, cliPlugins }: PluginProviderProps) {
       const providerPlugins = pluginRegistry.getAll('provider');
       const themePlugins = pluginRegistry.getAll('theme');
       const notificationPlugins = pluginRegistry.getAll('notification');
+
+      initPricingFromPlugins(providerPlugins, {
+        'google-gemini': 'google',
+      });
 
       info(`Loaded plugins`, {
         providers: providerPlugins.length,

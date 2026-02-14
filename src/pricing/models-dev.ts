@@ -51,15 +51,14 @@ export async function fetchModelsDevData(): Promise<ModelsDevResponse | null> {
   }
 }
 
+let providerAliases: ReadonlyMap<string, string> = new Map();
+
+export function setProviderAliases(aliases: ReadonlyMap<string, string>): void {
+  providerAliases = aliases;
+}
+
 export function normalizeProviderName(providerId: string): string {
-  const mapping: Record<string, string> = {
-    'opencode-zen': 'anthropic',
-    codex: 'openai',
-    'github-copilot': 'openai',
-    'google-gemini': 'google',
-    antigravity: 'google',
-  };
-  return mapping[providerId] ?? providerId;
+  return providerAliases.get(providerId) ?? providerId;
 }
 
 export async function getModelPricing(

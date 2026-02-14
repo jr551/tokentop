@@ -93,6 +93,10 @@ export const geminiPlugin: ProviderPlugin = {
     actualCosts: false,
   },
 
+  pricing: {
+    modelsDevProviderId: 'google',
+  },
+
   auth: {
     async discover(ctx: PluginContext): Promise<CredentialResult> {
       const geminiPath = `${ctx.authSources.platform.homedir}/.gemini/oauth_creds.json`;

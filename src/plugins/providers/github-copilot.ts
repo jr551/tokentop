@@ -61,6 +61,10 @@ export const githubCopilotPlugin: ProviderPlugin = {
     actualCosts: false,
   },
 
+  pricing: {
+    modelsDevProviderId: 'openai',
+  },
+
   auth: {
     async discover(ctx: PluginContext): Promise<CredentialResult> {
       const entry = await ctx.authSources.opencode.getProviderEntry('github-copilot');

@@ -1,6 +1,32 @@
-import type { ModelPricing } from '@/plugins/types/provider.ts';
-import { getModelPricing, getProviderModels, normalizeProviderName, clearCache as clearModelsDevCache } from './models-dev.ts';
+import type { ModelPricing, ProviderPlugin, ProviderPricing } from '@/plugins/types/provider.ts';
+import { getModelPricing, getProviderModels, normalizeProviderName, setProviderAliases, clearCache as clearModelsDevCache } from './models-dev.ts';
 import { getFallbackPricing, getFallbackProviderPricing } from './fallback.ts';
+
+export function initPricingFromPlugins(
+  plugins: readonly ProviderPlugin[],
+  additionalAliases?: Record<string, string>,
+): void {
+  const aliases = new Map<string, string>();
+
+  for (const plugin of plugins) {
+    const pricing = plugin.pricing;
+    if (
+      pricing &&
+      'modelsDevProviderId' in pricing &&
+      typeof (pricing as ProviderPricing).modelsDevProviderId === 'string'
+    ) {
+      aliases.set(plugin.id, (pricing as ProviderPricing).modelsDevProviderId!);
+    }
+  }
+
+  if (additionalAliases) {
+    for (const [key, value] of Object.entries(additionalAliases)) {
+      aliases.set(key, value);
+    }
+  }
+
+  setProviderAliases(aliases);
+}
 
 export async function getPricing(
   providerId: string,

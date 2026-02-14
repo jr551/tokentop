@@ -100,6 +100,10 @@ export const antigravityPlugin: ProviderPlugin = {
     actualCosts: false,
   },
 
+  pricing: {
+    modelsDevProviderId: 'google',
+  },
+
   auth: {
     async discover(ctx: PluginContext): Promise<CredentialResult> {
       // Source 1: Antigravity accounts file (shared with gemini provider)
