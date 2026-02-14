@@ -46,7 +46,7 @@ export function AgentSessionProvider({
   const [isLoading, setIsLoading] = useState(false);
   const [lastRefreshAt, setLastRefreshAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { debug, info, warn, error: logError } = useLogs();
+  const { debug, warn, error: logError } = useLogs();
   const { isInitialized: pluginsInitialized } = usePlugins();
   const { isReady: storageReady, recordAgentSession } = useStorage();
   const { demoMode, simulator } = useDemoMode();
@@ -125,7 +125,7 @@ export function AgentSessionProvider({
         const demoSessions = snapshot.sessions;
         setSessions(demoSessions);
         setLastRefreshAt(Date.now());
-        info('Demo sessions refreshed', { count: demoSessions.length }, 'agent-sessions');
+        debug('Demo sessions refreshed', { count: demoSessions.length }, 'agent-sessions');
         return;
       }
 
@@ -153,7 +153,7 @@ export function AgentSessionProvider({
 
           const aggregates = await fetchAgentSessions(plugin, options);
           allAggregates.push(...aggregates);
-          info(`Fetched ${aggregates.length} sessions from ${plugin.id}`, undefined, 'agent-sessions');
+          debug(`Fetched ${aggregates.length} sessions from ${plugin.id}`, undefined, 'agent-sessions');
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : 'Unknown error';
           warn(`Failed to fetch sessions from ${plugin.id}: ${errorMsg}`, undefined, 'agent-sessions');
@@ -213,7 +213,7 @@ export function AgentSessionProvider({
       setSessions(pricedSessions);
       setLastRefreshAt(Date.now());
 
-      info(`Session refresh complete`, { count: pricedSessions.length }, 'agent-sessions');
+      debug(`Session refresh complete`, { count: pricedSessions.length }, 'agent-sessions');
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Unknown error';
       logError(`Session refresh failed: ${errorMsg}`, undefined, 'agent-sessions');
@@ -223,7 +223,7 @@ export function AgentSessionProvider({
         setIsLoading(false);
       }
     }
-  }, [sessions.length, discoverAgents, fetchAgentSessions, debug, info, warn, logError, storageReady, recordAgentSession, demoMode]);
+  }, [sessions.length, discoverAgents, fetchAgentSessions, debug, warn, logError, storageReady, recordAgentSession, demoMode]);
 
   const refreshSessionsRef = useRef(refreshSessions);
   refreshSessionsRef.current = refreshSessions;
