@@ -18,12 +18,12 @@
     "test:watch": "bun test --watch",
     "driver": "bun src/tui/driver/cli.ts",
     "driver:help": "bun src/tui/driver/cli.ts --help",
-    "snapshot": "bun src/tui/debug/snapshot.tsx",
-    "worktree": "bun scripts/worktree.ts"
+    "snapshot": "bun src/tui/debug/snapshot.tsx"
   },
   "dependencies": {
     "@opentui/core": "0.1.79",
     "@opentui/react": "0.1.79",
+    "@tokentop/agent-claude-code": "^0.1.0",
     "@tokentop/agent-opencode": "^1.0.0",
     "@tokentop/plugin-sdk": "^1.0.2",
     "react": "^19.0.0",
