@@ -100,10 +100,11 @@ jobs:
           echo "sha_linux_x64=$(sha256sum ttop-linux-x64 | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
           echo "sha_windows_x64=$(sha256sum ttop-windows-x64.exe | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
-      - name: Upload assets to release
+      - name: Upload assets to draft release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.release-please.outputs.tag_name }}
+          draft: true
           files: release/*
 
   publish-npm:
@@ -242,3 +243,14 @@ jobs:
           git push
         env:
           VERSION: ${{ needs.upload-assets.outputs.version }}
+
+  publish-release:
+    name: Publish Release
+    needs: [release-please, upload-assets, publish-npm]
+    runs-on: ubuntu-latest
+    if: always() && needs.upload-assets.result == 'success'
+    steps:
+      - name: Publish draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit ${{ needs.release-please.outputs.tag_name }} --repo ${{ github.repository }} --draft=false
