@@ -77,14 +77,49 @@ function formatCostVal(cost: number): string {
   return `$${(cost / 1000).toFixed(1)}k`;
 }
 
+function formatTokensCompact(val: number): string {
+  if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(1)}M`;
+  if (val >= 1_000) return `${(val / 1_000).toFixed(1)}K`;
+  return `${val}`;
+}
+
+function formatCacheBadge(val: number): string {
+  if (val >= 10_000_000) return `${Math.round(val / 1_000_000)}M`;
+  if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(1)}M`;
+  if (val >= 100_000) return `${Math.round(val / 1_000)}K`;
+  if (val >= 1_000) return `${(val / 1_000).toFixed(1)}K`;
+  return `${val}`;
+}
+
+function getInspectorData(session: AgentSessionAggregate) {
+  const cacheRead = session.totals.cacheRead ?? 0;
+  const cacheWrite = session.totals.cacheWrite ?? 0;
+  if (cacheRead === 0 && cacheWrite === 0) return null;
+
+  let readCost = 0, writeCost = 0;
+  for (const stream of session.streams) {
+    if (!stream.costBreakdown) continue;
+    readCost += stream.costBreakdown.cacheRead ?? 0;
+    writeCost += stream.costBreakdown.cacheWrite ?? 0;
+  }
+
+  const costPerReq = session.requestCount > 0
+    ? (session.totalCostUsd ?? 0) / session.requestCount
+    : 0;
+
+  return { cacheRead, cacheWrite, readCost, writeCost, costPerReq };
+}
+
 interface SessionRowProps {
   session: AgentSessionAggregate;
   isSelected: boolean;
   isWide: boolean;
+  nameMaxWidth: number;
   getProviderColor: (id: string) => string;
   isExiting?: boolean;
   exitIntensity?: number;
   skipEntrance?: boolean;
+  terminalWidth: number;
 }
 
 function getActivityFadeColor(lastActivityAt: number, baseColor: string, dimColor: string): string {
@@ -95,29 +130,34 @@ function getActivityFadeColor(lastActivityAt: number, baseColor: string, dimColo
   return interpolateColor(t, baseColor, dimColor);
 }
 
-const SessionRow = memo(function SessionRow({ session, isSelected, isWide, getProviderColor, isExiting, exitIntensity, skipEntrance }: SessionRowProps) {
+const SessionRow = memo(function SessionRow({ session, isSelected, isWide, nameMaxWidth, getProviderColor, isExiting, exitIntensity, skipEntrance, terminalWidth }: SessionRowProps) {
   const colors = useColors();
   const isActive = session.status === 'active';
   const entranceIntensity = useEntranceAnimation({ durationMs: 500 });
   const skipRef = useRef(skipEntrance);
   const currentIntensity = isExiting ? (exitIntensity ?? 0) : (skipRef.current ? 1 : entranceIntensity);
   
-   const totalTokens = session.totals.input + session.totals.output;
+   const effectiveTokens = session.totals.input + session.totals.output;
+   const cacheRead = session.totals.cacheRead ?? 0;
+   const hasCacheData = cacheRead > 0;
    const costUsd = session.totalCostUsd ?? 0;
-   
-   const animatedTokens = useAnimatedValue(totalTokens, { durationMs: 300, precision: 0 });
+    
+   const animatedTokens = useAnimatedValue(effectiveTokens, { durationMs: 300, precision: 0 });
    const animatedCost = useAnimatedValue(costUsd, { durationMs: 300, precision: 4 });
-   
-   const { intensity: tokenFlash } = useValueFlash(totalTokens, { durationMs: 400, threshold: 10 });
+    
+   const { intensity: tokenFlash } = useValueFlash(effectiveTokens, { durationMs: 400, threshold: 10 });
    const { intensity: costFlash } = useValueFlash(costUsd, { durationMs: 400, threshold: 0.001 });
   
   const primaryStream = session.streams[0];
   const providerId = primaryStream?.providerId ?? 'unknown';
   const modelId = primaryStream?.modelId ?? 'unknown';
   const baseProviderColor = getProviderColor(providerId);
-  const repoName = extractRepoName(session.projectPath ?? '—');
-  const projectMaxLen = isWide ? 28 : 18;
-  const projectDisplay = repoName.length > projectMaxLen ? repoName.slice(0, projectMaxLen - 1) + '…' : repoName;
+   const repoName = extractRepoName(session.projectPath ?? '—');
+   // In wide mode, project is fixed width (14), so truncate to 13 chars + ellipsis if needed
+   // In narrow mode, project is flex, so use nameMaxWidth (which is actually projectMaxWidth in narrow mode context)
+   const projectDisplay = isWide 
+     ? (repoName.length > 13 ? repoName.slice(0, 12) + '…' : repoName.padEnd(13))
+     : (repoName.length > nameMaxWidth ? repoName.slice(0, nameMaxWidth - 1) + '…' : repoName);
   
   const dimColor = colors.background;
   const fade = (color: string) => applyEntranceFade(currentIntensity, color, dimColor);
@@ -169,7 +209,9 @@ const SessionRow = memo(function SessionRow({ session, isSelected, isWide, getPr
    const bgProp = rowBg ? { bg: rowBg } : {};
    
    const sessionIdShort = session.sessionId.slice(-7);
-   const sessionNameDisplay = session.sessionName ? truncateMiddle(session.sessionName, 25) : '—';
+   // In wide mode, name is flex, so use nameMaxWidth
+   // In narrow mode, name is not shown
+   const sessionNameDisplay = session.sessionName ? truncateMiddle(session.sessionName, isWide ? nameMaxWidth : 25) : '—';
   
    if (isWide) {
      return (
@@ -179,29 +221,42 @@ const SessionRow = memo(function SessionRow({ session, isSelected, isWide, getPr
          <text width={12} height={1} fg={isSelected ? textColor : textSubtleColor} {...bgProp}>{session.agentName.padEnd(11)}</text>
          <text width={18} height={1} fg={providerColor} {...bgProp}>{modelWithCount.padEnd(17)}</text>
          <text width={5} height={1} fg={textMutedColor} {...bgProp}>{String(session.requestCount).padStart(4)}</text>
-         <text width={8} height={1} fg={tokenColor} {...bgProp}>{formatTokensVal(animatedTokens).padStart(7)}</text>
-          <text width={8} height={1} fg={costColor} {...bgProp}>{costDisplay.padStart(7)}</text>
-         <text width={20} height={1} fg={textMutedColor} {...bgProp}>{sessionNameDisplay.padEnd(19)}</text>
-         <text flexGrow={1} height={1} fg={textSubtleColor} {...bgProp}>{projectDisplay}</text>
-         <text width={6} height={1} fg={textMutedColor} {...bgProp}>{duration.padStart(5)}</text>
-         <text width={5} height={1} fg={lastColor} {...bgProp}>{lastActivity.padStart(4)}</text>
-         <text width={2} height={1} fg={statusColor} {...bgProp}>{isActive ? '●' : '○'}</text>
+           <text width={14} height={1} {...bgProp}>
+             <span fg={tokenColor}>{formatTokensVal(animatedTokens).padStart(7)}</span>
+              <span fg={colors.textMuted}>{hasCacheData ? ` ↯${formatCacheBadge(cacheRead)}` : ''}</span>
+           </text>
+            <text width={8} height={1} fg={costColor} {...bgProp}>{costDisplay.padStart(7)}</text>
+          <text width={14} height={1} fg={textSubtleColor} {...bgProp}>{projectDisplay}</text>
+          <text flexGrow={1} height={1} fg={textMutedColor} {...bgProp}>{sessionNameDisplay}</text>
+          <text width={6} height={1} fg={textMutedColor} {...bgProp}>{duration.padStart(5)}</text>
+          <text width={5} height={1} fg={lastColor} {...bgProp}>{lastActivity.padStart(4)}</text>
+          <text width={2} height={1} fg={statusColor} {...bgProp}>{isActive ? '●' : '○'}</text>
        </box>
      );
    }
   
-   return (
-      <box flexDirection="row" paddingRight={1} height={1} {...(rowBg ? { backgroundColor: rowBg } : {})}>
-        <text width={2} height={1} fg={railColor} {...bgProp}>{railChar}</text>
-        <text width={9} height={1} fg={isSelected ? textColor : textSubtleColor} {...bgProp}>{session.agentName.length > 8 ? session.agentName.slice(0, 8) + '…' : session.agentName.padEnd(8)}</text>
-        <text width={16} height={1} fg={providerColor} {...bgProp}>{modelWithCount.padEnd(15)}</text>
-        <text width={8} height={1} fg={tokenColor} {...bgProp}>{formatTokensVal(animatedTokens).padStart(7)}</text>
-        <text width={7} height={1} fg={costColor} {...bgProp}>{formatCostVal(costUsd).padStart(6)}</text>
-        <text flexGrow={1} height={1} fg={textSubtleColor} {...bgProp}>{projectDisplay}</text>
-        <text width={5} height={1} fg={lastColor} {...bgProp}>{lastActivity.padStart(4)}</text>
-        <text width={2} height={1} fg={statusColor} {...bgProp}>{isActive ? '●' : '○'}</text>
-      </box>
-    );
+    const showCacheBadge = terminalWidth >= 105;
+    const hasSidebar = terminalWidth >= 85;
+    const isTight = !isWide && hasSidebar && terminalWidth < 105;
+    const narrowModelW = isTight ? 13 : 16;
+    const narrowTokenW = isTight ? 9 : 14;
+    const narrowModelMaxChars = narrowModelW - 1;
+
+    return (
+       <box flexDirection="row" paddingRight={1} height={1} {...(rowBg ? { backgroundColor: rowBg } : {})}>
+         <text width={2} height={1} fg={railColor} {...bgProp}>{railChar}</text>
+         <text width={9} height={1} fg={isSelected ? textColor : textSubtleColor} {...bgProp}>{session.agentName.length > 8 ? session.agentName.slice(0, 8) + '…' : session.agentName.padEnd(8)}</text>
+         <text width={narrowModelW} height={1} fg={providerColor} {...bgProp}>{modelWithCount.length > narrowModelMaxChars ? modelWithCount.slice(0, narrowModelMaxChars - 1) + '…' : modelWithCount.padEnd(narrowModelMaxChars)}</text>
+           <text width={narrowTokenW} height={1} {...bgProp}>
+            <span fg={tokenColor}>{formatTokensVal(animatedTokens).padStart(7)}</span>
+            <span fg={colors.textMuted}>{hasCacheData && showCacheBadge ? ` ↯${formatCacheBadge(cacheRead)}` : ''}</span>
+          </text>
+          <text width={7} height={1} fg={costColor} {...bgProp}>{formatCostVal(costUsd).padStart(6)}</text>
+          <text flexGrow={1} height={1} fg={textSubtleColor} {...bgProp}>{projectDisplay}</text>
+          <text width={5} height={1} fg={lastColor} {...bgProp}>{lastActivity.padStart(4)}</text>
+         <text width={2} height={1} fg={statusColor} {...bgProp}>{isActive ? '●' : '○'}</text>
+       </box>
+     );
  });
 
 const WIDE_THRESHOLD = 140;
@@ -220,8 +275,20 @@ export const SessionsTable = forwardRef(function SessionsTable(
   ref: Ref<ScrollBoxRenderable>
 ) {
   const colors = useColors();
-  const { width: terminalWidth } = useTerminalDimensions();
+  const { width: terminalWidth, height: terminalHeight } = useTerminalDimensions();
   const isWide = terminalWidth >= WIDE_THRESHOLD;
+
+  // Compute max name column width dynamically based on terminal width.
+  // Sidebar width depends on terminal width (see SmartSidebar.getSidebarWidth).
+  // Table inner width = terminalWidth - sidebarWidth - borders(4) - outerMargins(2).
+  // Name column = tableInnerWidth - fixedColumnsTotal.
+  const sidebarW = terminalWidth >= 160 ? 44 : terminalWidth >= 140 ? 40 : terminalWidth >= 105 ? 36 : terminalWidth >= 95 ? 32 : terminalWidth >= 85 ? 28 : 0;
+  const WIDE_FIXED = 106;
+  const hasSidebar = sidebarW > 0;
+  const isTight = !isWide && hasSidebar && terminalWidth < 105;
+  const narrowFixed = isTight ? 49 : 57;
+  const tableInner = terminalWidth - sidebarW - 6;
+  const nameMaxWidth = isWide ? Math.max(8, tableInner - WIDE_FIXED) : Math.max(1, tableInner - narrowFixed);
 
   const getSessionKey = useCallback((s: AgentSessionAggregate) => s.sessionId, []);
   const { items: animatedSessions, isBulkChange } = useExitAnimation(sessions, {
@@ -230,6 +297,8 @@ export const SessionsTable = forwardRef(function SessionsTable(
   });
 
   let activeIndex = 0;
+  const selectedSession = sessions[selectedRow] ?? null;
+  const inspector = selectedSession ? getInspectorData(selectedSession) : null;
 
   return (
     <box
@@ -254,25 +323,25 @@ export const SessionsTable = forwardRef(function SessionsTable(
            <text width={12} height={1} fg={colors.textMuted}>AGENT       </text>
            <text width={18} height={1} fg={colors.textMuted}>MODEL             </text>
            <text width={5} height={1} fg={colors.textMuted}> REQ </text>
-           <text width={8} height={1} fg={colors.textMuted}> TOKENS </text>
-            <text width={8} height={1} fg={colors.textMuted}>   COST </text>
-           <text width={20} height={1} fg={colors.textMuted}>NAME                </text>
-           <text flexGrow={1} height={1} fg={colors.textMuted}>PROJECT</text>
+             <text width={14} height={1} fg={colors.textMuted}> TOKENS        </text>
+              <text width={8} height={1} fg={colors.textMuted}>   COST </text>
+            <text width={14} height={1} fg={colors.textMuted}>PROJECT       </text>
+           <text flexGrow={1} height={1} fg={colors.textMuted}>NAME</text>
            <text width={6} height={1} fg={colors.textMuted}>  DUR </text>
            <text width={5} height={1} fg={colors.textMuted}>LAST </text>
            <text width={2} height={1} fg={colors.textMuted}> </text>
          </box>
        ) : (
-          <box flexDirection="row" paddingRight={1} height={1}>
-            <text width={2} height={1} fg={colors.textMuted}> </text>
-            <text width={9} height={1} fg={colors.textMuted}>AGENT    </text>
-            <text width={16} height={1} fg={colors.textMuted}>MODEL           </text>
-            <text width={8} height={1} fg={colors.textMuted}> TOKENS </text>
-            <text width={7} height={1} fg={colors.textMuted}>  COST </text>
-            <text flexGrow={1} height={1} fg={colors.textMuted}>PROJECT</text>
-            <text width={5} height={1} fg={colors.textMuted}>LAST </text>
-            <text width={2} height={1} fg={colors.textMuted}> </text>
-          </box>
+           <box flexDirection="row" paddingRight={1} height={1}>
+             <text width={2} height={1} fg={colors.textMuted}> </text>
+             <text width={9} height={1} fg={colors.textMuted}>AGENT    </text>
+             <text width={isTight ? 13 : 16} height={1} fg={colors.textMuted}>{isTight ? 'MODEL        ' : 'MODEL           '}</text>
+               <text width={isTight ? 9 : 14} height={1} fg={colors.textMuted}>{isTight ? '  TOKENS ' : ' TOKENS        '}</text>
+               <text width={7} height={1} fg={colors.textMuted}>  COST </text>
+             <text flexGrow={1} height={1} fg={colors.textMuted}>{nameMaxWidth >= 7 ? 'PROJECT' : nameMaxWidth >= 4 ? 'PROJ' : ''}</text>
+             <text width={5} height={1} fg={colors.textMuted}>LAST </text>
+             <text width={2} height={1} fg={colors.textMuted}> </text>
+           </box>
        )}
 
       <scrollbox ref={ref} flexGrow={1}>
@@ -290,15 +359,43 @@ export const SessionsTable = forwardRef(function SessionsTable(
                 session={entry.item}
                 isSelected={isSelectedRow}
                 isWide={isWide}
+                nameMaxWidth={nameMaxWidth}
                 getProviderColor={getProviderColor}
                 isExiting={entry.isExiting}
                 exitIntensity={entry.exitIntensity}
                 skipEntrance={isBulkChange}
+                terminalWidth={terminalWidth}
               />
             );
           })}
         </box>
       </scrollbox>
+      {terminalHeight >= 30 && (
+        <box height={1} paddingX={2} flexShrink={0}>
+          {inspector && focusedPanel === 'sessions' ? (
+            <text height={1} overflow="hidden">
+              <span fg={colors.textMuted}>↯ Cache read </span>
+              <span fg={colors.text}>{formatTokensCompact(inspector.cacheRead)}</span>
+              <span fg={colors.textMuted}> (</span>
+              <span fg={colors.warning}>{formatCostVal(inspector.readCost)}</span>
+              <span fg={colors.textMuted}>)</span>
+              {inspector.cacheWrite > 0 && (
+                <>
+                  <span fg={colors.textMuted}> • Write </span>
+                  <span fg={colors.text}>{formatTokensCompact(inspector.cacheWrite)}</span>
+                  <span fg={colors.textMuted}> (</span>
+                  <span fg={colors.warning}>{formatCostVal(inspector.writeCost)}</span>
+                  <span fg={colors.textMuted}>)</span>
+                </>
+              )}
+              <span fg={colors.textMuted}> • $/req </span>
+              <span fg={colors.warning}>{formatCostVal(inspector.costPerReq)}</span>
+            </text>
+          ) : (
+            <text height={1}> </text>
+          )}
+        </box>
+      )}
     </box>
   );
 });

@@ -107,8 +107,8 @@ export function SessionDetailsDrawer({ session, onClose: _onClose }: SessionDeta
   const colors = useColors();
   const { width: termWidth, height: termHeight } = useTerminalDimensions();
   
-  const width = Math.max(60, Math.min(termWidth - 4, 100));
-  const height = Math.max(20, Math.min(termHeight - 4, 36));
+  const width = Math.max(70, Math.min(termWidth - 4, 100));
+  const height = Math.max(24, Math.min(termHeight - 4, 40));
   const contentWidth = width - 4;
   
   const duration = formatDuration(session.startedAt, session.lastActivityAt);
@@ -123,6 +123,32 @@ export function SessionDetailsDrawer({ session, onClose: _onClose }: SessionDeta
     return buildSparkline(activity.map(a => a.tokens), sparklineInnerWidth);
   }, [session.sessionId, sparklineInnerWidth]);
   
+  const cacheRead = session.totals.cacheRead ?? 0;
+  const cacheWrite = session.totals.cacheWrite ?? 0;
+  const hasCacheData = cacheRead > 0 || cacheWrite > 0;
+  const totalInput = session.totals.input + cacheRead + cacheWrite;
+  const cacheHitRate = totalInput > 0 ? Math.round((cacheRead / totalInput) * 100) : 0;
+
+  const sessionCostBreakdown = useMemo(() => {
+    let input = 0, output = 0, cr = 0, cw = 0;
+    let hasAny = false;
+    for (const stream of session.streams) {
+      if (!stream.costBreakdown) continue;
+      hasAny = true;
+      input += stream.costBreakdown.input;
+      output += stream.costBreakdown.output;
+      cr += stream.costBreakdown.cacheRead ?? 0;
+      cw += stream.costBreakdown.cacheWrite ?? 0;
+    }
+    if (!hasAny) return null;
+    return {
+      input,
+      output,
+      cacheRead: cr > 0 ? cr : undefined,
+      cacheWrite: cw > 0 ? cw : undefined,
+    };
+  }, [session.streams]);
+
   const isMultiDay = (session.lastActivityAt - session.startedAt) > 24 * 60 * 60 * 1000;
   const startTimeStr = formatTimelineLabel(session.startedAt, isMultiDay);
   const endTimeStr = formatTimelineLabel(session.lastActivityAt, isMultiDay);
@@ -152,105 +178,140 @@ export function SessionDetailsDrawer({ session, onClose: _onClose }: SessionDeta
         backgroundColor={colors.background}
         overflow="hidden"
       >
-      <box flexDirection="row" justifyContent="space-between" height={1} marginBottom={1}>
-        <text height={1} fg={colors.primary}><strong>SESSION DETAILS</strong></text>
-        <text height={1} fg={colors.textMuted}>[Esc] Close</text>
-      </box>
-      
-      <box flexDirection="column" height={6} marginBottom={1}>
-        <box flexDirection="row" height={1} justifyContent="space-between">
-          <text height={1} overflow="hidden">
-            <span fg={colors.textMuted}>ID: </span>
-            <span fg={colors.text}><strong>{session.sessionId}</strong></span>
-          </text>
-          <text height={1}>
-            <span fg={colors.textMuted}>Status: </span>
-            <span fg={session.status === 'active' ? colors.success : colors.textMuted}>
-              {session.status.toUpperCase()}
-            </span>
-          </text>
-        </box>
-
-        {session.sessionName && (
-          <box flexDirection="row" height={1}>
-            <text height={1} overflow="hidden">
-              <span fg={colors.textMuted}>Name: </span>
-              <span fg={colors.primary}><strong>{session.sessionName}</strong></span>
-            </text>
-          </box>
-        )}
-
-        <box flexDirection="row" height={1} justifyContent="space-between">
-          <text height={1} overflow="hidden">
-            <span fg={colors.textMuted}>Agent: </span>
-            <span fg={colors.text}>{session.agentName}</span>
-          </text>
-          <text height={1}>
-            <span fg={colors.textMuted}>Project: </span>
-            <span fg={colors.text}><strong>{projectName}</strong></span>
-          </text>
-        </box>
-
-        <box flexDirection="row" height={1}>
-          <text height={1} overflow="hidden" fg={colors.textMuted}>
-            {shortenPath(fullPath, contentWidth - 2)}
-          </text>
-        </box>
-
-        <box flexDirection="row" height={1} justifyContent="space-between">
-          <text height={1}>
-            <span fg={colors.textMuted}>Cost: </span>
-            <span fg={colors.success}><strong>{formatCost(session.totalCostUsd)}</strong></span>
-          </text>
-          <text height={1}>
-            <span fg={colors.textMuted}>Duration: </span>
-            <span fg={colors.text}>{duration}</span>
-          </text>
+        <box flexDirection="row" justifyContent="space-between" height={1} marginBottom={1}>
+          <text height={1} fg={colors.primary}><strong>SESSION DETAILS</strong></text>
+          <text height={1} fg={colors.textMuted}>[Esc] Close</text>
         </box>
         
-        <box flexDirection="row" height={1} justifyContent="space-between">
-           <text height={1}>
-             <span fg={colors.textMuted}>Tokens: </span>
-             <span fg={colors.text}>
-               {formatTokens(session.totals.input + session.totals.output)}
-             </span>
-             <span fg={colors.textMuted}> (In: {formatTokens(session.totals.input)} / Out: {formatTokens(session.totals.output)})</span>
-           </text>
+        <box flexDirection="column" marginBottom={0} border borderStyle="single" borderColor={colors.border} paddingX={1} paddingY={0} flexShrink={0}>
+          <box flexDirection="row" height={1} justifyContent="space-between" marginTop={0}>
+            <text height={1} overflow="hidden">
+              <span fg={colors.textMuted}>ID: </span>
+              <span fg={colors.text}><strong>{session.sessionId}</strong></span>
+            </text>
+            <text height={1}>
+              <span fg={colors.textMuted}>Status: </span>
+              <span fg={session.status === 'active' ? colors.success : colors.textMuted}>
+                {session.status.toUpperCase()}
+              </span>
+            </text>
+          </box>
+
+          {session.sessionName && (
+            <box flexDirection="row" height={1}>
+              <text height={1} overflow="hidden">
+                <span fg={colors.textMuted}>Name: </span>
+                <span fg={colors.primary}><strong>{session.sessionName}</strong></span>
+              </text>
+            </box>
+          )}
+
+          <box flexDirection="row" height={1} justifyContent="space-between">
+            <text height={1} overflow="hidden">
+              <span fg={colors.textMuted}>Agent: </span>
+              <span fg={colors.text}>{session.agentName}</span>
+            </text>
+            <text height={1}>
+              <span fg={colors.textMuted}>Project: </span>
+              <span fg={colors.text}><strong>{projectName}</strong></span>
+            </text>
+          </box>
+
+          <box flexDirection="row" height={1} marginBottom={0}>
+            <text height={1} overflow="hidden" fg={colors.textMuted}>
+              {shortenPath(fullPath, contentWidth - 4)}
+            </text>
+          </box>
+        </box>
+
+        <box flexDirection="column" marginBottom={0} border borderStyle="single" borderColor={colors.border} paddingX={1} paddingY={0} flexShrink={0}>
+          <box flexDirection="row" height={1} justifyContent="space-between" marginTop={0}>
+            <text height={1}>
+              <span fg={colors.textMuted}>Cost: </span>
+              <span fg={colors.success}><strong>{formatCost(session.totalCostUsd)}</strong></span>
+            </text>
+            <text height={1}>
+              <span fg={colors.textMuted}>Duration: </span>
+              <span fg={colors.text}>{duration}</span>
+            </text>
+          </box>
+
+          {sessionCostBreakdown && (
+            <box flexDirection="row" height={1} marginBottom={0}>
+              <text height={1} overflow="hidden">
+                <span fg={colors.textMuted}>  </span>
+                <span fg={colors.text}>In {formatCost(sessionCostBreakdown.input)}</span>
+                <span fg={colors.textMuted}> │ </span>
+                <span fg={colors.text}>Out {formatCost(sessionCostBreakdown.output)}</span>
+                {(sessionCostBreakdown.cacheRead ?? 0) > 0 && (
+                  <>
+                    <span fg={colors.textMuted}> │ </span>
+                    <span fg={colors.text}>Read {formatCost(sessionCostBreakdown.cacheRead)}</span>
+                  </>
+                )}
+                {(sessionCostBreakdown.cacheWrite ?? 0) > 0 && (
+                  <>
+                    <span fg={colors.textMuted}> │ </span>
+                    <span fg={colors.text}>Write {formatCost(sessionCostBreakdown.cacheWrite)}</span>
+                  </>
+                )}
+              </text>
+            </box>
+          )}
+          
+          <box flexDirection="row" height={1} marginTop={0}>
+             <text height={1}>
+               <span fg={colors.textMuted}>Tokens: </span>
+               <span fg={colors.text}>
+                  {formatTokens(session.totals.input + session.totals.output)}
+               </span>
+               <span fg={colors.textMuted}> (In: {formatTokens(session.totals.input)} / Out: {formatTokens(session.totals.output)})</span>
+             </text>
+          </box>
+
+          {hasCacheData && (
+            <box flexDirection="row" height={1} marginBottom={0}>
+              <text height={1} overflow="hidden">
+                <span fg={colors.textMuted}>Cache: </span>
+                <span fg={cacheHitRate >= 50 ? colors.success : colors.warning}>{cacheHitRate}% hit</span>
+                <span fg={colors.textMuted}> — {formatTokens(cacheRead)} read / {formatTokens(cacheWrite)} write</span>
+              </text>
+            </box>
+          )}
+        </box>
+        
+        <box flexDirection="column" height={4} marginBottom={0} border borderColor={colors.border} paddingX={1} flexShrink={0}>
+          <text height={1} fg={colors.primary} overflow="hidden">{sparkline}</text>
+          <text height={1} fg={colors.textMuted} overflow="hidden">{timelineLabel}</text>
+        </box>
+        
+        <box flexDirection="row" height={1} paddingLeft={1} paddingRight={2} marginBottom={0}>
+          <text flexGrow={1} fg={colors.primary}><strong>MODEL</strong></text>
+          <box width={10} justifyContent="flex-end"><text fg={colors.primary}><strong>TOKENS</strong></text></box>
+          <box width={10} justifyContent="flex-end"><text fg={colors.primary}><strong>COST</strong></text></box>
+        </box>
+        
+        <box flexDirection="column" flexGrow={1} border borderColor={colors.border} overflow="hidden">
+          <scrollbox flexGrow={1}>
+            {session.streams.map((stream, idx) => {
+              const modelName = stream.modelId.split('/').pop() ?? stream.modelId;
+              return (
+                 <box key={`${stream.modelId}-${idx}`} flexDirection="row" height={1} paddingX={1}>
+                  <text flexGrow={1} height={1} fg={colors.text} overflow="hidden">
+                    {truncateMiddle(modelName, contentWidth - 25)}
+                  </text>
+                  <box width={10} height={1} justifyContent="flex-end">
+                    <text fg={colors.textMuted}>{formatTokens(stream.tokens.input + stream.tokens.output)}</text>
+                  </box>
+                  <box width={10} height={1} justifyContent="flex-end">
+                    <text fg={colors.success}>{formatCost(stream.costUsd)}</text>
+                  </box>
+                </box>
+              );
+            })}
+          </scrollbox>
         </box>
       </box>
-      
-       <box flexDirection="column" height={4} marginBottom={1} border borderColor={colors.border} paddingX={1}>
-        <text height={1} fg={colors.primary} overflow="hidden">{sparkline}</text>
-        <text height={1} fg={colors.textMuted} overflow="hidden">{timelineLabel}</text>
-      </box>
-      
-      <box flexDirection="row" height={1} paddingLeft={1} paddingRight={2} marginBottom={0}>
-        <text flexGrow={1} fg={colors.primary}><strong>MODEL</strong></text>
-        <box width={10} justifyContent="flex-end"><text fg={colors.primary}><strong>TOKENS</strong></text></box>
-        <box width={10} justifyContent="flex-end"><text fg={colors.primary}><strong>COST</strong></text></box>
-      </box>
-      
-      <box flexDirection="column" flexGrow={1} border borderColor={colors.border} overflow="hidden">
-        <scrollbox flexGrow={1}>
-          {session.streams.map((stream, idx) => {
-            const modelName = stream.modelId.split('/').pop() ?? stream.modelId;
-            return (
-               <box key={`${stream.modelId}-${idx}`} flexDirection="row" height={1} paddingX={1}>
-                <text flexGrow={1} height={1} fg={colors.text} overflow="hidden">
-                  {truncateMiddle(modelName, contentWidth - 25)}
-                </text>
-                <box width={10} height={1} justifyContent="flex-end">
-                  <text fg={colors.textMuted}>{formatTokens(stream.tokens.input + stream.tokens.output)}</text>
-                </box>
-                <box width={10} height={1} justifyContent="flex-end">
-                  <text fg={colors.success}>{formatCost(stream.costUsd)}</text>
-                </box>
-              </box>
-            );
-          })}
-        </scrollbox>
-      </box>
-    </box>
     </box>
   );
 }

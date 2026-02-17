@@ -1,11 +1,12 @@
 import type { SessionUsageData } from '@/plugins/types/agent.ts';
-import type {
-  AgentId,
-  AgentName,
-  AgentSessionAggregate,
-  AgentSessionStream,
-  StreamWindowedTokens,
-  TokenCounts,
+import {
+  totalTokenCount,
+  type AgentId,
+  type AgentName,
+  type AgentSessionAggregate,
+  type AgentSessionStream,
+  type StreamWindowedTokens,
+  type TokenCounts,
 } from './types.ts';
 
 const ACTIVE_THRESHOLD_MS = 2 * 60 * 1000;
@@ -119,7 +120,7 @@ export function aggregateSessionUsage(options: AggregateOptions): AgentSessionAg
     stream.tokens = sumTokens(stream.tokens, row.tokens);
     stream.requestCount += 1;
 
-    const msgTokens = row.tokens.input + row.tokens.output;
+    const msgTokens = totalTokenCount(row.tokens);
     stream.windowed.totalTokens += msgTokens;
     if (row.timestamp >= startOfDay) stream.windowed.dayTokens += msgTokens;
     if (row.timestamp >= startOfWeek) stream.windowed.weekTokens += msgTokens;

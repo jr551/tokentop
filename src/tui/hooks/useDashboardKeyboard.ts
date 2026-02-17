@@ -9,7 +9,7 @@ import type { AgentSessionAggregate } from '../../agents/types.ts';
 import type { DriverDimension, SidebarMode } from '../components/SmartSidebar.tsx';
 
 function formatSessionSummary(session: AgentSessionAggregate): string {
-  const totalTokens = session.totals.input + session.totals.output;
+  const effectiveTokens = session.totals.input + session.totals.output;
   const cost = session.totalCostUsd?.toFixed(4) ?? '0.00';
   const primaryModel = session.streams[0]?.modelId ?? 'unknown';
   const duration = Math.round((session.lastActivityAt - session.startedAt) / 1000);
@@ -19,17 +19,28 @@ function formatSessionSummary(session: AgentSessionAggregate): string {
       ? `${Math.floor(duration / 60)}m ${duration % 60}s`
       : `${duration}s`;
 
-  return [
+  const cacheRead = session.totals.cacheRead ?? 0;
+  const cacheWrite = session.totals.cacheWrite ?? 0;
+
+  const lines = [
     `Session: ${session.sessionId}`,
     `Agent: ${session.agentName}`,
     `Model: ${primaryModel}`,
     `Status: ${session.status}`,
     `Duration: ${durationStr}`,
-    `Tokens: ${totalTokens.toLocaleString()} (in: ${session.totals.input.toLocaleString()}, out: ${session.totals.output.toLocaleString()})`,
+    `Tokens: ${effectiveTokens.toLocaleString()} (in: ${session.totals.input.toLocaleString()}, out: ${session.totals.output.toLocaleString()})`,
     `Cost: $${cost}`,
     `Requests: ${session.requestCount}`,
-    session.projectPath ? `Project: ${session.projectPath}` : null,
-  ].filter(Boolean).join('\n');
+  ];
+
+  if (cacheRead > 0 || cacheWrite > 0) {
+    const totalInput = session.totals.input + cacheRead + cacheWrite;
+    const hitRate = totalInput > 0 ? Math.round((cacheRead / totalInput) * 100) : 0;
+    lines.push(`Cache: ${hitRate}% hit (read: ${cacheRead.toLocaleString()}, write: ${cacheWrite.toLocaleString()})`);
+  }
+
+  if (session.projectPath) lines.push(`Project: ${session.projectPath}`);
+  return lines.join('\n');
 }
 
 interface DashboardKeyboardState {

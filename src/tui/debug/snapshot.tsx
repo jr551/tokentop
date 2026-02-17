@@ -42,6 +42,7 @@ import { KpiStrip } from '../components/KpiStrip.tsx';
 import { HistoricalTrendsView } from '../views/HistoricalTrendsView.tsx';
 import { ProjectsView } from '../views/ProjectsView.tsx';
 import { SettingsView } from '../views/SettingsView.tsx';
+import { SessionDetailsDrawer } from '../components/SessionDetailsDrawer.tsx';
 import { AgentSessionProvider } from '../contexts/AgentSessionContext.tsx';
 import { TimeWindowProvider } from '../contexts/TimeWindowContext.tsx';
 import { StorageProvider } from '../contexts/StorageContext.tsx';
@@ -216,6 +217,55 @@ function createMockSpinnerProps() {
   };
 }
 
+function createMockSessionDetailsDrawerProps() {
+  const now = Date.now();
+  return {
+    session: {
+      sessionId: 'ses_39c52c5b5ffe4D0eUfUnnCdNw4',
+      sessionName: 'test-smoke done',
+      agentId: 'opencode',
+      agentName: 'OpenCode',
+      projectPath: '/Users/nigel/development/opencode-mission-control',
+      startedAt: now - 10000000,
+      lastActivityAt: now,
+      status: 'active' as const,
+      totals: {
+        input: 1500000,
+        output: 200000,
+        cacheRead: 10000000,
+        cacheWrite: 5000000,
+      },
+      totalCostUsd: 16.05,
+      requestCount: 150,
+      streams: [
+        {
+          providerId: 'anthropic',
+          modelId: 'claude-3-opus-20240229',
+          tokens: {
+            input: 1500000,
+            output: 200000,
+            cacheRead: 10000000,
+            cacheWrite: 5000000,
+          },
+          requestCount: 150,
+          costUsd: 16.05,
+          costBreakdown: {
+            total: 16.05,
+            input: 0.01,
+            output: 1.01,
+            cacheRead: 10.03,
+            cacheWrite: 5.00,
+          },
+        },
+      ],
+      costInDay: 16.05,
+      costInWeek: 16.05,
+      costInMonth: 16.05,
+    },
+    onClose: () => {},
+  };
+}
+
 interface ComponentEntry {
   name: string;
   description: string;
@@ -375,6 +425,13 @@ const COMPONENT_REGISTRY: Record<string, ComponentEntry> = {
         </ToastProvider>
       </ConfigProvider>
     ),
+  },
+  'session-details': {
+    name: 'SessionDetailsDrawer',
+    description: 'Detailed view of a session',
+    defaultWidth: 100,
+    defaultHeight: 30,
+    render: () => <SessionDetailsDrawer {...createMockSessionDetailsDrawerProps()} />,
   },
 };
 

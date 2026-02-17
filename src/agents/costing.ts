@@ -1,5 +1,5 @@
 import { getPricing, estimateCost } from '@/pricing/index.ts';
-import type { AgentSessionAggregate, AgentSessionStream } from './types.ts';
+import type { AgentSessionAggregate, AgentSessionStream, StreamCostBreakdown } from './types.ts';
 
 export async function priceStream(stream: AgentSessionStream): Promise<AgentSessionStream> {
   const pricing = await getPricing(stream.providerId, stream.modelId);
@@ -11,9 +11,18 @@ export async function priceStream(stream: AgentSessionStream): Promise<AgentSess
   const breakdown = estimateCost(stream.tokens, pricing);
   const source = pricing.source === 'models.dev' ? 'models.dev' : 'fallback';
   
+  const costBreakdown: StreamCostBreakdown = {
+    total: breakdown.total,
+    input: breakdown.input ?? 0,
+    output: breakdown.output ?? 0,
+  };
+  if (breakdown.cacheRead) costBreakdown.cacheRead = breakdown.cacheRead;
+  if (breakdown.cacheWrite) costBreakdown.cacheWrite = breakdown.cacheWrite;
+
   return {
     ...stream,
     costUsd: breakdown.total,
+    costBreakdown,
     pricingSource: source,
   };
 }

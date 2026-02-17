@@ -9,12 +9,26 @@ export interface TokenCounts {
   cacheWrite?: number;
 }
 
+/** Sum all token categories (input + cacheRead + cacheWrite + output). */
+export function totalTokenCount(t: TokenCounts): number {
+  return t.input + (t.cacheRead ?? 0) + (t.cacheWrite ?? 0) + t.output;
+}
+
+export interface StreamCostBreakdown {
+  total: number;
+  input: number;
+  output: number;
+  cacheRead?: number;
+  cacheWrite?: number;
+}
+
 export interface AgentSessionStream {
   providerId: string;
   modelId: string;
   tokens: TokenCounts;
   requestCount: number;
   costUsd?: number;
+  costBreakdown?: StreamCostBreakdown;
   pricingSource?: 'models.dev' | 'fallback' | 'unknown';
 }
 

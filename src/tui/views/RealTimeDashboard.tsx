@@ -28,19 +28,25 @@ export function RealTimeDashboard() {
   const { activity, sparkData, deltas } = useDashboardRuntime();
 
 
+  const sidebarMode = getSidebarMode(terminalWidth);
   const showLargeHeader = terminalHeight >= 35;
   const showProviderLimitsPanel = terminalHeight >= 24;
-  
-  const LARGE_HEADER_AREA = 16;
-  const SMALL_HEADER_AREA = 9;
-  const HEADER_AREA = showLargeHeader ? LARGE_HEADER_AREA : SMALL_HEADER_AREA;
-  const PROVIDER_LIMITS_COMPACT = 1;
-  const PROVIDER_LIMITS_FULL = 6;
-  const providerLimitsArea = !showProviderLimitsPanel ? 0 : (terminalHeight < 30 ? PROVIDER_LIMITS_COMPACT : PROVIDER_LIMITS_FULL);
-  const TABLE_CHROME = 4;
-  const FOOTER_AREA = 3;
-  const reservedLines = HEADER_AREA + providerLimitsArea + TABLE_CHROME + FOOTER_AREA;
-  const visibleRows = Math.max(1, terminalHeight - reservedLines);
+
+  // Visible-row count for scroll tracking — every non-session-data line must be counted.
+  const visibleRows = (() => {
+    const appChrome = (showLargeHeader ? 7 : 1) + 1;    // App.tsx: Header + StatusBar
+    const outerPadding = 2;                               // padding={1} top + bottom
+    const kpi = 5;                                        // KpiStrip fragment: h4 cards + h1 rule
+    const limits = !showProviderLimitsPanel ? 0            // ProviderLimitsPanel
+      : terminalHeight < 30 ? (sidebarMode === 'hidden' ? 2 : 1) // compact (+budget bar)
+      : 4;                                                // normal/wide bordered box
+    const tableChrome = 4 + (terminalHeight >= 30 ? 1 : 0); // borders + header + columns + inspector
+    const footer = 1;                                     // keyboard shortcut bar
+    // gap={1} between rendered children; KpiStrip fragment injects 2 children
+    const children = 2 + (showProviderLimitsPanel ? 1 : 0) + 1 + 1;
+    const gaps = children - 1;
+    return Math.max(1, terminalHeight - appChrome - outerPadding - kpi - limits - tableChrome - footer - gaps);
+  })();
 
   const { showDrawer, isOpen: showSessionDrawer } = useDrawer();
   
@@ -58,7 +64,6 @@ export function RealTimeDashboard() {
   const [selectedDriverIndex, setSelectedDriverIndex] = useState(0);
   const [activeDriverFilter, setActiveDriverFilter] = useState<string | null>(null);
 
-  const sidebarMode = getSidebarMode(terminalWidth);
   const effectiveSidebarCollapsed = sidebarCollapsed || sidebarMode === 'hidden';
   const showBudgetInLimits = sidebarMode === 'hidden';
 
