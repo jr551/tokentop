@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react';
-import type { DemoPreset } from '@/demo/simulator.ts';
-import { TestModeContext } from './hooks/useSafeRenderer.ts';
-import { App } from './App.tsx';
+import type { ReactNode } from "react";
+import type { DemoPreset } from "@/demo/simulator.ts";
+import { App } from "./App.tsx";
+import { TestModeContext } from "./hooks/useSafeRenderer.ts";
 
 export { App };
 
@@ -24,7 +24,7 @@ export const DEFAULT_APP_OPTIONS = {
 
 export function createAppElement(options: CreateAppOptions = {}): ReactNode {
   const isTestMode = options.testMode ?? DEFAULT_APP_OPTIONS.testMode;
-  
+
   const appElement = (
     <App
       debug={options.debug ?? DEFAULT_APP_OPTIONS.debug}
@@ -34,14 +34,10 @@ export function createAppElement(options: CreateAppOptions = {}): ReactNode {
       {...(options.cliPlugins ? { cliPlugins: options.cliPlugins } : {})}
     />
   );
-  
+
   if (isTestMode) {
-    return (
-      <TestModeContext.Provider value={true}>
-        {appElement}
-      </TestModeContext.Provider>
-    );
+    return <TestModeContext.Provider value={true}>{appElement}</TestModeContext.Provider>;
   }
-  
+
   return appElement;
 }

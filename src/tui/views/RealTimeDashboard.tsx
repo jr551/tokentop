@@ -1,22 +1,21 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useTerminalDimensions } from '@opentui/react';
-import type { ScrollBoxRenderable } from '@opentui/core';
-import { useColors } from '../contexts/ThemeContext.tsx';
-import { usePlugins } from '../contexts/PluginContext.tsx';
-import { useAgentSessions } from '../contexts/AgentSessionContext.tsx';
-import { useTimeWindow } from '../contexts/TimeWindowContext.tsx';
-import { useConfig } from '../contexts/ConfigContext.tsx';
-import { useDashboardRuntime } from '../contexts/DashboardRuntimeContext.tsx';
-import { useDrawer } from '../contexts/DrawerContext.tsx';
-import { useDashboardKeyboard } from '../hooks/useDashboardKeyboard.ts';
-import { getProviderColor } from '../utils/providerColor.ts';
-import { notificationBus } from '@/plugins/notification-bus.ts';
-
-import { KpiStrip } from '../components/KpiStrip.tsx';
-import { SessionsTable } from '../components/SessionsTable.tsx';
-import { SmartSidebar, getSidebarMode, type DriverDimension } from '../components/SmartSidebar.tsx';
-import { ProviderLimitsPanel } from '../components/ProviderLimitsPanel.tsx';
-import { HelpOverlay } from '../components/HelpOverlay.tsx';
+import type { ScrollBoxRenderable } from "@opentui/core";
+import { useTerminalDimensions } from "@opentui/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { notificationBus } from "@/plugins/notification-bus.ts";
+import { HelpOverlay } from "../components/HelpOverlay.tsx";
+import { KpiStrip } from "../components/KpiStrip.tsx";
+import { ProviderLimitsPanel } from "../components/ProviderLimitsPanel.tsx";
+import { SessionsTable } from "../components/SessionsTable.tsx";
+import { type DriverDimension, getSidebarMode, SmartSidebar } from "../components/SmartSidebar.tsx";
+import { useAgentSessions } from "../contexts/AgentSessionContext.tsx";
+import { useConfig } from "../contexts/ConfigContext.tsx";
+import { useDashboardRuntime } from "../contexts/DashboardRuntimeContext.tsx";
+import { useDrawer } from "../contexts/DrawerContext.tsx";
+import { usePlugins } from "../contexts/PluginContext.tsx";
+import { useColors } from "../contexts/ThemeContext.tsx";
+import { useTimeWindow } from "../contexts/TimeWindowContext.tsx";
+import { useDashboardKeyboard } from "../hooks/useDashboardKeyboard.ts";
+import { getProviderColor } from "../utils/providerColor.ts";
 
 export function RealTimeDashboard() {
   const colors = useColors();
@@ -27,51 +26,57 @@ export function RealTimeDashboard() {
   const { config } = useConfig();
   const { activity, sparkData, deltas } = useDashboardRuntime();
 
-
   const sidebarMode = getSidebarMode(terminalWidth);
   const showLargeHeader = terminalHeight >= 35;
   const showProviderLimitsPanel = terminalHeight >= 24;
 
   // Visible-row count for scroll tracking — every non-session-data line must be counted.
   const visibleRows = (() => {
-    const appChrome = (showLargeHeader ? 7 : 1) + 1;    // App.tsx: Header + StatusBar
-    const outerPadding = 2;                               // padding={1} top + bottom
-    const kpi = 5;                                        // KpiStrip fragment: h4 cards + h1 rule
-    const limits = !showProviderLimitsPanel ? 0            // ProviderLimitsPanel
-      : terminalHeight < 30 ? (sidebarMode === 'hidden' ? 2 : 1) // compact (+budget bar)
-      : 4;                                                // normal/wide bordered box
+    const appChrome = (showLargeHeader ? 7 : 1) + 1; // App.tsx: Header + StatusBar
+    const outerPadding = 2; // padding={1} top + bottom
+    const kpi = 5; // KpiStrip fragment: h4 cards + h1 rule
+    const limits = !showProviderLimitsPanel
+      ? 0 // ProviderLimitsPanel
+      : terminalHeight < 30
+        ? sidebarMode === "hidden"
+          ? 2
+          : 1 // compact (+budget bar)
+        : 4; // normal/wide bordered box
     const tableChrome = 4 + (terminalHeight >= 30 ? 1 : 0); // borders + header + columns + inspector
-    const footer = 1;                                     // keyboard shortcut bar
+    const footer = 1; // keyboard shortcut bar
     // gap={1} between rendered children; KpiStrip fragment injects 2 children
     const children = 2 + (showProviderLimitsPanel ? 1 : 0) + 1 + 1;
     const gaps = children - 1;
-    return Math.max(1, terminalHeight - appChrome - outerPadding - kpi - limits - tableChrome - footer - gaps);
+    return Math.max(
+      1,
+      terminalHeight - appChrome - outerPadding - kpi - limits - tableChrome - footer - gaps,
+    );
   })();
 
   const { showDrawer, isOpen: showSessionDrawer } = useDrawer();
-  
+
   const [showHelp, setShowHelp] = useState(false);
   const [selectedRow, setSelectedRow] = useState(0);
-  const [focusedPanel, setFocusedPanel] = useState<'sessions' | 'sidebar' | 'limits'>('sessions');
+  const [focusedPanel, setFocusedPanel] = useState<"sessions" | "sidebar" | "limits">("sessions");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(config.display.sidebarCollapsed);
-  const [filterQuery, setFilterQuery] = useState('');
+  const [filterQuery, setFilterQuery] = useState("");
   const [isFiltering, setIsFiltering] = useState(false);
-  const [sortField, setSortField] = useState<'cost' | 'tokens' | 'time'>('cost');
+  const [sortField, setSortField] = useState<"cost" | "tokens" | "time">("cost");
   const [pendingG, setPendingG] = useState(false);
   const [scrollOffset, setScrollOffset] = useState(0);
   const [limitSelectedIndex, setLimitSelectedIndex] = useState(0);
-  const [driverDimension, setDriverDimension] = useState<DriverDimension>('model');
+  const [driverDimension, setDriverDimension] = useState<DriverDimension>("model");
   const [selectedDriverIndex, setSelectedDriverIndex] = useState(0);
   const [activeDriverFilter, setActiveDriverFilter] = useState<string | null>(null);
 
-  const effectiveSidebarCollapsed = sidebarCollapsed || sidebarMode === 'hidden';
-  const showBudgetInLimits = sidebarMode === 'hidden';
+  const effectiveSidebarCollapsed = sidebarCollapsed || sidebarMode === "hidden";
+  const showBudgetInLimits = sidebarMode === "hidden";
 
   const sessionsScrollboxRef = useRef<ScrollBoxRenderable>(null);
 
   const configuredProviders = useMemo(() => {
     return Array.from(providers.values())
-      .filter(p => p.configured)
+      .filter((p) => p.configured)
       .sort((a, b) => getMaxUsedPercent(b) - getMaxUsedPercent(a));
   }, [providers]);
 
@@ -91,19 +96,20 @@ export function RealTimeDashboard() {
 
   const baseFilteredSessions = useMemo(() => {
     let result = [...agentSessions];
-    
+
     if (windowMs !== null) {
       const cutoff = Date.now() - windowMs;
-      result = result.filter(s => s.lastActivityAt >= cutoff);
+      result = result.filter((s) => s.lastActivityAt >= cutoff);
     }
-    
+
     if (filterQuery) {
       const q = filterQuery.toLowerCase();
-      result = result.filter(s => 
-        s.agentName.toLowerCase().includes(q) || 
-        s.streams.some(st => st.modelId.toLowerCase().includes(q)) ||
-        (s.projectPath?.toLowerCase().includes(q) ?? false) ||
-        (s.sessionName?.toLowerCase().includes(q) ?? false)
+      result = result.filter(
+        (s) =>
+          s.agentName.toLowerCase().includes(q) ||
+          s.streams.some((st) => st.modelId.toLowerCase().includes(q)) ||
+          (s.projectPath?.toLowerCase().includes(q) ?? false) ||
+          (s.sessionName?.toLowerCase().includes(q) ?? false),
       );
     }
 
@@ -112,13 +118,19 @@ export function RealTimeDashboard() {
 
   const drivers = useMemo(() => {
     const stats: Record<string, { cost: number }> = {};
-    baseFilteredSessions.forEach(s => {
-      s.streams.forEach(st => {
+    baseFilteredSessions.forEach((s) => {
+      s.streams.forEach((st) => {
         let key: string;
         switch (driverDimension) {
-          case 'model': key = st.modelId; break;
-          case 'project': key = s.projectPath?.split('/').pop() ?? 'unknown'; break;
-          case 'agent': key = s.agentName; break;
+          case "model":
+            key = st.modelId;
+            break;
+          case "project":
+            key = s.projectPath?.split("/").pop() ?? "unknown";
+            break;
+          case "agent":
+            key = s.agentName;
+            break;
         }
         if (!stats[key]) stats[key] = { cost: 0 };
         stats[key]!.cost += st.costUsd ?? 0;
@@ -138,7 +150,7 @@ export function RealTimeDashboard() {
   }, [drivers.length, selectedDriverIndex]);
 
   useEffect(() => {
-    if (activeDriverFilter === '__TOGGLE_SELECTED__') {
+    if (activeDriverFilter === "__TOGGLE_SELECTED__") {
       const driver = drivers[selectedDriverIndex];
       setActiveDriverFilter(driver?.id ?? null);
     }
@@ -146,27 +158,30 @@ export function RealTimeDashboard() {
 
   const processedSessions = useMemo(() => {
     let result = [...baseFilteredSessions];
-    
-    if (activeDriverFilter && activeDriverFilter !== '__TOGGLE_SELECTED__') {
-      result = result.filter(s => {
+
+    if (activeDriverFilter && activeDriverFilter !== "__TOGGLE_SELECTED__") {
+      result = result.filter((s) => {
         switch (driverDimension) {
-          case 'model':
-            return s.streams.some(st => st.modelId === activeDriverFilter);
-          case 'project':
-            return (s.projectPath?.split('/').pop() ?? 'unknown') === activeDriverFilter;
-          case 'agent':
+          case "model":
+            return s.streams.some((st) => st.modelId === activeDriverFilter);
+          case "project":
+            return (s.projectPath?.split("/").pop() ?? "unknown") === activeDriverFilter;
+          case "agent":
             return s.agentName === activeDriverFilter;
+          default:
+            return true;
         }
       });
     }
 
     result.sort((a, b) => {
-      const aActive = a.status === 'active' ? 1 : 0;
-      const bActive = b.status === 'active' ? 1 : 0;
+      const aActive = a.status === "active" ? 1 : 0;
+      const bActive = b.status === "active" ? 1 : 0;
       if (bActive !== aActive) return bActive - aActive;
-      
-      if (sortField === 'cost') return (b.totalCostUsd ?? 0) - (a.totalCostUsd ?? 0);
-      if (sortField === 'tokens') return (b.totals.input + b.totals.output) - (a.totals.input + a.totals.output);
+
+      if (sortField === "cost") return (b.totalCostUsd ?? 0) - (a.totalCostUsd ?? 0);
+      if (sortField === "tokens")
+        return b.totals.input + b.totals.output - (a.totals.input + a.totals.output);
       return b.lastActivityAt - a.lastActivityAt;
     });
 
@@ -179,7 +194,7 @@ export function RealTimeDashboard() {
       if (scrollOffset !== 0) setScrollOffset(0);
       return;
     }
-    
+
     const maxRow = processedSessions.length - 1;
     if (selectedRow > maxRow) {
       setSelectedRow(maxRow);
@@ -253,14 +268,16 @@ export function RealTimeDashboard() {
     processedSessions,
   });
 
-  const windowedKpis = useMemo(() => ({
-    cost: processedSessions.reduce((acc, s) => acc + (s.totalCostUsd ?? 0), 0),
-    tokens: processedSessions.reduce((acc, s) => acc + s.totals.input + s.totals.output, 0),
-    requests: processedSessions.reduce((acc, s) => acc + s.requestCount, 0),
-  }), [processedSessions]);
+  const windowedKpis = useMemo(
+    () => ({
+      cost: processedSessions.reduce((acc, s) => acc + (s.totalCostUsd ?? 0), 0),
+      tokens: processedSessions.reduce((acc, s) => acc + s.totals.input + s.totals.output, 0),
+      requests: processedSessions.reduce((acc, s) => acc + s.requestCount, 0),
+    }),
+    [processedSessions],
+  );
 
   const budgetPeriodCost = useMemo(() => {
-
     let dailyCost = 0;
     let weeklyCost = 0;
     let monthlyCost = 0;
@@ -275,10 +292,14 @@ export function RealTimeDashboard() {
   }, [agentSessions]);
 
   useEffect(() => {
-    const checks: Array<{ cost: number; limit: number | null; type: 'daily' | 'weekly' | 'monthly' }> = [
-      { cost: budgetPeriodCost.daily, limit: config.budgets.daily, type: 'daily' },
-      { cost: budgetPeriodCost.weekly, limit: config.budgets.weekly, type: 'weekly' },
-      { cost: budgetPeriodCost.monthly, limit: config.budgets.monthly, type: 'monthly' },
+    const checks: Array<{
+      cost: number;
+      limit: number | null;
+      type: "daily" | "weekly" | "monthly";
+    }> = [
+      { cost: budgetPeriodCost.daily, limit: config.budgets.daily, type: "daily" },
+      { cost: budgetPeriodCost.weekly, limit: config.budgets.weekly, type: "weekly" },
+      { cost: budgetPeriodCost.monthly, limit: config.budgets.monthly, type: "monthly" },
     ];
     for (const { cost, limit, type } of checks) {
       if (limit !== null && limit > 0) {
@@ -289,20 +310,23 @@ export function RealTimeDashboard() {
 
   const getBudgetCost = () => {
     switch (budgetType) {
-      case 'daily': return budgetPeriodCost.daily;
-      case 'weekly': return budgetPeriodCost.weekly;
-      case 'monthly': return budgetPeriodCost.monthly;
-      default: return windowedKpis.cost;
+      case "daily":
+        return budgetPeriodCost.daily;
+      case "weekly":
+        return budgetPeriodCost.weekly;
+      case "monthly":
+        return budgetPeriodCost.monthly;
+      default:
+        return windowedKpis.cost;
     }
   };
 
-  const activeCount = agentSessions.filter(s => s.status === 'active').length;
+  const activeCount = agentSessions.filter((s) => s.status === "active").length;
 
   return (
     <box flexDirection="column" flexGrow={1} padding={1} gap={1} overflow="hidden">
       {showHelp && <HelpOverlay />}
 
-      
       <KpiStrip
         totalCost={windowedKpis.cost}
         totalTokens={windowedKpis.tokens}
@@ -314,10 +338,14 @@ export function RealTimeDashboard() {
         activity={activity}
         sparkData={sparkData}
         budget={{
-          limit: budgetType === 'daily' ? config.budgets.daily
-            : budgetType === 'weekly' ? config.budgets.weekly
-            : budgetType === 'monthly' ? config.budgets.monthly
-            : null,
+          limit:
+            budgetType === "daily"
+              ? config.budgets.daily
+              : budgetType === "weekly"
+                ? config.budgets.weekly
+                : budgetType === "monthly"
+                  ? config.budgets.monthly
+                  : null,
           budgetCost: getBudgetCost(),
           budgetType,
           budgetTypeLabel,
@@ -327,23 +355,27 @@ export function RealTimeDashboard() {
       />
 
       <ProviderLimitsPanel
-        providers={configuredProviders.map(p => ({
+        providers={configuredProviders.map((p) => ({
           id: p.plugin.id,
           name: p.plugin.name,
           usedPercent: getMaxUsedPercent(p),
           color: providerColorOf(p.plugin.id),
           ...(p.usage?.error ? { error: p.usage.error } : {}),
         }))}
-        focused={focusedPanel === 'limits'}
+        focused={focusedPanel === "limits"}
         selectedIndex={limitSelectedIndex}
         showBudgetBar={showBudgetInLimits}
         budget={{
           totalCost: windowedKpis.cost,
           budgetCost: getBudgetCost(),
-          limit: budgetType === 'daily' ? config.budgets.daily
-            : budgetType === 'weekly' ? config.budgets.weekly
-            : budgetType === 'monthly' ? config.budgets.monthly
-            : null,
+          limit:
+            budgetType === "daily"
+              ? config.budgets.daily
+              : budgetType === "weekly"
+                ? config.budgets.weekly
+                : budgetType === "monthly"
+                  ? config.budgets.monthly
+                  : null,
           budgetType,
           budgetTypeLabel,
           warningPercent: config.alerts.warningPercent,
@@ -376,16 +408,22 @@ export function RealTimeDashboard() {
           />
         )}
       </box>
-      
+
       <box flexDirection="row" paddingLeft={1} height={1} flexShrink={0}>
         <text fg={colors.textSubtle} height={1} flexGrow={1}>
-          {isFiltering ? 'Type to filter  Esc cancel  Enter apply' : 
-           filterQuery ? `Esc clear  / edit filter  ↑↓ navigate  s sort` :
-           activeDriverFilter ? `Filter: ${activeDriverFilter}  Esc clear` :
-           focusedPanel === 'sessions' ? '/ filter  ↑↓ navigate  Enter details  s sort  l limits  Tab next  ⇧Tab prev' :
-           focusedPanel === 'limits' ? '←→ select provider  Tab next  ⇧Tab prev  Esc back' :
-           focusedPanel === 'sidebar' ? '↑↓ select  Enter filter  m/p/a dimension  b budget  Tab next  ⇧Tab prev' :
-           '/ filter  i sidebar  Tab/⇧Tab switch  ? help'}
+          {isFiltering
+            ? "Type to filter  Esc cancel  Enter apply"
+            : filterQuery
+              ? `Esc clear  / edit filter  ↑↓ navigate  s sort`
+              : activeDriverFilter
+                ? `Filter: ${activeDriverFilter}  Esc clear`
+                : focusedPanel === "sessions"
+                  ? "/ filter  ↑↓ navigate  Enter details  s sort  l limits  Tab next  ⇧Tab prev"
+                  : focusedPanel === "limits"
+                    ? "←→ select provider  Tab next  ⇧Tab prev  Esc back"
+                    : focusedPanel === "sidebar"
+                      ? "↑↓ select  Enter filter  m/p/a dimension  b budget  Tab next  ⇧Tab prev"
+                      : "/ filter  i sidebar  Tab/⇧Tab switch  ? help"}
         </text>
       </box>
     </box>

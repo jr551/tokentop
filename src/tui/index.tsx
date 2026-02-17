@@ -1,7 +1,7 @@
-import { createCliRenderer } from '@opentui/core';
-import { createRoot } from '@opentui/react';
-import { createAppElement, type CreateAppOptions } from './createApp.tsx';
-import type { DemoPreset } from '@/demo/simulator.ts';
+import { createCliRenderer } from "@opentui/core";
+import { createRoot } from "@opentui/react";
+import type { DemoPreset } from "@/demo/simulator.ts";
+import { type CreateAppOptions, createAppElement } from "./createApp.tsx";
 
 export interface TuiOptions {
   refreshInterval?: number;
@@ -46,5 +46,5 @@ export async function startTui(options: TuiOptions = {}) {
   return renderer;
 }
 
-export { App } from './App.tsx';
-export { createAppElement, type CreateAppOptions } from './createApp.tsx';
+export { App } from "./App.tsx";
+export { type CreateAppOptions, createAppElement } from "./createApp.tsx";

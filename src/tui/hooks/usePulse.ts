@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from "react";
 
 /**
  * Options for the usePulse hook.
@@ -20,7 +20,7 @@ export interface UsePulseOptions {
  * @returns RGB tuple [r, g, b] or null if invalid
  */
 function parseHexColor(hex: string): [number, number, number] | null {
-  const cleanHex = hex.startsWith('#') ? hex.slice(1) : hex;
+  const cleanHex = hex.startsWith("#") ? hex.slice(1) : hex;
 
   let expandedHex: string;
 
@@ -57,7 +57,7 @@ function parseHexColor(hex: string): [number, number, number] | null {
 function rgbToHex(r: number, g: number, b: number): string {
   const toHex = (n: number) => {
     const clamped = Math.max(0, Math.min(255, Math.round(n)));
-    return clamped.toString(16).padStart(2, '0');
+    return clamped.toString(16).padStart(2, "0");
   };
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
@@ -81,7 +81,7 @@ export function getPulseColor(
   step: number,
   baseColor: string,
   peakColor: string,
-  steps: number = 12
+  steps: number = 12,
 ): string {
   const baseRgb = parseHexColor(baseColor);
   const peakRgb = parseHexColor(peakColor);

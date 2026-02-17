@@ -1,10 +1,10 @@
-import { useMemo } from 'react';
-import { useColors } from '../contexts/ThemeContext.tsx';
-import type { AgentSessionAggregate, AgentSessionStream } from '../../agents/types.ts';
+import { useMemo } from "react";
+import type { AgentSessionAggregate, AgentSessionStream } from "../../agents/types.ts";
+import { useColors } from "../contexts/ThemeContext.tsx";
 
 interface SidebarBreakdownProps {
   sessions: AgentSessionAggregate[];
-  focusedPanel: 'sessions' | 'sidebar' | 'limits';
+  focusedPanel: "sessions" | "sidebar" | "limits";
   getProviderColor: (id: string) => string;
 }
 
@@ -22,21 +22,23 @@ export function SidebarBreakdown({
   const { modelStats, modelProviders } = useMemo(() => {
     const stats: Record<string, number> = {};
     const providers: Record<string, string> = {};
-    sessions.forEach(s => {
+    sessions.forEach((s) => {
       s.streams.forEach((st: AgentSessionStream) => {
         stats[st.modelId] = (stats[st.modelId] || 0) + (st.costUsd ?? 0);
         if (!providers[st.modelId]) providers[st.modelId] = st.providerId;
       });
     });
     return {
-      modelStats: Object.entries(stats).sort(([, a], [, b]) => b - a).slice(0, 5),
+      modelStats: Object.entries(stats)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 5),
       modelProviders: providers,
     };
   }, [sessions]);
 
   const providerStats = useMemo(() => {
     const stats: Record<string, number> = {};
-    sessions.forEach(s => {
+    sessions.forEach((s) => {
       s.streams.forEach((st: AgentSessionStream) => {
         stats[st.providerId] = (stats[st.providerId] || 0) + (st.costUsd ?? 0);
       });
@@ -52,21 +54,27 @@ export function SidebarBreakdown({
       width={35}
       gap={1}
       border
-      borderStyle={focusedPanel === 'sidebar' ? 'double' : 'single'}
-      borderColor={focusedPanel === 'sidebar' ? colors.primary : colors.border}
+      borderStyle={focusedPanel === "sidebar" ? "double" : "single"}
+      borderColor={focusedPanel === "sidebar" ? colors.primary : colors.border}
       overflow="hidden"
     >
       <box flexDirection="column" padding={1} flexGrow={1} overflow="hidden">
-        <text height={1} fg={colors.textMuted} marginBottom={1}>MODEL BREAKDOWN</text>
+        <text height={1} fg={colors.textMuted} marginBottom={1}>
+          MODEL BREAKDOWN
+        </text>
         {modelStats.map(([modelId, cost]) => (
           <box key={modelId} flexDirection="column" marginBottom={1}>
             <box flexDirection="row" justifyContent="space-between" height={1}>
-              <text height={1} fg={colors.text}>{(modelId.length > 15 ? modelId.slice(0, 14) + '…' : modelId).padEnd(18)}</text>
-              <text height={1} fg={colors.textMuted}>{formatCurrency(cost).padStart(7)}</text>
+              <text height={1} fg={colors.text}>
+                {(modelId.length > 15 ? modelId.slice(0, 14) + "…" : modelId).padEnd(18)}
+              </text>
+              <text height={1} fg={colors.textMuted}>
+                {formatCurrency(cost).padStart(7)}
+              </text>
             </box>
             <box flexDirection="row" height={1}>
               <text height={1} fg={getProviderColor(modelProviders[modelId] ?? modelId)}>
-                {'█'.repeat(Math.ceil((cost / maxModelCost) * 20)).padEnd(20)}
+                {"█".repeat(Math.ceil((cost / maxModelCost) * 20)).padEnd(20)}
               </text>
             </box>
           </box>
@@ -74,11 +82,17 @@ export function SidebarBreakdown({
       </box>
 
       <box flexDirection="column" padding={1} flexGrow={1} overflow="hidden">
-        <text height={1} fg={colors.textMuted} marginBottom={1}>BY PROVIDER</text>
+        <text height={1} fg={colors.textMuted} marginBottom={1}>
+          BY PROVIDER
+        </text>
         {providerStats.map(([provider, cost]) => (
           <box key={provider} flexDirection="row" justifyContent="space-between" height={1}>
-            <text height={1} fg={getProviderColor(provider)}>{provider.padEnd(18)}</text>
-            <text height={1} fg={colors.text}>{formatCurrency(cost).padStart(7)}</text>
+            <text height={1} fg={getProviderColor(provider)}>
+              {provider.padEnd(18)}
+            </text>
+            <text height={1} fg={colors.text}>
+              {formatCurrency(cost).padStart(7)}
+            </text>
           </box>
         ))}
       </box>

@@ -1,6 +1,6 @@
-import type { ModelPricing } from '@/plugins/types/provider.ts';
+import type { ModelPricing } from "@/plugins/types/provider.ts";
 
-const MODELS_DEV_API = 'https://models.dev/api.json';
+const MODELS_DEV_API = "https://models.dev/api.json";
 const CACHE_TTL_MS = 3600000;
 
 interface ModelsDevCost {
@@ -63,7 +63,7 @@ export function normalizeProviderName(providerId: string): string {
 
 export async function getModelPricing(
   providerId: string,
-  modelId: string
+  modelId: string,
 ): Promise<ModelPricing | null> {
   const data = await fetchModelsDevData();
   if (!data) return null;
@@ -78,7 +78,7 @@ export async function getModelPricing(
   const pricing: ModelPricing = {
     input: model.cost.input,
     output: model.cost.output,
-    source: 'models.dev',
+    source: "models.dev",
   };
 
   if (model.cost.cache_read !== undefined) {
@@ -92,7 +92,7 @@ export async function getModelPricing(
 }
 
 export async function getProviderModels(
-  providerId: string
+  providerId: string,
 ): Promise<Record<string, ModelPricing> | null> {
   const data = await fetchModelsDevData();
   if (!data) return null;
@@ -109,7 +109,7 @@ export async function getProviderModels(
     const pricing: ModelPricing = {
       input: model.cost.input,
       output: model.cost.output,
-      source: 'models.dev',
+      source: "models.dev",
     };
 
     if (model.cost.cache_read !== undefined) {

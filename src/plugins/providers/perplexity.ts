@@ -1,48 +1,48 @@
 import type {
-  ProviderPlugin,
-  ProviderFetchContext,
-  ProviderUsageData,
-  ProviderAuth,
-  PluginContext,
   CredentialResult,
   Credentials,
-} from '../types/provider.ts';
+  PluginContext,
+  ProviderAuth,
+  ProviderFetchContext,
+  ProviderPlugin,
+  ProviderUsageData,
+} from "../types/provider.ts";
 
 /**
  * Perplexity Shadow API Discovery (January 2026):
- * 
+ *
  * Internal endpoints that power the billing dashboard (require session cookies, not API key):
  * - GET /rest/pplx-api/v2/groups → { orgs: [{ api_org_id, display_name, usage_tier }] }
  * - GET /rest/pplx-api/v2/groups/{orgId} → { customerInfo: { balance, auto_top_up_amount, ... } }
  * - GET /rest/pplx-api/v2/groups/{orgId}/usage-analytics?time_bucket=day&time_range=past_month
  *     → Array of meter data (api_requests, input_tokens, output_tokens, etc.) with costs
  * - GET /rest/pplx-api/v2/groups/{orgId}/invoices → Invoice history
- * 
+ *
  * Unfortunately, these endpoints use web session auth, not API key auth.
  * GitHub issue #266 requests a public usage API endpoint.
  */
 
 export const perplexityPlugin: ProviderPlugin = {
   apiVersion: 2,
-  id: 'perplexity',
-  type: 'provider',
-  name: 'Perplexity',
-  version: '1.0.0',
+  id: "perplexity",
+  type: "provider",
+  name: "Perplexity",
+  version: "1.0.0",
 
   meta: {
-    description: 'Perplexity AI API usage (credit-based)',
-    homepage: 'https://www.perplexity.ai',
-    brandColor: '#20b2aa',
+    description: "Perplexity AI API usage (credit-based)",
+    homepage: "https://www.perplexity.ai",
+    brandColor: "#20b2aa",
   },
 
   permissions: {
     network: {
       enabled: true,
-      allowedDomains: ['api.perplexity.ai'],
+      allowedDomains: ["api.perplexity.ai"],
     },
     env: {
       read: true,
-      vars: ['PERPLEXITY_API_KEY'],
+      vars: ["PERPLEXITY_API_KEY"],
     },
   },
 
@@ -56,23 +56,30 @@ export const perplexityPlugin: ProviderPlugin = {
   auth: {
     async discover(ctx: PluginContext): Promise<CredentialResult> {
       // 1. Try OpenCode auth first (wellknown type, has token or key)
-      const entry = await ctx.authSources.opencode.getProviderEntry('perplexity');
+      const entry = await ctx.authSources.opencode.getProviderEntry("perplexity");
       if (entry) {
-        if (entry.type === 'api' && entry.key) {
-          return { ok: true, credentials: { apiKey: entry.key, source: 'opencode' } };
+        if (entry.type === "api" && entry.key) {
+          return { ok: true, credentials: { apiKey: entry.key, source: "opencode" } };
         }
-        if (entry.type === 'wellknown' && (entry.token || entry.key)) {
-          return { ok: true, credentials: { apiKey: (entry.token || entry.key)!, source: 'opencode' } };
+        if (entry.type === "wellknown" && (entry.token || entry.key)) {
+          return {
+            ok: true,
+            credentials: { apiKey: (entry.token || entry.key)!, source: "opencode" },
+          };
         }
       }
 
       // 2. Try env vars
-      const apiKey = ctx.authSources.env.get('PERPLEXITY_API_KEY');
+      const apiKey = ctx.authSources.env.get("PERPLEXITY_API_KEY");
       if (apiKey) {
-        return { ok: true, credentials: { apiKey, source: 'env' } };
+        return { ok: true, credentials: { apiKey, source: "env" } };
       }
 
-      return { ok: false, reason: 'missing', message: 'No Perplexity API key found. Set PERPLEXITY_API_KEY or configure in OpenCode.' };
+      return {
+        ok: false,
+        reason: "missing",
+        message: "No Perplexity API key found. Set PERPLEXITY_API_KEY or configure in OpenCode.",
+      };
     },
 
     isConfigured(credentials: Credentials): boolean {
@@ -86,22 +93,22 @@ export const perplexityPlugin: ProviderPlugin = {
     if (!credentials.apiKey) {
       return {
         fetchedAt: Date.now(),
-        error: 'API key required. Set PERPLEXITY_API_KEY environment variable.',
+        error: "API key required. Set PERPLEXITY_API_KEY environment variable.",
       };
     }
 
-    log.info('Checking Perplexity API', { keyPrefix: credentials.apiKey.slice(0, 8) });
+    log.info("Checking Perplexity API", { keyPrefix: credentials.apiKey.slice(0, 8) });
 
     try {
-      const response = await http.fetch('https://api.perplexity.ai/chat/completions', {
-        method: 'POST',
+      const response = await http.fetch("https://api.perplexity.ai/chat/completions", {
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${credentials.apiKey}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${credentials.apiKey}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: 'sonar',
-          messages: [{ role: 'user', content: 'ping' }],
+          model: "sonar",
+          messages: [{ role: "user", content: "ping" }],
           max_tokens: 1,
         }),
       });
@@ -109,39 +116,41 @@ export const perplexityPlugin: ProviderPlugin = {
       if (response.status === 401) {
         return {
           fetchedAt: Date.now(),
-          error: 'Invalid API key',
+          error: "Invalid API key",
         };
       }
 
       if (response.status === 402) {
         return {
-          planType: 'API',
+          planType: "API",
           allowed: false,
           fetchedAt: Date.now(),
           credits: {
             hasCredits: false,
             unlimited: false,
-            balance: '$0.00',
+            balance: "$0.00",
           },
-          error: 'Insufficient credits',
+          error: "Insufficient credits",
         };
       }
 
       if (response.status === 429) {
         return {
-          planType: 'API',
+          planType: "API",
           allowed: true,
           fetchedAt: Date.now(),
-          error: 'Rate limited',
+          error: "Rate limited",
         };
       }
 
       if (response.ok) {
-        const data = await response.json().catch(() => null) as { usage?: { prompt_tokens?: number; completion_tokens?: number } } | null;
+        const data = (await response.json().catch(() => null)) as {
+          usage?: { prompt_tokens?: number; completion_tokens?: number };
+        } | null;
         const usage = data?.usage;
-        
+
         return {
-          planType: 'API',
+          planType: "API",
           allowed: true,
           fetchedAt: Date.now(),
           credits: {
@@ -157,17 +166,17 @@ export const perplexityPlugin: ProviderPlugin = {
         };
       }
 
-      const errorText = await response.text().catch(() => '');
+      const errorText = await response.text().catch(() => "");
       return {
-        planType: 'API',
+        planType: "API",
         allowed: true,
         fetchedAt: Date.now(),
         error: `API error: ${response.status} ${errorText.slice(0, 100)}`,
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      log.error('Perplexity fetch error', { error: msg });
-      
+      log.error("Perplexity fetch error", { error: msg });
+
       return {
         fetchedAt: Date.now(),
         error: `Connection error: ${msg}`,

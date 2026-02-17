@@ -1,5 +1,5 @@
-import { useColors } from '../contexts/ThemeContext.tsx';
-import type { UsageSnapshot } from '../contexts/PluginContext.tsx';
+import type { UsageSnapshot } from "../contexts/PluginContext.tsx";
+import { useColors } from "../contexts/ThemeContext.tsx";
 
 interface InlineSparklineProps {
   history: UsageSnapshot[];
@@ -30,10 +30,10 @@ export function InlineSparkline({ history, width = 8 }: InlineSparklineProps) {
   const colors = useColors();
 
   if (history.length < 2) {
-    return <text fg={colors.textSubtle}>{'⣀'.repeat(width)}</text>;
+    return <text fg={colors.textSubtle}>{"⣀".repeat(width)}</text>;
   }
 
-  const values = history.map(s => s.usedPercent ?? 0);
+  const values = history.map((s) => s.usedPercent ?? 0);
   const effectiveWidth = width * 2;
   const displayData = values.slice(-effectiveWidth);
 
@@ -50,12 +50,16 @@ export function InlineSparkline({ history, width = 8 }: InlineSparklineProps) {
     const rightNorm = normalize(rightRaw);
 
     const dominantRaw = Math.max(leftRaw, rightRaw);
-    const color = dominantRaw >= 90 ? colors.error :
-                  dominantRaw >= 70 ? colors.warning :
-                  dominantRaw > 0 ? colors.success :
-                  colors.textSubtle;
+    const color =
+      dominantRaw >= 90
+        ? colors.error
+        : dominantRaw >= 70
+          ? colors.warning
+          : dominantRaw > 0
+            ? colors.success
+            : colors.textSubtle;
 
-    const char = dominantRaw <= 0 ? '⣀' : valueToBraille(leftNorm, rightNorm);
+    const char = dominantRaw <= 0 ? "⣀" : valueToBraille(leftNorm, rightNorm);
 
     if (groups.length > 0 && groups[groups.length - 1]!.color === color) {
       groups[groups.length - 1]!.chars += char;
@@ -69,9 +73,11 @@ export function InlineSparkline({ history, width = 8 }: InlineSparklineProps) {
 
   return (
     <text>
-      {padding > 0 && <span fg={colors.textSubtle}>{'⣀'.repeat(padding)}</span>}
+      {padding > 0 && <span fg={colors.textSubtle}>{"⣀".repeat(padding)}</span>}
       {groups.map((group, i) => (
-        <span key={i} fg={group.color}>{group.chars}</span>
+        <span key={i} fg={group.color}>
+          {group.chars}
+        </span>
       ))}
     </text>
   );

@@ -23,17 +23,9 @@ export interface CoverageTracker {
   isTracking(): boolean;
 }
 
-const KNOWN_VIEWS = [
-  'Dashboard',
-  'Providers',
-  'Trends',
-  'Projects',
-  'Settings',
-];
+const KNOWN_VIEWS = ["Dashboard", "Providers", "Trends", "Projects", "Settings"];
 
-export function createCoverageTracker(
-  knownViews: string[] = KNOWN_VIEWS
-): CoverageTracker {
+export function createCoverageTracker(knownViews: string[] = KNOWN_VIEWS): CoverageTracker {
   let tracking = false;
   let sessionStart = 0;
   let currentView: string | null = null;
@@ -45,9 +37,7 @@ export function createCoverageTracker(
     const uniqueViews = [...new Set(viewsVisited.map((v) => v.view))];
     const coveragePercentage =
       knownViews.length > 0
-        ? (uniqueViews.filter((v) => knownViews.includes(v)).length /
-            knownViews.length) *
-          100
+        ? (uniqueViews.filter((v) => knownViews.includes(v)).length / knownViews.length) * 100
         : undefined;
 
     return {
@@ -68,7 +58,9 @@ export function createCoverageTracker(
       currentView = null;
       currentViewStart = 0;
       viewsVisited.length = 0;
-      Object.keys(viewCounts).forEach((k) => delete viewCounts[k]);
+      for (const k of Object.keys(viewCounts)) {
+        delete viewCounts[k];
+      }
     },
 
     stop() {
@@ -116,26 +108,23 @@ export function createCoverageTracker(
 }
 
 export function detectViewFromFrame(frame: string): string | null {
-  const lines = frame.split('\n').slice(0, 5);
-  const headerArea = lines.join('\n');
+  const lines = frame.split("\n").slice(0, 5);
+  const headerArea = lines.join("\n");
 
-  if (headerArea.includes('[1] Dashboard') && headerArea.includes('│')) {
+  if (headerArea.includes("[1] Dashboard") && headerArea.includes("│")) {
     const match = headerArea.match(/\[(\d)\] (\w+)/g);
     if (match) {
       for (const m of match) {
-        if (!m.includes('[')) continue;
+        if (!m.includes("[")) continue;
         const viewMatch = m.match(/\[(\d)\] (\w+)/);
         if (viewMatch) {
           const num = viewMatch[1];
           const name = viewMatch[2];
           if (
             headerArea.includes(`[${num}]`) &&
-            frame.toLowerCase().includes(name?.toLowerCase() ?? '')
+            frame.toLowerCase().includes(name?.toLowerCase() ?? "")
           ) {
-            if (
-              headerArea.includes(`[${num}] ${name}`) &&
-              !headerArea.includes(`│ ${name}`)
-            ) {
+            if (headerArea.includes(`[${num}] ${name}`) && !headerArea.includes(`│ ${name}`)) {
               return name ?? null;
             }
           }
@@ -163,42 +152,36 @@ export function detectViewFromFrame(frame: string): string | null {
 
 export function formatCoverageReport(report: CoverageReport): string {
   const lines: string[] = [
-    '╔══════════════════════════════════════════════════════════════════╗',
-    '║ COVERAGE REPORT                                                  ║',
-    '╠══════════════════════════════════════════════════════════════════╣',
+    "╔══════════════════════════════════════════════════════════════════╗",
+    "║ COVERAGE REPORT                                                  ║",
+    "╠══════════════════════════════════════════════════════════════════╣",
   ];
 
   const duration = (report.sessionEnd ?? Date.now()) - report.sessionStart;
   const durationSec = (duration / 1000).toFixed(1);
 
-  lines.push(
-    `║ Session Duration: ${durationSec}s`.padEnd(67) + '║'
-  );
+  lines.push(`║ Session Duration: ${durationSec}s`.padEnd(67) + "║");
   lines.push(
     `║ Views Visited: ${report.uniqueViews.length} unique, ${report.totalViewChanges} total`.padEnd(
-      67
-    ) + '║'
+      67,
+    ) + "║",
   );
 
   if (report.coveragePercentage !== undefined) {
-    lines.push(
-      `║ Coverage: ${report.coveragePercentage.toFixed(0)}%`.padEnd(67) + '║'
-    );
+    lines.push(`║ Coverage: ${report.coveragePercentage.toFixed(0)}%`.padEnd(67) + "║");
   }
 
-  lines.push('╠══════════════════════════════════════════════════════════════════╣');
-  lines.push('║ View Breakdown:                                                  ║');
+  lines.push("╠══════════════════════════════════════════════════════════════════╣");
+  lines.push("║ View Breakdown:                                                  ║");
 
-  for (const [view, count] of Object.entries(report.viewCounts).sort(
-    (a, b) => b[1] - a[1]
-  )) {
+  for (const [view, count] of Object.entries(report.viewCounts).sort((a, b) => b[1] - a[1])) {
     const visits = report.viewsVisited.filter((v) => v.view === view);
     const totalTime = visits.reduce((sum, v) => sum + (v.duration ?? 0), 0);
-    const timeStr = totalTime > 0 ? ` (${(totalTime / 1000).toFixed(1)}s)` : '';
-    lines.push(`║   ${view}: ${count}x${timeStr}`.padEnd(67) + '║');
+    const timeStr = totalTime > 0 ? ` (${(totalTime / 1000).toFixed(1)}s)` : "";
+    lines.push(`║   ${view}: ${count}x${timeStr}`.padEnd(67) + "║");
   }
 
-  lines.push('╚══════════════════════════════════════════════════════════════════╝');
+  lines.push("╚══════════════════════════════════════════════════════════════════╝");
 
-  return lines.join('\n');
+  return lines.join("\n");
 }

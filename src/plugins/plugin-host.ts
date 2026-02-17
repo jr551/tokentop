@@ -7,7 +7,7 @@
  * 3. All errors are logged through the scoped plugin logger
  */
 
-import { createPluginLogger } from './sandbox.ts';
+import { createPluginLogger } from "./sandbox.ts";
 
 // ---------------------------------------------------------------------------
 // Circuit breaker state
@@ -71,10 +71,14 @@ export async function safeInvoke<T>(
 
   // Check if circuit is open (plugin disabled)
   if (circuit.disabledUntil > Date.now()) {
-    log.warn(`Circuit open — skipping ${method} (disabled until ${new Date(circuit.disabledUntil).toISOString()})`);
+    log.warn(
+      `Circuit open — skipping ${method} (disabled until ${new Date(circuit.disabledUntil).toISOString()})`,
+    );
     return {
       ok: false,
-      error: new Error(`Plugin "${pluginId}" is temporarily disabled after ${circuit.consecutiveFailures} consecutive failures`),
+      error: new Error(
+        `Plugin "${pluginId}" is temporarily disabled after ${circuit.consecutiveFailures} consecutive failures`,
+      ),
       circuitOpen: true,
     };
   }
@@ -89,7 +93,9 @@ export async function safeInvoke<T>(
 
     // Success — reset consecutive failures
     if (circuit.consecutiveFailures > 0) {
-      log.info(`${method} succeeded — resetting circuit breaker (was at ${circuit.consecutiveFailures} failures)`);
+      log.info(
+        `${method} succeeded — resetting circuit breaker (was at ${circuit.consecutiveFailures} failures)`,
+      );
     }
     circuit.consecutiveFailures = 0;
     circuit.disabledUntil = 0;
@@ -181,7 +187,8 @@ export function getPluginHealth(pluginId: string): PluginHealth {
   const circuit = getCircuit(pluginId);
   return {
     pluginId,
-    healthy: circuit.disabledUntil < Date.now() && circuit.consecutiveFailures < MAX_CONSECUTIVE_FAILURES,
+    healthy:
+      circuit.disabledUntil < Date.now() && circuit.consecutiveFailures < MAX_CONSECUTIVE_FAILURES,
     consecutiveFailures: circuit.consecutiveFailures,
     totalFailures: circuit.totalFailures,
     totalCalls: circuit.totalCalls,

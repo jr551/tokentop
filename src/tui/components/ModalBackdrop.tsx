@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { RGBA } from '@opentui/core';
+import { RGBA } from "@opentui/core";
+import type { ReactNode } from "react";
 
 /** Standardized z-index tiers for overlay layering */
 export const Z_INDEX = {
@@ -18,8 +18,8 @@ interface ModalBackdropProps {
   onBackdropClick?: () => void;
 }
 
-export function ModalBackdrop({ 
-  children, 
+export function ModalBackdrop({
+  children,
   zIndex = Z_INDEX.MODAL,
   onBackdropClick,
 }: ModalBackdropProps) {

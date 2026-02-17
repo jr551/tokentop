@@ -1,17 +1,25 @@
-import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
-import type { AgentPlugin, SessionParseOptions } from '@/plugins/types/agent.ts';
-import type { AgentSessionAggregate, AgentInfo, AgentId } from '@/agents/types.ts';
-import { aggregateSessionUsage } from '@/agents/aggregator.ts';
-import { priceSessions } from '@/agents/costing.ts';
-import { pluginRegistry } from '@/plugins/registry.ts';
-import { createSandboxedHttpClient, createPluginLogger } from '@/plugins/sandbox.ts';
-import { createPluginContext } from '@/plugins/plugin-context-factory.ts';
-import { useLogs } from './LogContext.tsx';
-import { usePlugins } from './PluginContext.tsx';
-import { useStorage } from './StorageContext.tsx';
-import type { PricingSource } from '@/storage/types.ts';
-import { useDemoMode } from './DemoModeContext.tsx';
-import { useTimeWindow } from './TimeWindowContext.tsx';
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { aggregateSessionUsage } from "@/agents/aggregator.ts";
+import { priceSessions } from "@/agents/costing.ts";
+import type { AgentId, AgentInfo, AgentSessionAggregate } from "@/agents/types.ts";
+import { createPluginContext } from "@/plugins/plugin-context-factory.ts";
+import { pluginRegistry } from "@/plugins/registry.ts";
+import { createPluginLogger, createSandboxedHttpClient } from "@/plugins/sandbox.ts";
+import type { AgentPlugin, SessionParseOptions } from "@/plugins/types/agent.ts";
+import type { PricingSource } from "@/storage/types.ts";
+import { useDemoMode } from "./DemoModeContext.tsx";
+import { useLogs } from "./LogContext.tsx";
+import { usePlugins } from "./PluginContext.tsx";
+import { useStorage } from "./StorageContext.tsx";
+import { useTimeWindow } from "./TimeWindowContext.tsx";
 
 interface AgentSessionContextValue {
   sessions: AgentSessionAggregate[];
@@ -54,7 +62,7 @@ export function AgentSessionProvider({
   const hasBackfilled = useRef(false);
 
   const discoverAgents = useCallback(async (): Promise<AgentInfo[]> => {
-    const agentPlugins = pluginRegistry.getAll('agent');
+    const agentPlugins = pluginRegistry.getAll("agent");
     const discovered: AgentInfo[] = [];
 
     for (const plugin of agentPlugins) {
@@ -78,7 +86,7 @@ export function AgentSessionProvider({
           installed: false,
           sessionParsingSupported: false,
         };
-        agentInfo.error = err instanceof Error ? err.message : 'Unknown error';
+        agentInfo.error = err instanceof Error ? err.message : "Unknown error";
         discovered.push(agentInfo);
       }
     }
@@ -86,144 +94,173 @@ export function AgentSessionProvider({
     return discovered;
   }, []);
 
-  const fetchAgentSessions = useCallback(async (
-    plugin: AgentPlugin,
-    options: SessionParseOptions
-  ): Promise<AgentSessionAggregate[]> => {
-    const agentId = plugin.id;
-    const agentName = plugin.name;
+  const fetchAgentSessions = useCallback(
+    async (plugin: AgentPlugin, options: SessionParseOptions): Promise<AgentSessionAggregate[]> => {
+      const agentId = plugin.id;
+      const agentName = plugin.name;
 
-    const http = createSandboxedHttpClient(plugin.id, plugin.permissions);
-    const logger = createPluginLogger(plugin.id);
-    const ctx = { http, logger, config: {}, signal: AbortSignal.timeout(60_000) };
+      const http = createSandboxedHttpClient(plugin.id, plugin.permissions);
+      const logger = createPluginLogger(plugin.id);
+      const ctx = { http, logger, config: {}, signal: AbortSignal.timeout(60_000) };
 
-    const rawSessions = await plugin.parseSessions(options, ctx);
+      const rawSessions = await plugin.parseSessions(options, ctx);
 
-    if (rawSessions.length === 0) {
-      return [];
-    }
-
-    const aggregated = aggregateSessionUsage({
-      agentId,
-      agentName,
-      rows: rawSessions,
-    });
-
-    return aggregated;
-  }, []);
-
-  const refreshSessions = useCallback(async (options: SessionParseOptions = {}) => {
-    const isInitialLoad = sessions.length === 0;
-    if (isInitialLoad) {
-      setIsLoading(true);
-    }
-    setError(null);
-
-    try {
-      if (demoMode && simulator) {
-        const snapshot = simulator.tick();
-        const demoSessions = snapshot.sessions;
-        setSessions(demoSessions);
-        setLastRefreshAt(Date.now());
-        debug('Demo sessions refreshed', { count: demoSessions.length }, 'agent-sessions');
-        return;
+      if (rawSessions.length === 0) {
+        return [];
       }
 
-      debug('Starting session refresh...', undefined, 'agent-sessions');
+      const aggregated = aggregateSessionUsage({
+        agentId,
+        agentName,
+        rows: rawSessions,
+      });
 
-      const discoveredAgents = await discoverAgents();
-      setAgents(discoveredAgents);
+      return aggregated;
+    },
+    [],
+  );
 
-      const agentPlugins = pluginRegistry.getAll('agent');
-      const allAggregates: AgentSessionAggregate[] = [];
+  const refreshSessions = useCallback(
+    async (options: SessionParseOptions = {}) => {
+      const isInitialLoad = sessions.length === 0;
+      if (isInitialLoad) {
+        setIsLoading(true);
+      }
+      setError(null);
 
-      for (const plugin of agentPlugins) {
-        if (!plugin.capabilities.sessionParsing) {
-          debug(`Skipping ${plugin.id}: session parsing not supported`, undefined, 'agent-sessions');
-          continue;
+      try {
+        if (demoMode && simulator) {
+          const snapshot = simulator.tick();
+          const demoSessions = snapshot.sessions;
+          setSessions(demoSessions);
+          setLastRefreshAt(Date.now());
+          debug("Demo sessions refreshed", { count: demoSessions.length }, "agent-sessions");
+          return;
         }
 
-        try {
-          const pluginCtx = createPluginContext(plugin.id, plugin.permissions);
-          const installed = await plugin.isInstalled(pluginCtx);
-          if (!installed) {
-            debug(`Skipping ${plugin.id}: not installed`, undefined, 'agent-sessions');
+        debug("Starting session refresh...", undefined, "agent-sessions");
+
+        const discoveredAgents = await discoverAgents();
+        setAgents(discoveredAgents);
+
+        const agentPlugins = pluginRegistry.getAll("agent");
+        const allAggregates: AgentSessionAggregate[] = [];
+
+        for (const plugin of agentPlugins) {
+          if (!plugin.capabilities.sessionParsing) {
+            debug(
+              `Skipping ${plugin.id}: session parsing not supported`,
+              undefined,
+              "agent-sessions",
+            );
             continue;
           }
 
-          const aggregates = await fetchAgentSessions(plugin, options);
-          allAggregates.push(...aggregates);
-          debug(`Fetched ${aggregates.length} sessions from ${plugin.id}`, undefined, 'agent-sessions');
-        } catch (err) {
-          const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-          warn(`Failed to fetch sessions from ${plugin.id}: ${errorMsg}`, undefined, 'agent-sessions');
+          try {
+            const pluginCtx = createPluginContext(plugin.id, plugin.permissions);
+            const installed = await plugin.isInstalled(pluginCtx);
+            if (!installed) {
+              debug(`Skipping ${plugin.id}: not installed`, undefined, "agent-sessions");
+              continue;
+            }
+
+            const aggregates = await fetchAgentSessions(plugin, options);
+            allAggregates.push(...aggregates);
+            debug(
+              `Fetched ${aggregates.length} sessions from ${plugin.id}`,
+              undefined,
+              "agent-sessions",
+            );
+          } catch (err) {
+            const errorMsg = err instanceof Error ? err.message : "Unknown error";
+            warn(
+              `Failed to fetch sessions from ${plugin.id}: ${errorMsg}`,
+              undefined,
+              "agent-sessions",
+            );
+          }
         }
-      }
 
-      const pricedSessions = await priceSessions(allAggregates);
+        const pricedSessions = await priceSessions(allAggregates);
 
-      pricedSessions.sort((a, b) => b.lastActivityAt - a.lastActivityAt);
+        pricedSessions.sort((a, b) => b.lastActivityAt - a.lastActivityAt);
 
-      if (storageReady) {
-        const now = Date.now();
-        let persistedCount = 0;
-        for (const session of pricedSessions) {
-          const fp = sessionFingerprint(session);
-          const prevFp = sessionPersistenceFingerprints.get(session.sessionId);
-          if (prevFp === fp) continue;
+        if (storageReady) {
+          const now = Date.now();
+          let persistedCount = 0;
+          for (const session of pricedSessions) {
+            const fp = sessionFingerprint(session);
+            const prevFp = sessionPersistenceFingerprints.get(session.sessionId);
+            if (prevFp === fp) continue;
 
-          sessionPersistenceFingerprints.set(session.sessionId, fp);
-          persistedCount++;
+            sessionPersistenceFingerprints.set(session.sessionId, fp);
+            persistedCount++;
 
-          recordAgentSession(
-            {
-              agentId: session.agentId,
-              sessionId: session.sessionId,
-              projectPath: session.projectPath ?? null,
-              startedAt: session.startedAt ?? null,
-              lastSeenAt: now,
-            },
-            {
-              timestamp: now,
-              lastActivityAt: session.lastActivityAt,
-              status: session.status,
-              totalInputTokens: session.totals.input,
-              totalOutputTokens: session.totals.output,
-              totalCacheReadTokens: session.totals.cacheRead ?? 0,
-              totalCacheWriteTokens: session.totals.cacheWrite ?? 0,
-              totalCostUsd: session.totalCostUsd ?? 0,
-              requestCount: session.requestCount,
-            },
-            session.streams.map(s => ({
-              provider: s.providerId,
-              model: s.modelId,
-              inputTokens: s.tokens.input,
-              outputTokens: s.tokens.output,
-              cacheReadTokens: s.tokens.cacheRead ?? 0,
-              cacheWriteTokens: s.tokens.cacheWrite ?? 0,
-              costUsd: s.costUsd ?? 0,
-              requestCount: s.requestCount,
-              pricingSource: (s.pricingSource as PricingSource) ?? null,
-            }))
+            recordAgentSession(
+              {
+                agentId: session.agentId,
+                sessionId: session.sessionId,
+                projectPath: session.projectPath ?? null,
+                startedAt: session.startedAt ?? null,
+                lastSeenAt: now,
+              },
+              {
+                timestamp: now,
+                lastActivityAt: session.lastActivityAt,
+                status: session.status,
+                totalInputTokens: session.totals.input,
+                totalOutputTokens: session.totals.output,
+                totalCacheReadTokens: session.totals.cacheRead ?? 0,
+                totalCacheWriteTokens: session.totals.cacheWrite ?? 0,
+                totalCostUsd: session.totalCostUsd ?? 0,
+                requestCount: session.requestCount,
+              },
+              session.streams.map((s) => ({
+                provider: s.providerId,
+                model: s.modelId,
+                inputTokens: s.tokens.input,
+                outputTokens: s.tokens.output,
+                cacheReadTokens: s.tokens.cacheRead ?? 0,
+                cacheWriteTokens: s.tokens.cacheWrite ?? 0,
+                costUsd: s.costUsd ?? 0,
+                requestCount: s.requestCount,
+                pricingSource: (s.pricingSource as PricingSource) ?? null,
+              })),
+            );
+          }
+          debug(
+            `Persisted ${persistedCount}/${pricedSessions.length} changed sessions to storage`,
+            undefined,
+            "agent-sessions",
           );
         }
-        debug(`Persisted ${persistedCount}/${pricedSessions.length} changed sessions to storage`, undefined, 'agent-sessions');
-      }
 
-      setSessions(pricedSessions);
-      setLastRefreshAt(Date.now());
+        setSessions(pricedSessions);
+        setLastRefreshAt(Date.now());
 
-      debug(`Session refresh complete`, { count: pricedSessions.length }, 'agent-sessions');
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-      logError(`Session refresh failed: ${errorMsg}`, undefined, 'agent-sessions');
-      setError(errorMsg);
-    } finally {
-      if (isInitialLoad) {
-        setIsLoading(false);
+        debug(`Session refresh complete`, { count: pricedSessions.length }, "agent-sessions");
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : "Unknown error";
+        logError(`Session refresh failed: ${errorMsg}`, undefined, "agent-sessions");
+        setError(errorMsg);
+      } finally {
+        if (isInitialLoad) {
+          setIsLoading(false);
+        }
       }
-    }
-  }, [sessions.length, discoverAgents, fetchAgentSessions, debug, warn, logError, storageReady, recordAgentSession, demoMode]);
+    },
+    [
+      sessions.length,
+      discoverAgents,
+      fetchAgentSessions,
+      debug,
+      warn,
+      logError,
+      storageReady,
+      recordAgentSession,
+      demoMode,
+    ],
+  );
 
   const refreshSessionsRef = useRef(refreshSessions);
   refreshSessionsRef.current = refreshSessions;
@@ -243,15 +280,15 @@ export function AgentSessionProvider({
   useEffect(() => {
     if (!autoRefresh) return;
 
-    debug(`Setting up session refresh interval: ${refreshInterval}ms`, undefined, 'agent-sessions');
-    
+    debug(`Setting up session refresh interval: ${refreshInterval}ms`, undefined, "agent-sessions");
+
     const intervalId = setInterval(() => {
-      debug('Interval tick - refreshing sessions', undefined, 'agent-sessions');
+      debug("Interval tick - refreshing sessions", undefined, "agent-sessions");
       refreshSessionsRef.current();
     }, refreshInterval);
 
     return () => {
-      debug('Clearing session refresh interval', undefined, 'agent-sessions');
+      debug("Clearing session refresh interval", undefined, "agent-sessions");
       clearInterval(intervalId);
     };
   }, [autoRefresh, refreshInterval, debug]);
@@ -265,29 +302,25 @@ export function AgentSessionProvider({
     refreshSessions,
   };
 
-  return (
-    <AgentSessionContext.Provider value={value}>
-      {children}
-    </AgentSessionContext.Provider>
-  );
+  return <AgentSessionContext.Provider value={value}>{children}</AgentSessionContext.Provider>;
 }
 
 export function useAgentSessions(): AgentSessionContextValue {
   const context = useContext(AgentSessionContext);
   if (!context) {
-    throw new Error('useAgentSessions must be used within AgentSessionProvider');
+    throw new Error("useAgentSessions must be used within AgentSessionProvider");
   }
   return context;
 }
 
 export function useActiveSessions(): AgentSessionAggregate[] {
   const { sessions } = useAgentSessions();
-  return sessions.filter(s => s.status === 'active');
+  return sessions.filter((s) => s.status === "active");
 }
 
 export function useSessionsByAgent(agentId: AgentId): AgentSessionAggregate[] {
   const { sessions } = useAgentSessions();
-  return sessions.filter(s => s.agentId === agentId);
+  return sessions.filter((s) => s.agentId === agentId);
 }
 
 export function useTotalCost(): number {
@@ -302,6 +335,6 @@ export function useTotalTokens(): { input: number; output: number } {
       input: acc.input + s.totals.input,
       output: acc.output + s.totals.output,
     }),
-    { input: 0, output: 0 }
+    { input: 0, output: 0 },
   );
 }

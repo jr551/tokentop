@@ -1,34 +1,40 @@
 import type {
-  ProviderPlugin,
-  ProviderFetchContext,
-  ProviderUsageData,
-  UsageLimit,
-  Credentials,
   CredentialResult,
+  Credentials,
   OAuthCredentials,
-  RefreshedCredentials,
   PluginContext,
   ProviderAuth,
-} from '../types/provider.ts';
+  ProviderFetchContext,
+  ProviderPlugin,
+  ProviderUsageData,
+  RefreshedCredentials,
+  UsageLimit,
+} from "../types/provider.ts";
 
 const ANTIGRAVITY_ENDPOINTS = [
-  'https://daily-cloudcode-pa.sandbox.googleapis.com',
-  'https://autopush-cloudcode-pa.sandbox.googleapis.com',
-  'https://cloudcode-pa.googleapis.com',
+  "https://daily-cloudcode-pa.sandbox.googleapis.com",
+  "https://autopush-cloudcode-pa.sandbox.googleapis.com",
+  "https://cloudcode-pa.googleapis.com",
 ];
 
 const ANTIGRAVITY_HEADERS = {
-  'User-Agent': 'antigravity/1.11.5 windows/amd64',
-  'X-Goog-Api-Client': 'google-cloud-sdk vscode_cloudshelleditor/0.1',
-  'Client-Metadata': '{"ideType":"IDE_UNSPECIFIED","platform":"PLATFORM_UNSPECIFIED","pluginType":"GEMINI"}',
+  "User-Agent": "antigravity/1.11.5 windows/amd64",
+  "X-Goog-Api-Client": "google-cloud-sdk vscode_cloudshelleditor/0.1",
+  "Client-Metadata":
+    '{"ideType":"IDE_UNSPECIFIED","platform":"PLATFORM_UNSPECIFIED","pluginType":"GEMINI"}',
 };
 
 // Base64 encoded to avoid triggering GitHub secret scanning.
 // These are publicly-known OAuth client IDs from the open-source Antigravity CLI.
-const ANTIGRAVITY_CLIENT_ID = process.env.ANTIGRAVITY_CLIENT_ID
-  ?? Buffer.from('MTA3MTAwNjA2MDU5MS10bWhzc2luMmgyMWxjcmUyMzV2dG9sb2poNGc0MDNlcC5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbQ==', 'base64').toString();
-const ANTIGRAVITY_CLIENT_SECRET = process.env.ANTIGRAVITY_CLIENT_SECRET
-  ?? Buffer.from('R09DU1BYLUs1OEZXUjQ4NkxkTEoxbUxCOHNYQzR6NnFEQWY=', 'base64').toString();
+const ANTIGRAVITY_CLIENT_ID =
+  process.env.ANTIGRAVITY_CLIENT_ID ??
+  Buffer.from(
+    "MTA3MTAwNjA2MDU5MS10bWhzc2luMmgyMWxjcmUyMzV2dG9sb2poNGc0MDNlcC5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbQ==",
+    "base64",
+  ).toString();
+const ANTIGRAVITY_CLIENT_SECRET =
+  process.env.ANTIGRAVITY_CLIENT_SECRET ??
+  Buffer.from("R09DU1BYLUs1OEZXUjQ4NkxkTEoxbUxCOHNYQzR6NnFEQWY=", "base64").toString();
 const TOKEN_EXPIRY_BUFFER_MS = 5 * 60 * 1000;
 
 interface AntigravityAccount {
@@ -57,32 +63,35 @@ interface TokenResponse {
 }
 
 interface AntigravityModelsResponse {
-  models?: Record<string, {
-    displayName?: string;
-    quotaInfo?: {
-      remainingFraction?: number | null;
-      resetTime?: string | null;
-    };
-  }>;
+  models?: Record<
+    string,
+    {
+      displayName?: string;
+      quotaInfo?: {
+        remainingFraction?: number | null;
+        resetTime?: string | null;
+      };
+    }
+  >;
 }
 
 export const antigravityPlugin: ProviderPlugin = {
   apiVersion: 2,
-  id: 'antigravity',
-  type: 'provider',
-  name: 'Antigravity',
-  version: '1.0.0',
+  id: "antigravity",
+  type: "provider",
+  name: "Antigravity",
+  version: "1.0.0",
 
   meta: {
-    description: 'Antigravity (Google Gemini Advanced) subscription usage tracking',
-    homepage: 'https://one.google.com/explore-plan/gemini-advanced',
-    brandColor: '#4285f4',
+    description: "Antigravity (Google Gemini Advanced) subscription usage tracking",
+    homepage: "https://one.google.com/explore-plan/gemini-advanced",
+    brandColor: "#4285f4",
   },
 
   permissions: {
     network: {
       enabled: true,
-      allowedDomains: ['googleapis.com', 'sandbox.googleapis.com'],
+      allowedDomains: ["googleapis.com", "sandbox.googleapis.com"],
     },
     env: {
       read: false,
@@ -90,7 +99,7 @@ export const antigravityPlugin: ProviderPlugin = {
     },
     filesystem: {
       read: true,
-      paths: ['~/.config/opencode'],
+      paths: ["~/.config/opencode"],
     },
   },
 
@@ -102,7 +111,7 @@ export const antigravityPlugin: ProviderPlugin = {
   },
 
   pricing: {
-    modelsDevProviderId: 'google',
+    modelsDevProviderId: "google",
   },
 
   auth: {
@@ -115,27 +124,29 @@ export const antigravityPlugin: ProviderPlugin = {
         const account = agData.accounts[activeIndex] ?? agData.accounts[0];
         if (account && (account.refreshToken || account.accessToken)) {
           const oauth: OAuthCredentials = {
-            accessToken: account.accessToken ?? '',
+            accessToken: account.accessToken ?? "",
             ...(account.refreshToken !== undefined && { refreshToken: account.refreshToken }),
             ...(account.expiresAt !== undefined && { expiresAt: account.expiresAt }),
-            ...(account.managedProjectId !== undefined && { managedProjectId: account.managedProjectId }),
+            ...(account.managedProjectId !== undefined && {
+              managedProjectId: account.managedProjectId,
+            }),
           };
-          return { ok: true, credentials: { oauth, source: 'opencode' } };
+          return { ok: true, credentials: { oauth, source: "opencode" } };
         }
       }
 
       // Source 2: OpenCode OAuth under 'google' key
-      const entry = await ctx.authSources.opencode.getProviderEntry('google');
-      if (entry?.type === 'oauth' && entry.access) {
+      const entry = await ctx.authSources.opencode.getProviderEntry("google");
+      if (entry?.type === "oauth" && entry.access) {
         const oauth: OAuthCredentials = {
           accessToken: entry.access,
           ...(entry.refresh !== undefined && { refreshToken: entry.refresh }),
           ...(entry.expires !== undefined && { expiresAt: entry.expires }),
         };
-        return { ok: true, credentials: { oauth, source: 'opencode' } };
+        return { ok: true, credentials: { oauth, source: "opencode" } };
       }
 
-      return { ok: false, reason: 'missing', message: 'No Antigravity credentials found' };
+      return { ok: false, reason: "missing", message: "No Antigravity credentials found" };
     },
 
     isConfigured(credentials: Credentials): boolean {
@@ -145,14 +156,14 @@ export const antigravityPlugin: ProviderPlugin = {
 
   async refreshToken(auth: OAuthCredentials): Promise<RefreshedCredentials> {
     if (!auth.refreshToken) {
-      throw new Error('No refresh token available');
+      throw new Error("No refresh token available");
     }
 
-    const response = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    const response = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
-        grant_type: 'refresh_token',
+        grant_type: "refresh_token",
         refresh_token: auth.refreshToken,
         client_id: ANTIGRAVITY_CLIENT_ID,
         client_secret: ANTIGRAVITY_CLIENT_SECRET,
@@ -160,7 +171,7 @@ export const antigravityPlugin: ProviderPlugin = {
     });
 
     if (!response.ok) {
-      const errorText = await response.text().catch(() => '');
+      const errorText = await response.text().catch(() => "");
       throw new Error(`Token refresh failed: ${response.status} ${errorText.slice(0, 100)}`);
     }
 
@@ -179,23 +190,25 @@ export const antigravityPlugin: ProviderPlugin = {
     if (!credentials.oauth?.accessToken && !credentials.oauth?.refreshToken) {
       return {
         fetchedAt: Date.now(),
-        error: 'OAuth token required. Sign in via OpenCode with Google account.',
+        error: "OAuth token required. Sign in via OpenCode with Google account.",
       };
     }
 
     let accessToken = credentials.oauth.accessToken;
-    const needsRefresh = !accessToken || 
-      (credentials.oauth.expiresAt && credentials.oauth.expiresAt <= Date.now() + TOKEN_EXPIRY_BUFFER_MS);
+    const needsRefresh =
+      !accessToken ||
+      (credentials.oauth.expiresAt &&
+        credentials.oauth.expiresAt <= Date.now() + TOKEN_EXPIRY_BUFFER_MS);
 
     if (needsRefresh && credentials.oauth.refreshToken) {
       try {
-        log.debug('Access token expired or missing, refreshing...');
+        log.debug("Access token expired or missing, refreshing...");
         const refreshed = await this.refreshToken!(credentials.oauth);
         accessToken = refreshed.accessToken;
-        log.debug('Token refreshed successfully');
+        log.debug("Token refreshed successfully");
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        log.error('Token refresh failed', { error: msg });
+        log.error("Token refresh failed", { error: msg });
         return {
           fetchedAt: Date.now(),
           error: `Token refresh failed: ${msg}`,
@@ -206,7 +219,7 @@ export const antigravityPlugin: ProviderPlugin = {
     if (!accessToken) {
       return {
         fetchedAt: Date.now(),
-        error: 'No valid access token and refresh failed.',
+        error: "No valid access token and refresh failed.",
       };
     }
 
@@ -215,38 +228,38 @@ export const antigravityPlugin: ProviderPlugin = {
     for (const endpoint of ANTIGRAVITY_ENDPOINTS) {
       try {
         const response = await http.fetch(`${endpoint}/v1internal:fetchAvailableModels`, {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
             ...ANTIGRAVITY_HEADERS,
           },
           body: JSON.stringify({}),
         });
 
         if (!response.ok) {
-          const errorText = await response.text().catch(() => '');
+          const errorText = await response.text().catch(() => "");
           lastError = `${response.status} ${response.statusText}: ${errorText.slice(0, 100)}`;
-          
+
           if (response.status === 401) {
             return {
               fetchedAt: Date.now(),
-              error: 'OAuth token expired or invalid. Re-authenticate in OpenCode.',
+              error: "OAuth token expired or invalid. Re-authenticate in OpenCode.",
             };
           }
-          
+
           continue;
         }
 
         const data = (await response.json()) as AntigravityModelsResponse;
 
         if (!data.models) {
-          lastError = 'No models data in response';
+          lastError = "No models data in response";
           continue;
         }
 
         const result: ProviderUsageData = {
-          planType: 'Gemini Advanced',
+          planType: "Gemini Advanced",
           allowed: true,
           fetchedAt: Date.now(),
         };
@@ -275,9 +288,9 @@ export const antigravityPlugin: ProviderPlugin = {
           .sort((a, b) => {
             const usageDiff = b.usedPercent - a.usedPercent;
             if (usageDiff !== 0) return usageDiff;
-            const labelA = a.limit.label ?? '';
-            const labelB = b.limit.label ?? '';
-            return labelB.localeCompare(labelA, undefined, { numeric: true, sensitivity: 'base' });
+            const labelA = a.limit.label ?? "";
+            const labelB = b.limit.label ?? "";
+            return labelB.localeCompare(labelA, undefined, { numeric: true, sensitivity: "base" });
           });
 
         if (quotas.length > 0) {
@@ -296,14 +309,13 @@ export const antigravityPlugin: ProviderPlugin = {
         return result;
       } catch (err) {
         lastError = err instanceof Error ? err.message : String(err);
-        continue;
       }
     }
 
-    log.error('Failed to fetch Antigravity usage from all endpoints', { error: lastError });
+    log.error("Failed to fetch Antigravity usage from all endpoints", { error: lastError });
     return {
       fetchedAt: Date.now(),
-      error: lastError ?? 'Failed to fetch usage from all endpoints',
+      error: lastError ?? "Failed to fetch usage from all endpoints",
     };
   },
 };

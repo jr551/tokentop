@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useKeyboard, useTerminalDimensions } from '@opentui/react';
-import { RGBA } from '@opentui/core';
-import { useColors } from '../contexts/ThemeContext.tsx';
-import { useInputFocus } from '../contexts/InputContext.tsx';
+import { RGBA } from "@opentui/core";
+import { useKeyboard, useTerminalDimensions } from "@opentui/react";
+import { useEffect, useMemo, useState } from "react";
+import { useInputFocus } from "../contexts/InputContext.tsx";
+import { useColors } from "../contexts/ThemeContext.tsx";
 
 const OVERLAY_BG = RGBA.fromValues(0.0, 0.0, 0.0, 0.5);
 
@@ -22,7 +22,7 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
   const colors = useColors();
   const { width: termWidth, height: termHeight } = useTerminalDimensions();
   const { setInputFocused } = useInputFocus();
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   useEffect(() => {
@@ -33,9 +33,9 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
   const filteredCommands = useMemo(() => {
     if (!query) return commands;
     const lowerQuery = query.toLowerCase();
-    return commands.filter(cmd =>
-      cmd.label.toLowerCase().includes(lowerQuery) ||
-      cmd.id.toLowerCase().includes(lowerQuery)
+    return commands.filter(
+      (cmd) =>
+        cmd.label.toLowerCase().includes(lowerQuery) || cmd.id.toLowerCase().includes(lowerQuery),
     );
   }, [commands, query]);
 
@@ -49,12 +49,12 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
   }, [query]);
 
   useKeyboard((key) => {
-    if (key.name === 'escape') {
+    if (key.name === "escape") {
       onClose();
       return;
     }
 
-    if (key.name === 'return') {
+    if (key.name === "return") {
       const selected = filteredCommands[selectedIndex];
       if (selected) {
         onClose();
@@ -63,9 +63,9 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
       return;
     }
 
-    if (query === '' && !key.ctrl && !key.meta) {
-      const keyStr = key.sequence || '';
-      const matchingCmd = commands.find(cmd => cmd.shortcut === keyStr);
+    if (query === "" && !key.ctrl && !key.meta) {
+      const keyStr = key.sequence || "";
+      const matchingCmd = commands.find((cmd) => cmd.shortcut === keyStr);
       if (matchingCmd) {
         onClose();
         matchingCmd.action();
@@ -73,23 +73,31 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
       }
     }
 
-    if (key.name === 'down' || (key.ctrl && key.name === 'n') || (query === '' && key.name === 'j')) {
-      setSelectedIndex(i => Math.min(i + 1, filteredCommands.length - 1));
+    if (
+      key.name === "down" ||
+      (key.ctrl && key.name === "n") ||
+      (query === "" && key.name === "j")
+    ) {
+      setSelectedIndex((i) => Math.min(i + 1, filteredCommands.length - 1));
       return;
     }
 
-    if (key.name === 'up' || (key.ctrl && key.name === 'p') || (query === '' && key.name === 'k')) {
-      setSelectedIndex(i => Math.max(i - 1, 0));
+    if (key.name === "up" || (key.ctrl && key.name === "p") || (query === "" && key.name === "k")) {
+      setSelectedIndex((i) => Math.max(i - 1, 0));
       return;
     }
 
-    if (key.name === 'backspace') {
-      setQuery(q => q.slice(0, -1));
+    if (key.name === "backspace") {
+      setQuery((q) => q.slice(0, -1));
       return;
     }
 
-    if (key.sequence && key.sequence.length === 1 && /^[\w\-_., ~:;!@#$%^&*()]$/.test(key.sequence)) {
-      setQuery(q => q + key.sequence);
+    if (
+      key.sequence &&
+      key.sequence.length === 1 &&
+      /^[\w\-_., ~:;!@#$%^&*()]$/.test(key.sequence)
+    ) {
+      setQuery((q) => q + key.sequence);
       return;
     }
   });
@@ -128,20 +136,22 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
           <box flexDirection="column">
             {filteredCommands.length === 0 ? (
               <box padding={1} height={1}>
-                <text height={1} fg={colors.textMuted}>No matching commands</text>
+                <text height={1} fg={colors.textMuted}>
+                  No matching commands
+                </text>
               </box>
             ) : (
               filteredCommands.map((cmd, idx) => {
                 const isSelected = idx === selectedIndex;
                 return (
-                   <box
-                     key={cmd.id}
-                     flexDirection="row"
-                     justifyContent="space-between"
-                     paddingX={1}
-                     height={1}
-                     {...(isSelected ? { backgroundColor: colors.primary } : {})}
-                   >
+                  <box
+                    key={cmd.id}
+                    flexDirection="row"
+                    justifyContent="space-between"
+                    paddingX={1}
+                    height={1}
+                    {...(isSelected ? { backgroundColor: colors.primary } : {})}
+                  >
                     <text height={1} fg={isSelected ? colors.background : colors.text}>
                       {cmd.label}
                     </text>
@@ -157,9 +167,11 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
           </box>
         </scrollbox>
 
-         <box paddingX={1} height={1}>
-           <text height={1} fg={colors.textSubtle}>↑↓ navigate  Enter select  Esc close</text>
-         </box>
+        <box paddingX={1} height={1}>
+          <text height={1} fg={colors.textSubtle}>
+            ↑↓ navigate Enter select Esc close
+          </text>
+        </box>
       </box>
     </box>
   );

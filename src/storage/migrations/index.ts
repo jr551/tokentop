@@ -1,4 +1,4 @@
-import type { Database } from 'bun:sqlite';
+import type { Database } from "bun:sqlite";
 
 export interface Migration {
   version: number;
@@ -167,7 +167,7 @@ export const migrations: Migration[] = [
 ];
 
 export function getCurrentVersion(db: Database): number {
-  const result = db.prepare('PRAGMA user_version').get() as { user_version: number } | null;
+  const result = db.prepare("PRAGMA user_version").get() as { user_version: number } | null;
   return result?.user_version ?? 0;
 }
 

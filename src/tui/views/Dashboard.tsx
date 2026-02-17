@@ -1,15 +1,16 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useKeyboard, useTerminalDimensions } from '@opentui/react';
-import type { ScrollBoxRenderable, BoxRenderable, InputRenderable } from '@opentui/core';
-import { useColors } from '../contexts/ThemeContext.tsx';
-import { usePlugins, type ProviderState } from '../contexts/PluginContext.tsx';
-import { useInputFocus } from '../contexts/InputContext.tsx';
-import { ProviderCard } from '../components/ProviderCard.tsx';
-import { GhostProviderCard } from '../components/GhostProviderCard.tsx';
-import { ProvidersList } from '../components/ProvidersList.tsx';
-import { ProviderAggregateStrip } from '../components/ProviderAggregateStrip.tsx';
-type SortMode = 'name' | 'usage' | 'status';
-type ViewMode = 'cards' | 'list';
+import type { BoxRenderable, InputRenderable, ScrollBoxRenderable } from "@opentui/core";
+import { useKeyboard, useTerminalDimensions } from "@opentui/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { GhostProviderCard } from "../components/GhostProviderCard.tsx";
+import { ProviderAggregateStrip } from "../components/ProviderAggregateStrip.tsx";
+import { ProviderCard } from "../components/ProviderCard.tsx";
+import { ProvidersList } from "../components/ProvidersList.tsx";
+import { useInputFocus } from "../contexts/InputContext.tsx";
+import { type ProviderState, usePlugins } from "../contexts/PluginContext.tsx";
+import { useColors } from "../contexts/ThemeContext.tsx";
+
+type SortMode = "name" | "usage" | "status";
+type ViewMode = "cards" | "list";
 
 export function Dashboard() {
   const colors = useColors();
@@ -17,11 +18,11 @@ export function Dashboard() {
   const { providers, isInitialized, refreshAllProviders, refreshProvider } = usePlugins();
   const { setInputFocused } = useInputFocus();
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
-  
-  const [filterQuery, setFilterQuery] = useState('');
+
+  const [filterQuery, setFilterQuery] = useState("");
   const [isFiltering, setIsFiltering] = useState(false);
-  const [sortMode, setSortMode] = useState<SortMode>('status');
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [sortMode, setSortMode] = useState<SortMode>("status");
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [showUnconfigured, setShowUnconfigured] = useState(true);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [atRiskFocus, setAtRiskFocus] = useState(false);
@@ -29,10 +30,16 @@ export function Dashboard() {
   const isFilteringRef = useRef(isFiltering);
   const expandedIndexRef = useRef(expandedIndex);
   const focusedIndexRef = useRef(focusedIndex);
-  
-  useEffect(() => { isFilteringRef.current = isFiltering; }, [isFiltering]);
-  useEffect(() => { expandedIndexRef.current = expandedIndex; }, [expandedIndex]);
-  useEffect(() => { focusedIndexRef.current = focusedIndex; }, [focusedIndex]);
+
+  useEffect(() => {
+    isFilteringRef.current = isFiltering;
+  }, [isFiltering]);
+  useEffect(() => {
+    expandedIndexRef.current = expandedIndex;
+  }, [expandedIndex]);
+  useEffect(() => {
+    focusedIndexRef.current = focusedIndex;
+  }, [focusedIndex]);
 
   useEffect(() => {
     setInputFocused(isFiltering);
@@ -52,25 +59,25 @@ export function Dashboard() {
 
   const getMaxUsage = useCallback((state: ProviderState) => {
     if (!state.usage?.limits) return 0;
-    
+
     const items = state.usage.limits.items ?? [];
     if (items.length > 0) {
       return Math.max(...items.map((item) => item.usedPercent ?? 0));
     }
-    
+
     const primary = state.usage.limits.primary?.usedPercent || 0;
     const secondary = state.usage.limits.secondary?.usedPercent || 0;
-    
+
     return Math.max(primary, secondary);
   }, []);
 
   const providerList = Array.from(providers.values());
-  
+
   const filteredAndSortedProviders = useMemo(() => {
     let result = providerList.filter((p) => p.configured);
 
     if (atRiskFocus) {
-      result = result.filter(p => {
+      result = result.filter((p) => {
         if (p.usage?.error) return true;
         if (p.usage?.limitReached) return true;
         const maxUsage = getMaxUsage(p);
@@ -80,16 +87,16 @@ export function Dashboard() {
 
     if (filterQuery) {
       const query = filterQuery.toLowerCase();
-      result = result.filter(p => p.plugin.name.toLowerCase().includes(query));
+      result = result.filter((p) => p.plugin.name.toLowerCase().includes(query));
     }
 
     result.sort((a, b) => {
       switch (sortMode) {
-        case 'name':
+        case "name":
           return a.plugin.name.localeCompare(b.plugin.name);
-        case 'usage':
+        case "usage":
           return getMaxUsage(b) - getMaxUsage(a);
-        case 'status': {
+        case "status": {
           if (a.usage?.limitReached !== b.usage?.limitReached) {
             return a.usage?.limitReached ? -1 : 1;
           }
@@ -109,30 +116,30 @@ export function Dashboard() {
   }, [providerList, filterQuery, sortMode, getMaxUsage, atRiskFocus]);
 
   const configured = filteredAndSortedProviders;
-  const unconfigured = useMemo(() => 
-    providerList.filter((p) => !p.configured),
-    [providerList]
+  const unconfigured = useMemo(() => providerList.filter((p) => !p.configured), [providerList]);
+
+  const cycleFocus = useCallback(
+    (direction: 1 | -1) => {
+      const total = configured.length + (showUnconfigured ? unconfigured.length : 0);
+      if (total === 0) return;
+
+      setFocusedIndex((current) => {
+        if (current === null) {
+          return direction === 1 ? 0 : total - 1;
+        }
+        const next = current + direction;
+        if (next < 0) return null;
+        if (next >= total) return null;
+        return next;
+      });
+    },
+    [configured.length, unconfigured.length, showUnconfigured],
   );
-
-  const cycleFocus = useCallback((direction: 1 | -1) => {
-    const total = configured.length + (showUnconfigured ? unconfigured.length : 0);
-    if (total === 0) return;
-
-    setFocusedIndex((current) => {
-      if (current === null) {
-        return direction === 1 ? 0 : total - 1;
-      }
-      const next = current + direction;
-      if (next < 0) return null;
-      if (next >= total) return null;
-      return next;
-    });
-  }, [configured.length, unconfigured.length, showUnconfigured]);
 
   const toggleExpanded = useCallback(() => {
     const current = focusedIndexRef.current;
     if (current === null) return;
-    setExpandedIndex(prev => prev === current ? null : current);
+    setExpandedIndex((prev) => (prev === current ? null : current));
   }, []);
 
   const refreshSelected = useCallback(() => {
@@ -146,53 +153,53 @@ export function Dashboard() {
 
   useKeyboard((key) => {
     if (isFilteringRef.current) {
-      if (key.name === 'escape') {
+      if (key.name === "escape") {
         setIsFiltering(false);
-        setFilterQuery('');
+        setFilterQuery("");
         return;
       }
-      if (key.name === 'enter' || key.name === 'return') {
+      if (key.name === "enter" || key.name === "return") {
         setIsFiltering(false);
         return;
       }
-      return; 
+      return;
     }
 
-    if (key.name === 'down' || key.name === 'j') {
+    if (key.name === "down" || key.name === "j") {
       cycleFocus(1);
-    } else if (key.name === 'up' || key.name === 'k') {
+    } else if (key.name === "up" || key.name === "k") {
       cycleFocus(-1);
-    } else if (key.name === 'tab' && !key.shift) {
+    } else if (key.name === "tab" && !key.shift) {
       cycleFocus(1);
-    } else if (key.name === 'tab' && key.shift) {
+    } else if (key.name === "tab" && key.shift) {
       cycleFocus(-1);
-    } else if (key.name === 'escape') {
+    } else if (key.name === "escape") {
       if (expandedIndexRef.current !== null) {
         setExpandedIndex(null);
       } else if (focusedIndex !== null) {
         setFocusedIndex(null);
       } else if (filterQuery) {
-        setFilterQuery('');
+        setFilterQuery("");
       }
-    } else if (key.name === 'enter' || key.name === 'return') {
+    } else if (key.name === "enter" || key.name === "return") {
       toggleExpanded();
-    } else if (key.name === '/' || key.name === 'f') {
+    } else if (key.name === "/" || key.name === "f") {
       setIsFiltering(true);
-    } else if (key.name === 's') {
-      setSortMode(current => {
-        if (current === 'status') return 'usage';
-        if (current === 'usage') return 'name';
-        return 'status';
+    } else if (key.name === "s") {
+      setSortMode((current) => {
+        if (current === "status") return "usage";
+        if (current === "usage") return "name";
+        return "status";
       });
-    } else if (key.name === 'v') {
-      setViewMode(current => current === 'cards' ? 'list' : 'cards');
-    } else if (key.name === 'u') {
-      setShowUnconfigured(current => !current);
-    } else if (key.name === 'x') {
-      setAtRiskFocus(current => !current);
-    } else if (key.sequence === 'R') {
+    } else if (key.name === "v") {
+      setViewMode((current) => (current === "cards" ? "list" : "cards"));
+    } else if (key.name === "u") {
+      setShowUnconfigured((current) => !current);
+    } else if (key.name === "x") {
+      setAtRiskFocus((current) => !current);
+    } else if (key.sequence === "R") {
       refreshAllProviders();
-    } else if (key.sequence === 'r' && focusedIndex !== null) {
+    } else if (key.sequence === "r" && focusedIndex !== null) {
       refreshSelected();
     }
   });
@@ -210,9 +217,18 @@ export function Dashboard() {
 
   return (
     <box flexDirection="column" flexGrow={1} padding={1} gap={0}>
-      <ProviderAggregateStrip providers={atRiskFocus ? configured : providerList.filter(p => p.configured)} />
+      <ProviderAggregateStrip
+        providers={atRiskFocus ? configured : providerList.filter((p) => p.configured)}
+      />
 
-      <box flexDirection="row" gap={2} alignItems="center" height={1} justifyContent="space-between" paddingX={1}>
+      <box
+        flexDirection="row"
+        gap={2}
+        alignItems="center"
+        height={1}
+        justifyContent="space-between"
+        paddingX={1}
+      >
         <box flexDirection="row" gap={2} alignItems="center">
           {isFiltering ? (
             <box flexDirection="row" gap={1} alignItems="center">
@@ -231,12 +247,12 @@ export function Dashboard() {
             </box>
           ) : (
             <text fg={colors.textSubtle}>
-              {filterQuery ? `Filter: "${filterQuery}"` : '/ filter'}
+              {filterQuery ? `Filter: "${filterQuery}"` : "/ filter"}
             </text>
           )}
-          
+
           <text fg={colors.textSubtle}>|</text>
-          
+
           <text>
             <span fg={colors.textSubtle}>Sort: </span>
             <span fg={colors.primary}>{sortMode.toUpperCase()}</span>
@@ -246,7 +262,7 @@ export function Dashboard() {
 
           <text>
             <span fg={colors.textSubtle}>View: </span>
-            <span fg={colors.primary}>{viewMode === 'cards' ? 'Cards' : 'Console'}</span>
+            <span fg={colors.primary}>{viewMode === "cards" ? "Cards" : "Console"}</span>
           </text>
 
           {atRiskFocus && (
@@ -258,11 +274,12 @@ export function Dashboard() {
         </box>
 
         <text fg={colors.textMuted}>
-          {totalConfigured} configured{totalUnconfigured > 0 ? `, ${totalUnconfigured} unconfigured` : ''}
+          {totalConfigured} configured
+          {totalUnconfigured > 0 ? `, ${totalUnconfigured} unconfigured` : ""}
         </text>
       </box>
 
-      {viewMode === 'list' ? (
+      {viewMode === "list" ? (
         <box flexDirection="column" flexGrow={1}>
           <ProvidersList
             providers={configured}
@@ -285,15 +302,12 @@ export function Dashboard() {
                   },
                 }}
               >
-                <box 
-                  ref={containerRef}
-                  flexDirection="row" 
-                  flexWrap="wrap" 
-                  gap={1}
-                >
+                <box ref={containerRef} flexDirection="row" flexWrap="wrap" gap={1}>
                   {configured.map((state, index) => (
                     <ProviderCard
-                      ref={(el) => { cardRefs.current[index] = el; }}
+                      ref={(el) => {
+                        cardRefs.current[index] = el;
+                      }}
                       key={state.plugin.id}
                       name={state.plugin.name}
                       configured={state.configured}
@@ -304,22 +318,23 @@ export function Dashboard() {
                       onFocus={() => setFocusedIndex(index)}
                     />
                   ))}
-                  
-                  {showUnconfigured && unconfigured.map((state, index) => (
-                    <GhostProviderCard
-                      key={state.plugin.id}
-                      name={state.plugin.name}
-                      focused={focusedIndex === configured.length + index && !isFiltering}
-                      onFocus={() => setFocusedIndex(configured.length + index)}
-                    />
-                  ))}
+
+                  {showUnconfigured &&
+                    unconfigured.map((state, index) => (
+                      <GhostProviderCard
+                        key={state.plugin.id}
+                        name={state.plugin.name}
+                        focused={focusedIndex === configured.length + index && !isFiltering}
+                        onFocus={() => setFocusedIndex(configured.length + index)}
+                      />
+                    ))}
                 </box>
               </scrollbox>
             </box>
           ) : (
             <box flexGrow={1} justifyContent="center" alignItems="center">
               <text fg={colors.textMuted}>
-                {filterQuery ? 'No matching providers found' : 'No configured providers'}
+                {filterQuery ? "No matching providers found" : "No configured providers"}
               </text>
             </box>
           )}
@@ -329,10 +344,10 @@ export function Dashboard() {
       <box flexDirection="row" paddingLeft={1} height={1}>
         <text fg={colors.textSubtle} height={1}>
           {isFiltering
-            ? 'Type to filter  Esc cancel  Enter apply'
+            ? "Type to filter  Esc cancel  Enter apply"
             : termWidth < 90
-              ? '↑↓ nav  Enter detail  / filter  s sort  v view  u unconf  x risk'
-              : '↑↓ navigate  Enter detail  / filter  s sort  v view  u unconfigured  x at-risk  R refresh'}
+              ? "↑↓ nav  Enter detail  / filter  s sort  v view  u unconf  x risk"
+              : "↑↓ navigate  Enter detail  / filter  s sort  v view  u unconfigured  x at-risk  R refresh"}
         </text>
       </box>
     </box>

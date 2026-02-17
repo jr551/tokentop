@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from "react";
 
 export interface UseValueFlashOptions {
   durationMs?: number;
@@ -14,10 +14,10 @@ export interface UseValueFlashResult {
 
 export function useValueFlash(
   value: number,
-  options: UseValueFlashOptions = {}
+  options: UseValueFlashOptions = {},
 ): UseValueFlashResult {
   const { durationMs = 600, increaseOnly = true, threshold = 0 } = options;
-  
+
   const prevValueRef = useRef<number>(value);
   const [isFlashing, setIsFlashing] = useState(false);
   const [step, setStep] = useState(0);
@@ -30,10 +30,8 @@ export function useValueFlash(
   useEffect(() => {
     const prevValue = prevValueRef.current;
     const delta = value - prevValue;
-    
-    const shouldFlash = increaseOnly 
-      ? delta > threshold 
-      : Math.abs(delta) > threshold;
+
+    const shouldFlash = increaseOnly ? delta > threshold : Math.abs(delta) > threshold;
 
     if (shouldFlash && prevValue !== value) {
       if (flashTimeoutRef.current) {
@@ -74,18 +72,16 @@ export function useValueFlash(
     };
   }, [value, durationMs, increaseOnly, threshold, steps, stepDuration]);
 
-  const intensity = isFlashing 
-    ? Math.sin((step / steps) * Math.PI) 
-    : 0;
+  const intensity = isFlashing ? Math.sin((step / steps) * Math.PI) : 0;
 
   return { isFlashing, intensity, step };
 }
 
 export function interpolateColor(factor: number, colorA: string, colorB: string): string {
   const parseHex = (hex: string): [number, number, number] | null => {
-    const clean = hex.startsWith('#') ? hex.slice(1) : hex;
+    const clean = hex.startsWith("#") ? hex.slice(1) : hex;
     if (clean.length === 3) {
-      const [r, g, b] = clean.split('').map(c => parseInt(c + c, 16));
+      const [r, g, b] = clean.split("").map((c) => parseInt(c + c, 16));
       return [r!, g!, b!];
     }
     if (clean.length === 6) {
@@ -100,12 +96,12 @@ export function interpolateColor(factor: number, colorA: string, colorB: string)
 
   const a = parseHex(colorA);
   const b = parseHex(colorB);
-  
+
   if (!a || !b) return colorA;
 
   const r = Math.round(a[0] + (b[0] - a[0]) * factor);
   const g = Math.round(a[1] + (b[1] - a[1]) * factor);
   const bl = Math.round(a[2] + (b[2] - a[2]) * factor);
 
-  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${bl.toString(16).padStart(2, '0')}`;
+  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${bl.toString(16).padStart(2, "0")}`;
 }

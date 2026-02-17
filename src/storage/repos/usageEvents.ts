@@ -1,5 +1,5 @@
-import { getDatabase } from '../db.ts';
-import type { UsageEventInsert, TimeSeriesPoint, TimeSeriesFilters } from '../types.ts';
+import { getDatabase } from "../db.ts";
+import type { TimeSeriesFilters, TimeSeriesPoint, UsageEventInsert } from "../types.ts";
 
 const INSERT_SQL = `
   INSERT INTO usage_events (
@@ -27,7 +27,7 @@ export function insertUsageEvent(event: UsageEventInsert): number {
     event.cacheWriteTokens,
     event.costUsd,
     event.requestCount,
-    event.pricingSource ?? null
+    event.pricingSource ?? null,
   );
 
   return Number(result.lastInsertRowid);
@@ -55,7 +55,7 @@ export function insertUsageEventBatch(events: UsageEventInsert[]): void {
         e.cacheWriteTokens,
         e.costUsd,
         e.requestCount,
-        e.pricingSource ?? null
+        e.pricingSource ?? null,
       );
     }
   });
@@ -67,31 +67,31 @@ export function queryUsageTimeSeries(
   startMs: number,
   endMs: number,
   bucketMs: number,
-  filters: TimeSeriesFilters = {}
+  filters: TimeSeriesFilters = {},
 ): TimeSeriesPoint[] {
   const db = getDatabase();
 
-  const conditions: string[] = ['timestamp >= ?', 'timestamp <= ?'];
+  const conditions: string[] = ["timestamp >= ?", "timestamp <= ?"];
   const params: (string | number)[] = [startMs, endMs];
 
   if (filters.provider) {
-    conditions.push('provider = ?');
+    conditions.push("provider = ?");
     params.push(filters.provider);
   }
   if (filters.model) {
-    conditions.push('model = ?');
+    conditions.push("model = ?");
     params.push(filters.model);
   }
   if (filters.agentId) {
-    conditions.push('agent_id = ?');
+    conditions.push("agent_id = ?");
     params.push(filters.agentId);
   }
   if (filters.sessionId) {
-    conditions.push('session_id = ?');
+    conditions.push("session_id = ?");
     params.push(filters.sessionId);
   }
   if (filters.projectPath) {
-    conditions.push('project_path = ?');
+    conditions.push("project_path = ?");
     params.push(filters.projectPath);
   }
 
@@ -102,7 +102,7 @@ export function queryUsageTimeSeries(
       COALESCE(SUM(cost_usd), 0) AS cost_usd,
       COALESCE(SUM(request_count), 0) AS request_count
     FROM usage_events
-    WHERE ${conditions.join(' AND ')}
+    WHERE ${conditions.join(" AND ")}
     GROUP BY bucket_start
     ORDER BY bucket_start ASC
   `;
@@ -114,7 +114,7 @@ export function queryUsageTimeSeries(
     request_count: number;
   }>;
 
-  return rows.map(r => ({
+  return rows.map((r) => ({
     bucketStart: r.bucket_start,
     tokens: r.tokens,
     costUsd: r.cost_usd,
@@ -122,17 +122,22 @@ export function queryUsageTimeSeries(
   }));
 }
 
-export function calculateBurnRate(windowMs: number, nowMs = Date.now()): { costPerHour: number; tokensPerMinute: number } {
+export function calculateBurnRate(
+  windowMs: number,
+  nowMs = Date.now(),
+): { costPerHour: number; tokensPerMinute: number } {
   const db = getDatabase();
   const startMs = nowMs - windowMs;
 
-  const row = db.prepare(`
+  const row = db
+    .prepare(`
     SELECT
       COALESCE(SUM(cost_usd), 0) AS cost,
       COALESCE(SUM(input_tokens + output_tokens), 0) AS tokens
     FROM usage_events
     WHERE timestamp >= ? AND timestamp <= ?
-  `).get(startMs, nowMs) as { cost: number; tokens: number };
+  `)
+    .get(startMs, nowMs) as { cost: number; tokens: number };
 
   const hours = windowMs / (1000 * 60 * 60);
   const minutes = windowMs / (1000 * 60);
@@ -143,7 +148,10 @@ export function calculateBurnRate(windowMs: number, nowMs = Date.now()): { costP
   };
 }
 
-export function getTotalUsageInWindow(startMs: number, endMs: number): {
+export function getTotalUsageInWindow(
+  startMs: number,
+  endMs: number,
+): {
   inputTokens: number;
   outputTokens: number;
   costUsd: number;
@@ -151,7 +159,8 @@ export function getTotalUsageInWindow(startMs: number, endMs: number): {
 } {
   const db = getDatabase();
 
-  const row = db.prepare(`
+  const row = db
+    .prepare(`
     SELECT
       COALESCE(SUM(input_tokens), 0) AS input_tokens,
       COALESCE(SUM(output_tokens), 0) AS output_tokens,
@@ -159,7 +168,8 @@ export function getTotalUsageInWindow(startMs: number, endMs: number): {
       COALESCE(SUM(request_count), 0) AS request_count
     FROM usage_events
     WHERE timestamp >= ? AND timestamp <= ?
-  `).get(startMs, endMs) as {
+  `)
+    .get(startMs, endMs) as {
     input_tokens: number;
     output_tokens: number;
     cost_usd: number;
@@ -190,7 +200,7 @@ export interface ProviderDailyCost {
 export function queryProviderDailyCosts(
   startMs: number,
   endMs: number,
-  bucketMs: number
+  bucketMs: number,
 ): ProviderDailyCost[] {
   const db = getDatabase();
 
@@ -216,7 +226,7 @@ export function queryProviderDailyCosts(
     request_count: number;
   }>;
 
-  return rows.map(r => ({
+  return rows.map((r) => ({
     provider: r.provider,
     bucketStart: r.bucket_start,
     costUsd: r.cost_usd,
@@ -236,7 +246,7 @@ export interface ModelDailyCost {
 export function queryModelDailyCosts(
   startMs: number,
   endMs: number,
-  bucketMs: number
+  bucketMs: number,
 ): ModelDailyCost[] {
   const db = getDatabase();
 
@@ -262,7 +272,7 @@ export function queryModelDailyCosts(
     request_count: number;
   }>;
 
-  return rows.map(r => ({
+  return rows.map((r) => ({
     model: r.model,
     bucketStart: r.bucket_start,
     costUsd: r.cost_usd,
@@ -282,7 +292,7 @@ export interface ProjectDailyCost {
 export function queryProjectDailyCosts(
   startMs: number,
   endMs: number,
-  bucketMs: number
+  bucketMs: number,
 ): ProjectDailyCost[] {
   const db = getDatabase();
 
@@ -308,7 +318,7 @@ export function queryProjectDailyCosts(
     request_count: number;
   }>;
 
-  return rows.map(r => ({
+  return rows.map((r) => ({
     projectPath: r.project_path,
     bucketStart: r.bucket_start,
     costUsd: r.cost_usd,
@@ -320,14 +330,16 @@ export function queryProjectDailyCosts(
 export function getSessionActivityTimeline(sessionId: string): SessionActivityPoint[] {
   const db = getDatabase();
 
-  const rows = db.prepare(`
+  const rows = db
+    .prepare(`
     SELECT timestamp, (input_tokens + output_tokens) AS tokens
     FROM usage_events
     WHERE session_id = ?
     ORDER BY timestamp ASC
-  `).all(sessionId) as Array<{ timestamp: number; tokens: number }>;
+  `)
+    .all(sessionId) as Array<{ timestamp: number; tokens: number }>;
 
-  return rows.map(r => ({
+  return rows.map((r) => ({
     timestamp: r.timestamp,
     tokens: r.tokens,
   }));

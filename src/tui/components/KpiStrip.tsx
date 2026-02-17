@@ -1,12 +1,12 @@
-import { useTerminalDimensions } from '@opentui/react';
-import { useColors } from '../contexts/ThemeContext.tsx';
-import { useTimeWindow, type TimeWindow } from '../contexts/TimeWindowContext.tsx';
-import { useConfig } from '../contexts/ConfigContext.tsx';
-import { Sparkline } from './Sparkline.tsx';
-import { useValueFlash, interpolateColor } from '../hooks/useValueFlash.ts';
-import { useAnimatedValue } from '../hooks/useAnimatedValue.ts';
+import { useTerminalDimensions } from "@opentui/react";
+import { useConfig } from "../contexts/ConfigContext.tsx";
+import { useColors } from "../contexts/ThemeContext.tsx";
+import { type TimeWindow, useTimeWindow } from "../contexts/TimeWindowContext.tsx";
+import { useAnimatedValue } from "../hooks/useAnimatedValue.ts";
+import { interpolateColor, useValueFlash } from "../hooks/useValueFlash.ts";
+import { Sparkline } from "./Sparkline.tsx";
 
-type MetricType = 'cost' | 'tokens' | 'requests' | 'rate' | 'default';
+type MetricType = "cost" | "tokens" | "requests" | "rate" | "default";
 
 interface KPICardProps {
   title: string;
@@ -18,13 +18,13 @@ interface KPICardProps {
 }
 
 const TIME_WINDOW_EXPANDED: Record<TimeWindow, string> = {
-  '5m': 'Last 5 Minutes',
-  '15m': 'Last 15 Minutes',
-  '1h': 'Last Hour',
-  '24h': 'Last 24 Hours',
-  '7d': 'Last 7 Days',
-  '30d': 'Last 30 Days',
-  'all': 'All Time',
+  "5m": "Last 5 Minutes",
+  "15m": "Last 15 Minutes",
+  "1h": "Last Hour",
+  "24h": "Last 24 Hours",
+  "7d": "Last 7 Days",
+  "30d": "Last 30 Days",
+  all: "All Time",
 };
 
 interface TimeWindowCardProps {
@@ -35,56 +35,75 @@ function TimeWindowCard({ isCompact }: TimeWindowCardProps) {
   const colors = useColors();
   const { window: timeWindow } = useTimeWindow();
 
-  const title = isCompact ? 'WINDOW' : 'TIME WINDOW (t)';
+  const title = isCompact ? "WINDOW" : "TIME WINDOW (t)";
   const value = isCompact ? timeWindow.toUpperCase() : TIME_WINDOW_EXPANDED[timeWindow];
-  const hint = isCompact ? '(t)' : "Press 't' to change";
+  const hint = isCompact ? "(t)" : "Press 't' to change";
 
-   return (
-     <box 
-       flexDirection="column" 
-       paddingX={1}
-       flexShrink={0}
-       width={isCompact ? 9 : 22}
-     >
-      <text fg={colors.textMuted} height={1}>{title}</text>
-      <text fg={colors.info} height={1}><strong>{value}</strong></text>
-      <text fg={colors.textSubtle} height={1}>{hint}</text>
+  return (
+    <box flexDirection="column" paddingX={1} flexShrink={0} width={isCompact ? 9 : 22}>
+      <text fg={colors.textMuted} height={1}>
+        {title}
+      </text>
+      <text fg={colors.info} height={1}>
+        <strong>{value}</strong>
+      </text>
+      <text fg={colors.textSubtle} height={1}>
+        {hint}
+      </text>
     </box>
   );
 }
 
-function KPICard({ title, value, delta, subValue, metric = 'default', flashIntensity = 0 }: KPICardProps) {
+function KPICard({
+  title,
+  value,
+  delta,
+  subValue,
+  metric = "default",
+  flashIntensity = 0,
+}: KPICardProps) {
   const colors = useColors();
-  
+
   const getBaseMetricColor = (m: MetricType): string => {
     switch (m) {
-      case 'cost': return colors.success;
-      case 'tokens': return colors.primary;
-      case 'requests': return colors.secondary;
-      case 'rate': return colors.warning;
-      default: return colors.text;
+      case "cost":
+        return colors.success;
+      case "tokens":
+        return colors.primary;
+      case "requests":
+        return colors.secondary;
+      case "rate":
+        return colors.warning;
+      default:
+        return colors.text;
     }
   };
-  
+
   const baseColor = getBaseMetricColor(metric);
-  const flashHighlight = '#ffffff';
-  const valueColor = flashIntensity > 0 
-    ? interpolateColor(flashIntensity, baseColor, flashHighlight)
-    : baseColor;
-  
+  const flashHighlight = "#ffffff";
+  const valueColor =
+    flashIntensity > 0 ? interpolateColor(flashIntensity, baseColor, flashHighlight) : baseColor;
+
   const deltaColor = colors.success;
-  
+
   return (
-    <box 
-      flexDirection="column" 
-      paddingLeft={1}
-      paddingRight={2}
-      flexGrow={1}
-    >
-      <text fg={colors.textMuted} height={1}>{title}</text>
-      <text fg={valueColor} height={1}><strong>{value}</strong></text>
-      {delta && <text fg={deltaColor} height={1}>{delta}</text>}
-      {subValue && <text fg={colors.textMuted} height={1}>{subValue}</text>}
+    <box flexDirection="column" paddingLeft={1} paddingRight={2} flexGrow={1}>
+      <text fg={colors.textMuted} height={1}>
+        {title}
+      </text>
+      <text fg={valueColor} height={1}>
+        <strong>{value}</strong>
+      </text>
+      {delta && (
+        <text fg={deltaColor} height={1}>
+          {delta}
+        </text>
+      )}
+      {subValue && (
+        <text fg={colors.textMuted} height={1}>
+          {subValue}
+        </text>
+      )}
     </box>
   );
 }
@@ -97,7 +116,7 @@ export interface ActivityStatus {
 export interface BudgetInfo {
   limit: number | null;
   budgetCost: number;
-  budgetType: 'daily' | 'weekly' | 'monthly' | 'none';
+  budgetType: "daily" | "weekly" | "monthly" | "none";
   budgetTypeLabel: string;
   warningPercent: number;
   criticalPercent: number;
@@ -131,51 +150,54 @@ export function KpiStrip({
   const { width: terminalWidth } = useTerminalDimensions();
   const { config } = useConfig();
   const { sparkline: sparklineConfig } = config.display;
-  
+
   const animatedCost = useAnimatedValue(totalCost, { durationMs: 400, precision: 2 });
   const animatedTokens = useAnimatedValue(totalTokens, { durationMs: 400, precision: 0 });
   const animatedRequests = useAnimatedValue(totalRequests, { durationMs: 300, precision: 0 });
-  
-  const { intensity: costFlashIntensity } = useValueFlash(totalCost, { 
-    durationMs: 500, 
+
+  const { intensity: costFlashIntensity } = useValueFlash(totalCost, {
+    durationMs: 500,
     increaseOnly: true,
-    threshold: 0.001 
+    threshold: 0.001,
   });
-  const { intensity: tokenFlashIntensity } = useValueFlash(totalTokens, { 
-    durationMs: 400, 
+  const { intensity: tokenFlashIntensity } = useValueFlash(totalTokens, {
+    durationMs: 400,
     increaseOnly: true,
-    threshold: 10 
+    threshold: 10,
   });
-  
+
   const formatCurrency = (val: number) => `$${val.toFixed(2)}`;
-  const formatTokens = (val: number) => val > 1000000 ? `${(val/1000000).toFixed(1)}M` : `${(val/1000).toFixed(1)}K`;
-  const formatRate = (val: number) => val >= 1000 ? `${(val/1000).toFixed(1)}k` : `${Math.round(val)}`;
-  const formatBurnTokens = (val: number) => val >= 1000 ? `${(val/1000).toFixed(1)}k` : `${Math.round(val)}`;
-  
+  const formatTokens = (val: number) =>
+    val > 1000000 ? `${(val / 1000000).toFixed(1)}M` : `${(val / 1000).toFixed(1)}K`;
+  const formatRate = (val: number) =>
+    val >= 1000 ? `${(val / 1000).toFixed(1)}k` : `${Math.round(val)}`;
+  const formatBurnTokens = (val: number) =>
+    val >= 1000 ? `${(val / 1000).toFixed(1)}k` : `${Math.round(val)}`;
+
   const formatWindowLabel = (sec: number): string => {
     if (sec < 60) return `${Math.round(sec)}s`;
     if (sec < 3600) return `${Math.round(sec / 60)}m`;
     return `${(sec / 3600).toFixed(1)}h`;
   };
-  
+
   const hasEnoughHistory = windowSec >= 30;
   const burnRateCostPerHour = hasEnoughHistory ? deltaCost * (3600 / windowSec) : 0;
   const burnRateTokensPerMin = hasEnoughHistory ? deltaTokens * (60 / windowSec) : 0;
   const windowLabel = formatWindowLabel(windowSec);
-  
+
   const getActivityStatus = (): ActivityStatus => {
     const { instantRate, avgRate, isSpike } = activity;
-    if (isSpike || instantRate >= 500) return { label: 'SPIKE', color: colors.error };
-    if (avgRate >= 150) return { label: 'HOT', color: colors.warning };
-    if (avgRate >= 50) return { label: 'BUSY', color: colors.success };
-    if (avgRate >= 10) return { label: 'LOW', color: colors.textMuted };
-    return { label: 'IDLE', color: colors.textSubtle };
+    if (isSpike || instantRate >= 500) return { label: "SPIKE", color: colors.error };
+    if (avgRate >= 150) return { label: "HOT", color: colors.warning };
+    if (avgRate >= 50) return { label: "BUSY", color: colors.success };
+    if (avgRate >= 10) return { label: "LOW", color: colors.textMuted };
+    return { label: "IDLE", color: colors.textSubtle };
   };
 
   const activityStatus = getActivityStatus();
-  
+
   const isCompact = terminalWidth < 100;
-  const sparklineWidth = isCompact 
+  const sparklineWidth = isCompact
     ? Math.min(25, Math.max(15, Math.floor(terminalWidth * 0.2)))
     : Math.min(50, Math.max(20, Math.floor(terminalWidth * 0.25)));
 
@@ -188,36 +210,44 @@ export function KpiStrip({
     <>
       <box flexDirection="row" gap={0} height={4} flexShrink={0}>
         <TimeWindowCard isCompact={isCompact} />
-        <KPICard 
-          title="COST" 
-          value={formatCurrency(animatedCost)} 
-          delta={hasEnoughHistory ? `+${formatCurrency(deltaCost)} (${windowLabel})` : 'gathering...'} 
+        <KPICard
+          title="COST"
+          value={formatCurrency(animatedCost)}
+          delta={
+            hasEnoughHistory ? `+${formatCurrency(deltaCost)} (${windowLabel})` : "gathering..."
+          }
           metric="cost"
           flashIntensity={costFlashIntensity}
         />
-        <KPICard 
-          title="TOKENS" 
-          value={formatTokens(animatedTokens)} 
-          delta={hasEnoughHistory ? `+${formatTokens(deltaTokens)} (${windowLabel})` : 'gathering...'}
+        <KPICard
+          title="TOKENS"
+          value={formatTokens(animatedTokens)}
+          delta={
+            hasEnoughHistory ? `+${formatTokens(deltaTokens)} (${windowLabel})` : "gathering..."
+          }
           metric="tokens"
           flashIntensity={tokenFlashIntensity}
         />
-        <KPICard 
-          title="REQUESTS" 
-          value={Math.round(animatedRequests).toLocaleString()} 
+        <KPICard
+          title="REQUESTS"
+          value={Math.round(animatedRequests).toLocaleString()}
           subValue={`${activeCount} active`}
           metric="requests"
         />
         {!isCompact && (
-          <KPICard 
-            title="BURN RATE" 
-            value={hasEnoughHistory ? `${formatCurrency(burnRateCostPerHour)}/hr` : '--'}
-            subValue={hasEnoughHistory ? `${formatBurnTokens(burnRateTokensPerMin)} tok/min` : 'gathering...'}
+          <KPICard
+            title="BURN RATE"
+            value={hasEnoughHistory ? `${formatCurrency(burnRateCostPerHour)}/hr` : "--"}
+            subValue={
+              hasEnoughHistory
+                ? `${formatBurnTokens(burnRateTokensPerMin)} tok/min`
+                : "gathering..."
+            }
             metric="rate"
           />
         )}
-        
-         <box flexDirection="column" flexGrow={1} paddingX={1} overflow="hidden">
+
+        <box flexDirection="column" flexGrow={1} paddingX={1} overflow="hidden">
           <box flexDirection="row" justifyContent="space-between">
             <text fg={colors.textMuted}>ACTIVITY</text>
             <text>
@@ -225,10 +255,10 @@ export function KpiStrip({
               <span fg={colors.textMuted}> {formatRate(activity.instantRate)}/s</span>
             </text>
           </box>
-          <Sparkline 
-            data={sparkData} 
-            width={sparklineWidth} 
-            label="tok/s" 
+          <Sparkline
+            data={sparkData}
+            width={sparklineWidth}
+            label="tok/s"
             fixedMax={sparkMax}
             thresholds={{ warning: 150, error: 500 }}
             style={sparklineConfig.style}
@@ -237,9 +267,9 @@ export function KpiStrip({
           />
         </box>
       </box>
-      
+
       <box height={1} overflow="hidden">
-        <text fg={colors.border}>{'─'.repeat(300)}</text>
+        <text fg={colors.border}>{"─".repeat(300)}</text>
       </box>
     </>
   );

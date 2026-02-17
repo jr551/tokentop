@@ -1,16 +1,16 @@
-import { getPricing, estimateCost } from '@/pricing/index.ts';
-import type { AgentSessionAggregate, AgentSessionStream, StreamCostBreakdown } from './types.ts';
+import { estimateCost, getPricing } from "@/pricing/index.ts";
+import type { AgentSessionAggregate, AgentSessionStream, StreamCostBreakdown } from "./types.ts";
 
 export async function priceStream(stream: AgentSessionStream): Promise<AgentSessionStream> {
   const pricing = await getPricing(stream.providerId, stream.modelId);
-  
+
   if (!pricing) {
-    return { ...stream, pricingSource: 'unknown' };
+    return { ...stream, pricingSource: "unknown" };
   }
 
   const breakdown = estimateCost(stream.tokens, pricing);
-  const source = pricing.source === 'models.dev' ? 'models.dev' : 'fallback';
-  
+  const source = pricing.source === "models.dev" ? "models.dev" : "fallback";
+
   const costBreakdown: StreamCostBreakdown = {
     total: breakdown.total,
     input: breakdown.input ?? 0,
@@ -29,12 +29,12 @@ export async function priceStream(stream: AgentSessionStream): Promise<AgentSess
 
 export async function priceSession(session: AgentSessionAggregate): Promise<AgentSessionAggregate> {
   const pricedStreams = await Promise.all(session.streams.map(priceStream));
-  
+
   const totalCostUsd = pricedStreams.reduce((sum, s) => {
     return sum + (s.costUsd ?? 0);
   }, 0);
 
-  const hasAnyCost = pricedStreams.some(s => s.costUsd !== undefined);
+  const hasAnyCost = pricedStreams.some((s) => s.costUsd !== undefined);
 
   let costInDay = 0;
   let costInWeek = 0;
@@ -69,6 +69,8 @@ export async function priceSession(session: AgentSessionAggregate): Promise<Agen
   return result;
 }
 
-export async function priceSessions(sessions: AgentSessionAggregate[]): Promise<AgentSessionAggregate[]> {
+export async function priceSessions(
+  sessions: AgentSessionAggregate[],
+): Promise<AgentSessionAggregate[]> {
   return Promise.all(sessions.map(priceSession));
 }

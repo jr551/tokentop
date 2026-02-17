@@ -1,15 +1,15 @@
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import * as os from 'os';
-import type { PluginPermissions } from './types/base.ts';
-import type { AuthSources, OpenCodeAuthEntry } from './types/provider.ts';
-import { PluginPermissionError } from './types/base.ts';
+import * as fs from "fs/promises";
+import * as os from "os";
+import * as path from "path";
+import type { PluginPermissions } from "./types/base.ts";
+import { PluginPermissionError } from "./types/base.ts";
+import type { AuthSources, OpenCodeAuthEntry } from "./types/provider.ts";
 
-const OPENCODE_AUTH_PATH = path.join(os.homedir(), '.local/share/opencode/auth.json');
-const OPENCODE_CONFIG_PATH = path.join(os.homedir(), '.config/opencode/opencode.json');
+const OPENCODE_AUTH_PATH = path.join(os.homedir(), ".local/share/opencode/auth.json");
+const OPENCODE_CONFIG_PATH = path.join(os.homedir(), ".config/opencode/opencode.json");
 
 function expandHome(filePath: string): string {
-  if (filePath.startsWith('~')) {
+  if (filePath.startsWith("~")) {
     return path.join(os.homedir(), filePath.slice(1));
   }
   return filePath;
@@ -35,7 +35,7 @@ function isEnvVarAllowed(name: string, permissions: PluginPermissions): boolean 
 
 async function readJsonFile<T>(filePath: string): Promise<T | null> {
   try {
-    const content = await fs.readFile(filePath, 'utf-8');
+    const content = await fs.readFile(filePath, "utf-8");
     return JSON.parse(content) as T;
   } catch {
     return null;
@@ -43,14 +43,17 @@ async function readJsonFile<T>(filePath: string): Promise<T | null> {
 }
 
 interface OpenCodeConfig {
-  provider?: Record<string, {
-    name?: string;
-    key?: string;
-    options?: {
-      apiKey?: string;
-      [key: string]: unknown;
-    };
-  }>;
+  provider?: Record<
+    string,
+    {
+      name?: string;
+      key?: string;
+      options?: {
+        apiKey?: string;
+        [key: string]: unknown;
+      };
+    }
+  >;
 }
 
 function resolveEnvValue(value: string | undefined): string | undefined {
@@ -69,8 +72,8 @@ export function createAuthSources(pluginId: string, permissions: PluginPermissio
         if (!isEnvVarAllowed(name, permissions)) {
           throw new PluginPermissionError(
             pluginId,
-            'env',
-            `Environment variable "${name}" not in allowlist`
+            "env",
+            `Environment variable "${name}" not in allowlist`,
           );
         }
         return process.env[name];
@@ -83,19 +86,19 @@ export function createAuthSources(pluginId: string, permissions: PluginPermissio
         if (!permissions.filesystem?.read) {
           throw new PluginPermissionError(
             pluginId,
-            'filesystem',
-            'Filesystem read access not permitted'
+            "filesystem",
+            "Filesystem read access not permitted",
           );
         }
         if (!isPathAllowed(filePath, permissions)) {
           throw new PluginPermissionError(
             pluginId,
-            'filesystem',
-            `Path "${filePath}" not in allowlist`
+            "filesystem",
+            `Path "${filePath}" not in allowlist`,
           );
         }
         try {
-          return await fs.readFile(resolved, 'utf-8');
+          return await fs.readFile(resolved, "utf-8");
         } catch {
           return null;
         }
@@ -106,19 +109,19 @@ export function createAuthSources(pluginId: string, permissions: PluginPermissio
         if (!permissions.filesystem?.read) {
           throw new PluginPermissionError(
             pluginId,
-            'filesystem',
-            'Filesystem read access not permitted'
+            "filesystem",
+            "Filesystem read access not permitted",
           );
         }
         if (!isPathAllowed(filePath, permissions)) {
           throw new PluginPermissionError(
             pluginId,
-            'filesystem',
-            `Path "${filePath}" not in allowlist`
+            "filesystem",
+            `Path "${filePath}" not in allowlist`,
           );
         }
         try {
-          const content = await fs.readFile(resolved, 'utf-8');
+          const content = await fs.readFile(resolved, "utf-8");
           return JSON.parse(content) as T;
         } catch {
           return null;
@@ -130,15 +133,15 @@ export function createAuthSources(pluginId: string, permissions: PluginPermissio
         if (!permissions.filesystem?.read) {
           throw new PluginPermissionError(
             pluginId,
-            'filesystem',
-            'Filesystem read access not permitted'
+            "filesystem",
+            "Filesystem read access not permitted",
           );
         }
         if (!isPathAllowed(filePath, permissions)) {
           throw new PluginPermissionError(
             pluginId,
-            'filesystem',
-            `Path "${filePath}" not in allowlist`
+            "filesystem",
+            `Path "${filePath}" not in allowlist`,
           );
         }
         try {
@@ -162,11 +165,12 @@ export function createAuthSources(pluginId: string, permissions: PluginPermissio
         if (config?.provider) {
           const providerConfig = config.provider[key];
           if (providerConfig) {
-            const apiKey = resolveEnvValue(providerConfig.key) ??
-                           resolveEnvValue(providerConfig.options?.apiKey as string);
+            const apiKey =
+              resolveEnvValue(providerConfig.key) ??
+              resolveEnvValue(providerConfig.options?.apiKey as string);
             if (apiKey) {
               return {
-                type: 'api',
+                type: "api",
                 key: apiKey,
               };
             }
@@ -178,7 +182,7 @@ export function createAuthSources(pluginId: string, permissions: PluginPermissio
     },
 
     platform: {
-      os: process.platform as 'darwin' | 'linux' | 'win32',
+      os: process.platform as "darwin" | "linux" | "win32",
       homedir: os.homedir(),
       arch: process.arch,
     },

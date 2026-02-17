@@ -29,7 +29,7 @@ export interface AgentSessionStream {
   requestCount: number;
   costUsd?: number;
   costBreakdown?: StreamCostBreakdown;
-  pricingSource?: 'models.dev' | 'fallback' | 'unknown';
+  pricingSource?: "models.dev" | "fallback" | "unknown";
 }
 
 export interface StreamWindowedTokens {
@@ -48,7 +48,7 @@ export interface AgentSessionAggregate {
   startedAt: number;
   lastActivityAt: number;
   endedAt?: number;
-  status: 'active' | 'idle';
+  status: "active" | "idle";
   totals: TokenCounts;
   totalCostUsd?: number;
   requestCount: number;

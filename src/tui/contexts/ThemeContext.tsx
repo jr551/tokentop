@@ -1,6 +1,12 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
-import type { ThemePlugin, ThemeColors, ThemeComponents, ColorScheme, ColorSchemePreference } from '@/plugins/types/theme.ts';
-import { tokyoNightTheme } from '@/plugins/themes/tokyo-night.ts';
+import { createContext, type ReactNode, useContext, useState } from "react";
+import { tokyoNightTheme } from "@/plugins/themes/tokyo-night.ts";
+import type {
+  ColorScheme,
+  ColorSchemePreference,
+  ThemeColors,
+  ThemeComponents,
+  ThemePlugin,
+} from "@/plugins/types/theme.ts";
 
 interface ThemeContextValue {
   theme: ThemePlugin;
@@ -42,17 +48,13 @@ export function ThemeProvider({ initialTheme, children }: ThemeProviderProps) {
     setPreviewTheme,
   };
 
-  return (
-    <ThemeContext.Provider value={value}>
-      {children}
-    </ThemeContext.Provider>
-  );
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
 export function useTheme(): ThemeContextValue {
   const context = useContext(ThemeContext);
   if (!context) {
-    throw new Error('useTheme must be used within ThemeProvider');
+    throw new Error("useTheme must be used within ThemeProvider");
   }
   return context;
 }
@@ -70,16 +72,19 @@ export function resolveTheme(
   if (themes.length === 0) return tokyoNightTheme;
 
   const targetScheme: ColorScheme | null =
-    schemePref === 'auto' ? detectedMode :
-    schemePref === 'light' ? 'light' :
-    schemePref === 'dark' ? 'dark' :
-    null;
+    schemePref === "auto"
+      ? detectedMode
+      : schemePref === "light"
+        ? "light"
+        : schemePref === "dark"
+          ? "dark"
+          : null;
 
-  const stored = themes.find(t => t.id === themeId);
+  const stored = themes.find((t) => t.id === themeId);
 
   if (!stored) {
     if (targetScheme) {
-      return themes.find(t => t.colorScheme === targetScheme) ?? themes[0]!;
+      return themes.find((t) => t.colorScheme === targetScheme) ?? themes[0]!;
     }
     return themes[0]!;
   }
@@ -89,7 +94,7 @@ export function resolveTheme(
   }
 
   const familySibling = themes.find(
-    t => t.family === stored.family && t.colorScheme === targetScheme && t.id !== stored.id,
+    (t) => t.family === stored.family && t.colorScheme === targetScheme && t.id !== stored.id,
   );
   return familySibling ?? stored;
 }

@@ -1,14 +1,14 @@
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import { PATHS } from '@/storage/paths.ts';
+import * as fs from "fs/promises";
+import * as path from "path";
+import { PATHS } from "@/storage/paths.ts";
 
-export type TimeWindow = '5m' | '15m' | '1h' | '24h' | '7d' | '30d' | 'all';
+export type TimeWindow = "5m" | "15m" | "1h" | "24h" | "7d" | "30d" | "all";
 
 export interface BudgetConfig {
   daily: number | null;
   weekly: number | null;
   monthly: number | null;
-  currency: 'USD' | 'EUR' | 'GBP';
+  currency: "USD" | "EUR" | "GBP";
 }
 
 export interface AlertThresholds {
@@ -16,8 +16,8 @@ export interface AlertThresholds {
   criticalPercent: number;
 }
 
-export type SparklineStyle = 'braille' | 'block';
-export type SparklineOrientation = 'up' | 'down';
+export type SparklineStyle = "braille" | "block";
+export type SparklineOrientation = "up" | "down";
 
 export interface SparklineConfig {
   style: SparklineStyle;
@@ -41,11 +41,11 @@ export interface AppConfig {
   display: {
     defaultTimeWindow: TimeWindow;
     sidebarCollapsed: boolean;
-    timeFormat: '12h' | '24h';
-    numberFormat: 'full' | 'compact';
+    timeFormat: "12h" | "24h";
+    numberFormat: "full" | "compact";
     sparkline: SparklineConfig;
     theme: string;
-    colorScheme: 'auto' | 'light' | 'dark';
+    colorScheme: "auto" | "light" | "dark";
   };
   notifications: {
     toastsEnabled: boolean;
@@ -67,19 +67,19 @@ export const DEFAULT_CONFIG: AppConfig = {
     pauseAutoRefresh: false,
     staleThresholdMs: 300000,
   },
-   display: {
-     defaultTimeWindow: '1h',
-     sidebarCollapsed: false,
-      timeFormat: '24h',
-     numberFormat: 'compact',
-     sparkline: {
-       style: 'braille',
-       orientation: 'up',
-       showBaseline: true,
-     },
-      theme: 'tokyo-night',
-      colorScheme: 'auto',
+  display: {
+    defaultTimeWindow: "1h",
+    sidebarCollapsed: false,
+    timeFormat: "24h",
+    numberFormat: "compact",
+    sparkline: {
+      style: "braille",
+      orientation: "up",
+      showBaseline: true,
     },
+    theme: "tokyo-night",
+    colorScheme: "auto",
+  },
   notifications: {
     toastsEnabled: true,
     soundEnabled: false,
@@ -88,7 +88,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     daily: null,
     weekly: null,
     monthly: null,
-    currency: 'USD',
+    currency: "USD",
   },
   alerts: {
     warningPercent: 80,
@@ -149,7 +149,7 @@ function deepMerge(target: AppConfig, source: Partial<AppConfig>): AppConfig {
 
 export async function loadConfig(): Promise<AppConfig> {
   try {
-    const content = await fs.readFile(PATHS.config.file, 'utf-8');
+    const content = await fs.readFile(PATHS.config.file, "utf-8");
     const loaded = JSON.parse(content) as Partial<AppConfig>;
     return deepMerge(DEFAULT_CONFIG, loaded);
   } catch {
@@ -159,7 +159,7 @@ export async function loadConfig(): Promise<AppConfig> {
 
 export async function saveConfig(config: AppConfig): Promise<void> {
   await fs.mkdir(path.dirname(PATHS.config.file), { recursive: true });
-  const tempFile = PATHS.config.file + '.tmp';
-  await fs.writeFile(tempFile, JSON.stringify(config, null, 2), 'utf-8');
+  const tempFile = PATHS.config.file + ".tmp";
+  await fs.writeFile(tempFile, JSON.stringify(config, null, 2), "utf-8");
   await fs.rename(tempFile, PATHS.config.file);
 }

@@ -1,4 +1,4 @@
-import type { ProviderState } from '../contexts/PluginContext.tsx';
+import type { ProviderState } from "../contexts/PluginContext.tsx";
 
 let cachedAliases: Map<string, string> | null = null;
 let cachedProviderRef: Map<string, ProviderState> | null = null;

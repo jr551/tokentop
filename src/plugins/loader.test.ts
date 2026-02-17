@@ -1,12 +1,12 @@
-import { describe, expect, test } from 'bun:test';
-import { validatePlugin } from './loader.ts';
-import { CURRENT_API_VERSION } from './types/base.ts';
+import { describe, expect, test } from "bun:test";
+import { validatePlugin } from "./loader.ts";
+import { CURRENT_API_VERSION } from "./types/base.ts";
 
 const validPlugin = {
-  id: 'test-plugin',
-  type: 'notification',
-  name: 'Test Plugin',
-  version: '1.0.0',
+  id: "test-plugin",
+  type: "notification",
+  name: "Test Plugin",
+  version: "1.0.0",
   apiVersion: CURRENT_API_VERSION,
   permissions: {},
   initialize: async () => {},
@@ -17,18 +17,18 @@ function hasError(errors: string[], fragment: string): boolean {
   return errors.some((error) => error.includes(fragment));
 }
 
-describe('validatePlugin', () => {
-  test('accepts a valid minimal plugin object', async () => {
+describe("validatePlugin", () => {
+  test("accepts a valid minimal plugin object", async () => {
     const result = await validatePlugin(validPlugin);
 
     expect(result.valid).toBe(true);
     expect(result.errors).toHaveLength(0);
   });
 
-  test('rejects plugin missing id', async () => {
+  test("rejects plugin missing id", async () => {
     const plugin = {
       ...validPlugin,
-      id: '',
+      id: "",
     };
 
     const result = await validatePlugin(plugin);
@@ -36,46 +36,46 @@ describe('validatePlugin', () => {
     expect(hasError(result.errors, 'non-empty string "id"')).toBe(true);
   });
 
-  test('rejects plugin with invalid id format', async () => {
+  test("rejects plugin with invalid id format", async () => {
     const plugin = {
       ...validPlugin,
-      id: 'Bad Plugin',
+      id: "Bad Plugin",
     };
 
     const result = await validatePlugin(plugin);
     expect(result.valid).toBe(false);
-    expect(hasError(result.errors, 'kebab-case')).toBe(true);
+    expect(hasError(result.errors, "kebab-case")).toBe(true);
   });
 
-  test('rejects plugin missing type', async () => {
+  test("rejects plugin missing type", async () => {
     const plugin = {
-      id: 'test-plugin',
-      name: 'Test Plugin',
-      version: '1.0.0',
+      id: "test-plugin",
+      name: "Test Plugin",
+      version: "1.0.0",
       apiVersion: CURRENT_API_VERSION,
       permissions: {},
     };
 
     const result = await validatePlugin(plugin);
     expect(result.valid).toBe(false);
-    expect(hasError(result.errors, 'must be one of')).toBe(true);
+    expect(hasError(result.errors, "must be one of")).toBe(true);
   });
 
-  test('rejects plugin with invalid type', async () => {
+  test("rejects plugin with invalid type", async () => {
     const plugin = {
       ...validPlugin,
-      type: 'invalid',
+      type: "invalid",
     };
 
     const result = await validatePlugin(plugin);
     expect(result.valid).toBe(false);
-    expect(hasError(result.errors, 'provider, agent, theme, notification')).toBe(true);
+    expect(hasError(result.errors, "provider, agent, theme, notification")).toBe(true);
   });
 
-  test('rejects plugin missing name', async () => {
+  test("rejects plugin missing name", async () => {
     const plugin = {
       ...validPlugin,
-      name: '',
+      name: "",
     };
 
     const result = await validatePlugin(plugin);
@@ -83,10 +83,10 @@ describe('validatePlugin', () => {
     expect(hasError(result.errors, 'non-empty string "name"')).toBe(true);
   });
 
-  test('rejects plugin missing version', async () => {
+  test("rejects plugin missing version", async () => {
     const plugin = {
       ...validPlugin,
-      version: '',
+      version: "",
     };
 
     const result = await validatePlugin(plugin);
@@ -94,10 +94,10 @@ describe('validatePlugin', () => {
     expect(hasError(result.errors, 'valid semver "version"')).toBe(true);
   });
 
-  test('rejects plugin with invalid version format', async () => {
+  test("rejects plugin with invalid version format", async () => {
     const plugin = {
       ...validPlugin,
-      version: 'v1',
+      version: "v1",
     };
 
     const result = await validatePlugin(plugin);
@@ -105,12 +105,12 @@ describe('validatePlugin', () => {
     expect(hasError(result.errors, 'valid semver "version"')).toBe(true);
   });
 
-  test('rejects plugin missing permissions', async () => {
+  test("rejects plugin missing permissions", async () => {
     const plugin = {
-      id: 'test-plugin',
-      type: 'notification',
-      name: 'Test Plugin',
-      version: '1.0.0',
+      id: "test-plugin",
+      type: "notification",
+      name: "Test Plugin",
+      version: "1.0.0",
       apiVersion: CURRENT_API_VERSION,
     };
 
@@ -119,7 +119,7 @@ describe('validatePlugin', () => {
     expect(hasError(result.errors, 'declare "permissions" object')).toBe(true);
   });
 
-  test('rejects plugin with wrong apiVersion', async () => {
+  test("rejects plugin with wrong apiVersion", async () => {
     const plugin = {
       ...validPlugin,
       apiVersion: CURRENT_API_VERSION + 1,
@@ -130,10 +130,10 @@ describe('validatePlugin', () => {
     expect(hasError(result.errors, `expected ${CURRENT_API_VERSION}`)).toBe(true);
   });
 
-  test('rejects provider plugin missing auth', async () => {
+  test("rejects provider plugin missing auth", async () => {
     const providerPlugin = {
       ...validPlugin,
-      type: 'provider',
+      type: "provider",
       fetchUsage: async () => [],
     };
 
@@ -142,10 +142,10 @@ describe('validatePlugin', () => {
     expect(hasError(result.errors, 'declare "auth" object')).toBe(true);
   });
 
-  test('accepts valid provider plugin with auth and fetchUsage', async () => {
+  test("accepts valid provider plugin with auth and fetchUsage", async () => {
     const providerPlugin = {
       ...validPlugin,
-      type: 'provider',
+      type: "provider",
       auth: {
         discover: async () => undefined,
         isConfigured: () => true,
@@ -157,11 +157,11 @@ describe('validatePlugin', () => {
     expect(result.valid).toBe(true);
   });
 
-  test('rejects theme plugin missing colors object', async () => {
+  test("rejects theme plugin missing colors object", async () => {
     const themePlugin = {
       ...validPlugin,
-      type: 'theme',
-      colorScheme: 'dark',
+      type: "theme",
+      colorScheme: "dark",
     };
 
     const result = await validatePlugin(themePlugin);
@@ -169,24 +169,24 @@ describe('validatePlugin', () => {
     expect(hasError(result.errors, '"colors" object')).toBe(true);
   });
 
-  test('rejects theme plugin missing colorScheme', async () => {
+  test("rejects theme plugin missing colorScheme", async () => {
     const themePlugin = {
       ...validPlugin,
-      type: 'theme',
-      colors: { primary: '#fff' },
+      type: "theme",
+      colors: { primary: "#fff" },
     };
 
     const result = await validatePlugin(themePlugin);
     expect(result.valid).toBe(false);
-    expect(hasError(result.errors, 'colorScheme')).toBe(true);
+    expect(hasError(result.errors, "colorScheme")).toBe(true);
   });
 
-  test('accepts valid theme plugin', async () => {
+  test("accepts valid theme plugin", async () => {
     const themePlugin = {
       ...validPlugin,
-      type: 'theme',
-      colorScheme: 'dark',
-      colors: { primary: '#fff' },
+      type: "theme",
+      colorScheme: "dark",
+      colors: { primary: "#fff" },
     };
 
     const result = await validatePlugin(themePlugin);

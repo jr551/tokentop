@@ -1,6 +1,6 @@
-import { Database } from 'bun:sqlite';
-import * as fs from 'fs/promises';
-import { PATHS } from './paths.ts';
+import { Database } from "bun:sqlite";
+import * as fs from "fs/promises";
+import { PATHS } from "./paths.ts";
 
 let db: Database | null = null;
 
@@ -76,8 +76,8 @@ export async function initDatabase(): Promise<Database> {
   await fs.mkdir(PATHS.data.dir, { recursive: true });
 
   db = new Database(PATHS.data.database, { create: true });
-  db.exec('PRAGMA journal_mode = WAL');
-  db.exec('PRAGMA synchronous = NORMAL');
+  db.exec("PRAGMA journal_mode = WAL");
+  db.exec("PRAGMA synchronous = NORMAL");
   db.exec(SCHEMA);
 
   return db;
@@ -85,7 +85,7 @@ export async function initDatabase(): Promise<Database> {
 
 export function getDatabase(): Database {
   if (!db) {
-    throw new Error('Database not initialized. Call initDatabase() first.');
+    throw new Error("Database not initialized. Call initDatabase() first.");
   }
   return db;
 }
@@ -166,7 +166,7 @@ export function insertUsage(record: UsageRecord): void {
     record.cacheReadTokens ?? 0,
     record.cacheWriteTokens ?? 0,
     record.costUsd,
-    record.projectPath ?? null
+    record.projectPath ?? null,
   );
 }
 
@@ -193,7 +193,7 @@ export function insertUsageBatch(records: UsageRecord[]): void {
         record.cacheReadTokens ?? 0,
         record.cacheWriteTokens ?? 0,
         record.costUsd,
-        record.projectPath ?? null
+        record.projectPath ?? null,
       );
     }
   });
@@ -218,7 +218,7 @@ export function insertProviderSnapshot(snapshot: ProviderSnapshot): void {
     snapshot.tokensInput ?? null,
     snapshot.tokensOutput ?? null,
     snapshot.costUsd ?? null,
-    snapshot.rawJson ?? null
+    snapshot.rawJson ?? null,
   );
 }
 
@@ -228,33 +228,33 @@ export function queryUsage(query: UsageQuery): UsageRecord[] {
   const params: (string | number)[] = [];
 
   if (query.startTime !== undefined) {
-    conditions.push('timestamp >= ?');
+    conditions.push("timestamp >= ?");
     params.push(query.startTime);
   }
   if (query.endTime !== undefined) {
-    conditions.push('timestamp <= ?');
+    conditions.push("timestamp <= ?");
     params.push(query.endTime);
   }
   if (query.provider) {
-    conditions.push('provider = ?');
+    conditions.push("provider = ?");
     params.push(query.provider);
   }
   if (query.model) {
-    conditions.push('model = ?');
+    conditions.push("model = ?");
     params.push(query.model);
   }
   if (query.agent) {
-    conditions.push('agent = ?');
+    conditions.push("agent = ?");
     params.push(query.agent);
   }
   if (query.sessionId) {
-    conditions.push('session_id = ?');
+    conditions.push("session_id = ?");
     params.push(query.sessionId);
   }
 
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-  const limitClause = query.limit ? `LIMIT ${query.limit}` : '';
-  const offsetClause = query.offset ? `OFFSET ${query.offset}` : '';
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  const limitClause = query.limit ? `LIMIT ${query.limit}` : "";
+  const offsetClause = query.offset ? `OFFSET ${query.offset}` : "";
 
   const sql = `
     SELECT * FROM usage
@@ -303,7 +303,8 @@ export interface UsageSummary {
 
 export function getUsageSummary(startTime: number, endTime: number): UsageSummary {
   const db = getDatabase();
-  const row = db.prepare(`
+  const row = db
+    .prepare(`
     SELECT
       COALESCE(SUM(input_tokens), 0) as total_input,
       COALESCE(SUM(output_tokens), 0) as total_output,
@@ -313,7 +314,8 @@ export function getUsageSummary(startTime: number, endTime: number): UsageSummar
       COUNT(*) as request_count
     FROM usage
     WHERE timestamp >= ? AND timestamp <= ?
-  `).get(startTime, endTime) as {
+  `)
+    .get(startTime, endTime) as {
     total_input: number;
     total_output: number;
     total_cache_read: number;
@@ -342,7 +344,8 @@ export interface ProviderSummary {
 
 export function getUsageByProvider(startTime: number, endTime: number): ProviderSummary[] {
   const db = getDatabase();
-  const rows = db.prepare(`
+  const rows = db
+    .prepare(`
     SELECT
       provider,
       COALESCE(SUM(input_tokens), 0) as total_input,
@@ -353,7 +356,8 @@ export function getUsageByProvider(startTime: number, endTime: number): Provider
     WHERE timestamp >= ? AND timestamp <= ?
     GROUP BY provider
     ORDER BY total_cost DESC
-  `).all(startTime, endTime) as Array<{
+  `)
+    .all(startTime, endTime) as Array<{
     provider: string;
     total_input: number;
     total_output: number;
@@ -381,7 +385,8 @@ export interface ModelSummary {
 
 export function getUsageByModel(startTime: number, endTime: number): ModelSummary[] {
   const db = getDatabase();
-  const rows = db.prepare(`
+  const rows = db
+    .prepare(`
     SELECT
       model,
       provider,
@@ -393,7 +398,8 @@ export function getUsageByModel(startTime: number, endTime: number): ModelSummar
     WHERE timestamp >= ? AND timestamp <= ?
     GROUP BY model, provider
     ORDER BY total_cost DESC
-  `).all(startTime, endTime) as Array<{
+  `)
+    .all(startTime, endTime) as Array<{
     model: string;
     provider: string;
     total_input: number;
@@ -422,12 +428,13 @@ export interface TimeSeriesPoint {
 export function getUsageTimeSeries(
   startTime: number,
   endTime: number,
-  bucketMinutes: number = 5
+  bucketMinutes: number = 5,
 ): TimeSeriesPoint[] {
   const db = getDatabase();
   const bucketSeconds = bucketMinutes * 60;
 
-  const rows = db.prepare(`
+  const rows = db
+    .prepare(`
     SELECT
       (timestamp / ? * ?) as bucket_time,
       COALESCE(SUM(input_tokens + output_tokens), 0) as total_tokens,
@@ -437,7 +444,8 @@ export function getUsageTimeSeries(
     WHERE timestamp >= ? AND timestamp <= ?
     GROUP BY bucket_time
     ORDER BY bucket_time ASC
-  `).all(bucketSeconds, bucketSeconds, startTime, endTime) as Array<{
+  `)
+    .all(bucketSeconds, bucketSeconds, startTime, endTime) as Array<{
     bucket_time: number;
     total_tokens: number;
     total_cost: number;
@@ -456,15 +464,17 @@ export function getProviderSnapshots(
   provider: string,
   startTime: number,
   endTime: number,
-  limit: number = 100
+  limit: number = 100,
 ): ProviderSnapshot[] {
   const db = getDatabase();
-  const rows = db.prepare(`
+  const rows = db
+    .prepare(`
     SELECT * FROM provider_snapshots
     WHERE provider = ? AND timestamp >= ? AND timestamp <= ?
     ORDER BY timestamp DESC
     LIMIT ?
-  `).all(provider, startTime, endTime, limit) as Array<{
+  `)
+    .all(provider, startTime, endTime, limit) as Array<{
     timestamp: number;
     provider: string;
     used_percent: number | null;
@@ -514,29 +524,31 @@ export function upsertDailyAggregate(aggregate: DailyAggregate): void {
     aggregate.totalCacheRead,
     aggregate.totalCacheWrite,
     aggregate.totalCostUsd,
-    aggregate.requestCount
+    aggregate.requestCount,
   );
 }
 
 export function getDailyAggregates(
   startDate: string,
   endDate: string,
-  provider?: string
+  provider?: string,
 ): DailyAggregate[] {
   const db = getDatabase();
-  const conditions = ['date >= ?', 'date <= ?'];
+  const conditions = ["date >= ?", "date <= ?"];
   const params: string[] = [startDate, endDate];
 
   if (provider) {
-    conditions.push('provider = ?');
+    conditions.push("provider = ?");
     params.push(provider);
   }
 
-  const rows = db.prepare(`
+  const rows = db
+    .prepare(`
     SELECT * FROM daily_aggregates
-    WHERE ${conditions.join(' AND ')}
+    WHERE ${conditions.join(" AND ")}
     ORDER BY date DESC, total_cost_usd DESC
-  `).all(...params) as Array<{
+  `)
+    .all(...params) as Array<{
     date: string;
     provider: string;
     model: string | null;
@@ -582,9 +594,9 @@ export function getThisMonthSummary(): UsageSummary {
 
 export function pluginStorageGet(pluginId: string, key: string): string | null {
   const db = getDatabase();
-  const row = db.prepare(
-    'SELECT value FROM plugin_storage WHERE plugin_id = ? AND key = ?',
-  ).get(pluginId, key) as { value: string } | null;
+  const row = db
+    .prepare("SELECT value FROM plugin_storage WHERE plugin_id = ? AND key = ?")
+    .get(pluginId, key) as { value: string } | null;
   return row?.value ?? null;
 }
 
@@ -599,15 +611,13 @@ export function pluginStorageSet(pluginId: string, key: string, value: string): 
 
 export function pluginStorageDelete(pluginId: string, key: string): void {
   const db = getDatabase();
-  db.prepare(
-    'DELETE FROM plugin_storage WHERE plugin_id = ? AND key = ?',
-  ).run(pluginId, key);
+  db.prepare("DELETE FROM plugin_storage WHERE plugin_id = ? AND key = ?").run(pluginId, key);
 }
 
 export function pluginStorageHas(pluginId: string, key: string): boolean {
   const db = getDatabase();
-  const row = db.prepare(
-    'SELECT 1 FROM plugin_storage WHERE plugin_id = ? AND key = ?',
-  ).get(pluginId, key);
+  const row = db
+    .prepare("SELECT 1 FROM plugin_storage WHERE plugin_id = ? AND key = ?")
+    .get(pluginId, key);
   return row !== null && row !== undefined;
 }

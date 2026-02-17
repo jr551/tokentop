@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
-import type { AgentSessionAggregate } from '@/agents/types.ts';
+import { createContext, type ReactNode, useCallback, useContext, useState } from "react";
+import type { AgentSessionAggregate } from "@/agents/types.ts";
 
 interface DrawerContextValue {
   selectedSession: AgentSessionAggregate | null;
@@ -22,12 +22,14 @@ export function DrawerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <DrawerContext.Provider value={{
-      selectedSession,
-      showDrawer,
-      hideDrawer,
-      isOpen: selectedSession !== null,
-    }}>
+    <DrawerContext.Provider
+      value={{
+        selectedSession,
+        showDrawer,
+        hideDrawer,
+        isOpen: selectedSession !== null,
+      }}
+    >
       {children}
     </DrawerContext.Provider>
   );
@@ -36,7 +38,7 @@ export function DrawerProvider({ children }: { children: ReactNode }) {
 export function useDrawer(): DrawerContextValue {
   const context = useContext(DrawerContext);
   if (!context) {
-    throw new Error('useDrawer must be used within DrawerProvider');
+    throw new Error("useDrawer must be used within DrawerProvider");
   }
   return context;
 }

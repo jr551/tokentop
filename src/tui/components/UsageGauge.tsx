@@ -1,4 +1,4 @@
-import { useColors } from '../contexts/ThemeContext.tsx';
+import { useColors } from "../contexts/ThemeContext.tsx";
 
 interface UsageGaugeProps {
   label: string;
@@ -25,23 +25,20 @@ export function UsageGauge({
   const filledWidth = Math.round((percent / 100) * barWidth);
   const emptyWidth = barWidth - filledWidth;
 
-  const fillColor = percent >= 90 ? colors.gaugeDanger :
-                    percent >= 70 ? colors.gaugeWarning :
-                    providerColor;
+  const fillColor =
+    percent >= 90 ? colors.gaugeDanger : percent >= 70 ? colors.gaugeWarning : providerColor;
 
-  const filledBar = '█'.repeat(filledWidth);
-  const emptyBar = '·'.repeat(emptyWidth);
+  const filledBar = "█".repeat(filledWidth);
+  const emptyBar = "·".repeat(emptyWidth);
 
-  const resetText = resetsAt ? formatResetTime(resetsAt) : '';
+  const resetText = resetsAt ? formatResetTime(resetsAt) : "";
   const showWindowLabel = windowLabel && !label.toLowerCase().includes(windowLabel.toLowerCase());
 
   return (
     <box flexDirection="column" width={width}>
       <box flexDirection="row" justifyContent="space-between">
         <text fg={colors.textMuted}>{label}</text>
-        <text fg={colors.text}>
-          {usedPercent !== null ? `${Math.round(percent)}%` : '--'}
-        </text>
+        <text fg={colors.text}>{usedPercent !== null ? `${Math.round(percent)}%` : "--"}</text>
       </box>
       <box flexDirection="row">
         <text>
@@ -51,8 +48,8 @@ export function UsageGauge({
       </box>
       {(showWindowLabel || resetText) && (
         <text fg={colors.textMuted}>
-          {showWindowLabel ? windowLabel : ''}
-          {showWindowLabel && resetText ? ' · ' : ''}
+          {showWindowLabel ? windowLabel : ""}
+          {showWindowLabel && resetText ? " · " : ""}
           {resetText}
         </text>
       )}
@@ -64,7 +61,7 @@ function formatResetTime(timestamp: number): string {
   const now = Date.now();
   const diff = timestamp - now;
 
-  if (diff <= 0) return 'resets soon';
+  if (diff <= 0) return "resets soon";
 
   const minutes = Math.floor(diff / 60000);
   const hours = Math.floor(minutes / 60);

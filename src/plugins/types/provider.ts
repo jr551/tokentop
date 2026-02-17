@@ -1,4 +1,4 @@
-import type { BasePlugin, PluginHttpClient, PluginLogger } from './base.ts';
+import type { BasePlugin, PluginHttpClient, PluginLogger } from "./base.ts";
 
 export interface ProviderCapabilities {
   usageLimits: boolean;
@@ -15,7 +15,7 @@ export interface Credentials {
   apiKey?: string;
   oauth?: OAuthCredentials;
   groupId?: string;
-  source: 'env' | 'opencode' | 'external' | 'config';
+  source: "env" | "opencode" | "external" | "config";
 }
 
 export interface OAuthCredentials {
@@ -40,7 +40,7 @@ export interface RefreshedCredentials {
 export interface CredentialResult {
   ok: boolean;
   credentials?: Credentials;
-  reason?: 'missing' | 'expired' | 'invalid' | 'error';
+  reason?: "missing" | "expired" | "invalid" | "error";
   message?: string;
 }
 
@@ -49,7 +49,7 @@ export interface CredentialResult {
  * Used by AuthSources.opencode.getProviderEntry().
  */
 export interface OpenCodeAuthEntry {
-  type: 'api' | 'oauth' | 'codex' | 'github' | 'wellknown';
+  type: "api" | "oauth" | "codex" | "github" | "wellknown";
   key?: string;
   access?: string;
   refresh?: string;
@@ -89,7 +89,7 @@ export interface AuthSources {
 
   /** Platform information for cross-platform credential path resolution. */
   platform: {
-    os: 'darwin' | 'linux' | 'win32';
+    os: "darwin" | "linux" | "win32";
     homedir: string;
     arch: string;
   };
@@ -197,7 +197,7 @@ export interface ProviderUsageData {
   cost?: {
     actual?: CostBreakdown;
     estimated?: CostBreakdown;
-    source: 'api' | 'estimated';
+    source: "api" | "estimated";
   };
   fetchedAt: number;
   error?: string;
@@ -214,7 +214,7 @@ export interface ProviderFetchContext {
   readonly config: Record<string, unknown>;
   readonly signal: AbortSignal;
   readonly options?: {
-    timePeriod?: 'session' | 'daily' | 'weekly' | 'monthly';
+    timePeriod?: "session" | "daily" | "weekly" | "monthly";
     sessionId?: string;
   };
 }
@@ -224,7 +224,7 @@ export interface ProviderFetchContext {
 // ---------------------------------------------------------------------------
 
 export interface ProviderPlugin extends BasePlugin {
-  readonly type: 'provider';
+  readonly type: "provider";
   readonly capabilities: ProviderCapabilities;
   readonly auth: ProviderAuth;
   readonly pricing?: ProviderPricing;

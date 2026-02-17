@@ -1,53 +1,59 @@
 import type {
-  NotificationPlugin,
   NotificationContext,
   NotificationEvent,
-} from '../types/notification.ts';
+  NotificationPlugin,
+} from "../types/notification.ts";
 
 export const terminalBellPlugin: NotificationPlugin = {
   apiVersion: 2,
-  id: 'terminal-bell',
-  type: 'notification',
-  name: 'Terminal Bell',
-  version: '1.0.0',
+  id: "terminal-bell",
+  type: "notification",
+  name: "Terminal Bell",
+  version: "1.0.0",
 
   meta: {
-    description: 'Simple terminal bell (BEL character) for alerts',
+    description: "Simple terminal bell (BEL character) for alerts",
   },
 
   permissions: {},
 
   configSchema: {
-    enabled: { type: 'boolean', default: true, description: 'Enable terminal bell notifications' },
-    minSeverity: { type: 'select', default: 'warning', options: [
-      { value: 'info', label: 'Info' },
-      { value: 'warning', label: 'Warning' },
-      { value: 'critical', label: 'Critical' },
-    ]},
+    enabled: { type: "boolean", default: true, description: "Enable terminal bell notifications" },
+    minSeverity: {
+      type: "select",
+      default: "warning",
+      options: [
+        { value: "info", label: "Info" },
+        { value: "warning", label: "Warning" },
+        { value: "critical", label: "Critical" },
+      ],
+    },
   },
 
   supports(event: NotificationEvent): boolean {
-    return event.type.startsWith('budget.') ||
-           event.type.startsWith('provider.') ||
-           event.type === 'plugin.crashed';
+    return (
+      event.type.startsWith("budget.") ||
+      event.type.startsWith("provider.") ||
+      event.type === "plugin.crashed"
+    );
   },
 
   async initialize(ctx: NotificationContext): Promise<void> {
-    ctx.logger.debug('Terminal bell notification plugin initialized');
+    ctx.logger.debug("Terminal bell notification plugin initialized");
   },
 
   async notify(ctx: NotificationContext, event: NotificationEvent): Promise<void> {
-    const severityOrder = ['info', 'warning', 'critical'];
-    const minSeverity = (ctx.config.minSeverity as string) ?? 'warning';
+    const severityOrder = ["info", "warning", "critical"];
+    const minSeverity = (ctx.config.minSeverity as string) ?? "warning";
 
     if (severityOrder.indexOf(event.severity) < severityOrder.indexOf(minSeverity)) {
       return;
     }
 
-    const bellCount = event.severity === 'critical' ? 3 : 1;
+    const bellCount = event.severity === "critical" ? 3 : 1;
 
     for (let i = 0; i < bellCount; i++) {
-      process.stdout.write('\x07');
+      process.stdout.write("\x07");
       if (i < bellCount - 1) {
         await sleep(200);
       }
@@ -55,8 +61,8 @@ export const terminalBellPlugin: NotificationPlugin = {
   },
 
   async test(ctx: NotificationContext): Promise<boolean> {
-    ctx.logger.info('Testing terminal bell...');
-    process.stdout.write('\x07');
+    ctx.logger.info("Testing terminal bell...");
+    process.stdout.write("\x07");
     return true;
   },
 };

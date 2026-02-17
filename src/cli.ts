@@ -1,10 +1,10 @@
 #!/usr/bin/env bun
-import * as path from 'path';
-import { startTui, type TuiOptions } from './tui/index.tsx';
-import type { DemoPreset } from './demo/simulator.ts';
-import { VERSION } from './version.ts';
+import * as path from "path";
+import type { DemoPreset } from "./demo/simulator.ts";
+import { startTui, type TuiOptions } from "./tui/index.tsx";
+import { VERSION } from "./version.ts";
 
-const DEMO_PRESETS: DemoPreset[] = ['light', 'normal', 'heavy'];
+const DEMO_PRESETS: DemoPreset[] = ["light", "normal", "heavy"];
 
 function printHelp() {
   console.log(`
@@ -57,11 +57,11 @@ function printVersion() {
 
 async function main() {
   const args = process.argv.slice(2);
-  
+
   // Check for subcommands first
-  const subcommand = args[0] && !args[0].startsWith('-') ? args[0] : null;
+  const subcommand = args[0] && !args[0].startsWith("-") ? args[0] : null;
   const commandArgs = subcommand ? args.slice(1) : args;
-  
+
   let refreshInterval = 60000;
   let debug = false;
   let demo = false;
@@ -70,7 +70,7 @@ async function main() {
   const cliPlugins: string[] = [];
 
   // Handle demo subcommand
-  if (subcommand === 'demo') {
+  if (subcommand === "demo") {
     demo = true;
   } else if (subcommand !== null) {
     console.error(`Error: Unknown command "${subcommand}"`);
@@ -81,24 +81,24 @@ async function main() {
   for (let i = 0; i < commandArgs.length; i++) {
     const arg = commandArgs[i];
 
-    if (arg === '-h' || arg === '--help') {
+    if (arg === "-h" || arg === "--help") {
       printHelp();
       process.exit(0);
     }
 
-    if (arg === '-v' || arg === '--version') {
+    if (arg === "-v" || arg === "--version") {
       printVersion();
       process.exit(0);
     }
 
-    if (arg === '-d' || arg === '--debug') {
+    if (arg === "-d" || arg === "--debug") {
       debug = true;
     }
 
-    if (arg === '-p' || arg === '--plugin') {
+    if (arg === "-p" || arg === "--plugin") {
       const pluginPath = commandArgs[++i];
       if (!pluginPath) {
-        console.error('Error: --plugin requires a path');
+        console.error("Error: --plugin requires a path");
         process.exit(1);
       }
       const resolved = path.resolve(pluginPath);
@@ -106,38 +106,38 @@ async function main() {
     }
 
     // Demo subcommand options
-    if (arg === '--seed') {
+    if (arg === "--seed") {
       if (!demo) {
-        console.error('Error: --seed can only be used with the demo command');
+        console.error("Error: --seed can only be used with the demo command");
         process.exit(1);
       }
       const seedStr = commandArgs[++i];
       const seed = seedStr ? parseInt(seedStr, 10) : NaN;
       if (isNaN(seed)) {
-        console.error('Error: --seed requires a number');
+        console.error("Error: --seed requires a number");
         process.exit(1);
       }
       demoSeed = seed;
     }
 
-    if (arg === '--preset') {
+    if (arg === "--preset") {
       if (!demo) {
-        console.error('Error: --preset can only be used with the demo command');
+        console.error("Error: --preset can only be used with the demo command");
         process.exit(1);
       }
       const preset = commandArgs[++i] as DemoPreset;
       if (!preset || !DEMO_PRESETS.includes(preset)) {
-        console.error(`Error: --preset must be one of: ${DEMO_PRESETS.join(', ')}`);
+        console.error(`Error: --preset must be one of: ${DEMO_PRESETS.join(", ")}`);
         process.exit(1);
       }
       demoPreset = preset;
     }
 
-    if (arg === '-r' || arg === '--refresh') {
+    if (arg === "-r" || arg === "--refresh") {
       const intervalStr = commandArgs[++i];
       const interval = intervalStr ? parseInt(intervalStr, 10) : NaN;
       if (isNaN(interval) || interval < 1000) {
-        console.error('Error: --refresh must be a number >= 1000');
+        console.error("Error: --refresh must be a number >= 1000");
         process.exit(1);
       }
       refreshInterval = interval;
@@ -162,6 +162,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('Fatal error:', err);
+  console.error("Fatal error:", err);
   process.exit(1);
 });

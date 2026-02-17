@@ -5,7 +5,7 @@
  * authoritative contract for community developers; core adapts to match.
  */
 
-import { z } from 'zod';
+import { z } from "zod";
 
 // ---------------------------------------------------------------------------
 // Identity
@@ -14,7 +14,7 @@ import { z } from 'zod';
 /**
  * Plugin type discriminator
  */
-export type PluginType = 'provider' | 'agent' | 'theme' | 'notification';
+export type PluginType = "provider" | "agent" | "theme" | "notification";
 
 /**
  * Current API contract version.
@@ -30,23 +30,31 @@ export const CURRENT_API_VERSION = 2;
  * Plugin permissions schema - defines what a plugin can access
  */
 export const PluginPermissionsSchema = z.object({
-  network: z.object({
-    enabled: z.boolean(),
-    allowedDomains: z.array(z.string()).optional(),
-  }).optional(),
-  filesystem: z.object({
-    read: z.boolean().optional(),
-    write: z.boolean().optional(),
-    paths: z.array(z.string()).optional(),
-  }).optional(),
-  env: z.object({
-    read: z.boolean().optional(),
-    vars: z.array(z.string()).optional(),
-  }).optional(),
-  system: z.object({
-    notifications: z.boolean().optional(),
-    clipboard: z.boolean().optional(),
-  }).optional(),
+  network: z
+    .object({
+      enabled: z.boolean(),
+      allowedDomains: z.array(z.string()).optional(),
+    })
+    .optional(),
+  filesystem: z
+    .object({
+      read: z.boolean().optional(),
+      write: z.boolean().optional(),
+      paths: z.array(z.string()).optional(),
+    })
+    .optional(),
+  env: z
+    .object({
+      read: z.boolean().optional(),
+      vars: z.array(z.string()).optional(),
+    })
+    .optional(),
+  system: z
+    .object({
+      notifications: z.boolean().optional(),
+      clipboard: z.boolean().optional(),
+    })
+    .optional(),
 });
 
 export type PluginPermissions = z.infer<typeof PluginPermissionsSchema>;
@@ -95,7 +103,7 @@ export type PluginMeta = z.infer<typeof PluginMetaSchema>;
  */
 export interface ConfigField {
   /** Data type of the setting value. */
-  type: 'string' | 'number' | 'boolean' | 'select';
+  type: "string" | "number" | "boolean" | "select";
   /** Label shown in the settings UI. */
   label?: string;
   /** Help text shown below the field. */
@@ -197,7 +205,10 @@ export interface BasePlugin {
    * Called when the user changes this plugin's configuration.
    * Receive the new validated config values.
    */
-  onConfigChange?(config: Record<string, unknown>, ctx: PluginLifecycleContext): Promise<void> | void;
+  onConfigChange?(
+    config: Record<string, unknown>,
+    ctx: PluginLifecycleContext,
+  ): Promise<void> | void;
 }
 
 // ---------------------------------------------------------------------------
@@ -245,7 +256,7 @@ export interface PluginLoadResult<T extends BasePlugin = BasePlugin> {
   success: boolean;
   plugin?: T;
   error?: string;
-  source: 'builtin' | 'local' | 'npm';
+  source: "builtin" | "local" | "npm";
 }
 
 // ---------------------------------------------------------------------------
@@ -259,9 +270,9 @@ export class PluginPermissionError extends Error {
   constructor(
     public readonly pluginId: string,
     public readonly permission: keyof PluginPermissions,
-    message: string
+    message: string,
   ) {
     super(`Plugin "${pluginId}" permission denied: ${message}`);
-    this.name = 'PluginPermissionError';
+    this.name = "PluginPermissionError";
   }
 }

@@ -1,15 +1,15 @@
-import type { PluginPermissions } from './types/base.ts';
-import type { PluginContext, PluginStorage } from './types/provider.ts';
-import { createAuthSources } from './auth-sources.ts';
-import { createSandboxedHttpClient, createPluginLogger } from './sandbox.ts';
-import { deepFreeze } from './sandbox-guard.ts';
 import {
-  pluginStorageGet,
-  pluginStorageSet,
-  pluginStorageDelete,
-  pluginStorageHas,
   getDatabase,
-} from '@/storage/database.ts';
+  pluginStorageDelete,
+  pluginStorageGet,
+  pluginStorageHas,
+  pluginStorageSet,
+} from "@/storage/database.ts";
+import { createAuthSources } from "./auth-sources.ts";
+import { createPluginLogger, createSandboxedHttpClient } from "./sandbox.ts";
+import { deepFreeze } from "./sandbox-guard.ts";
+import type { PluginPermissions } from "./types/base.ts";
+import type { PluginContext, PluginStorage } from "./types/provider.ts";
 
 let dbAvailable: boolean | null = null;
 
@@ -52,7 +52,7 @@ export function resetDbAvailableCache(): void {
 export function createPluginContext(
   pluginId: string,
   permissions: PluginPermissions,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): PluginContext {
   const ctx: PluginContext = {
     config: {},

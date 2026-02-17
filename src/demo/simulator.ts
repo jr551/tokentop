@@ -1,6 +1,6 @@
-import type { AgentSessionAggregate, AgentSessionStream } from '@/agents/types.ts';
-import type { ProviderUsageData } from '@/plugins/types/provider.ts';
-import type { UsageEventInsert } from '@/storage/types.ts';
+import type { AgentSessionAggregate, AgentSessionStream } from "@/agents/types.ts";
+import type { ProviderUsageData } from "@/plugins/types/provider.ts";
+import type { UsageEventInsert } from "@/storage/types.ts";
 
 /**
  * Demo presets control the intensity of simulated activity.
@@ -8,7 +8,7 @@ import type { UsageEventInsert } from '@/storage/types.ts';
  * - normal: Moderate activity, balanced simulation (default)
  * - heavy: High activity, more sessions, faster token accumulation
  */
-export type DemoPreset = 'light' | 'normal' | 'heavy';
+export type DemoPreset = "light" | "normal" | "heavy";
 
 export interface DemoPresetConfig {
   sessionCount: number;
@@ -53,8 +53,8 @@ export const DEMO_PRESETS: Record<DemoPreset, DemoPresetConfig> = {
 export interface DemoSessionSeed {
   sessionId: string;
   sessionName?: string;
-  agentId: 'opencode' | 'claude-code' | 'cursor';
-  agentName: 'OpenCode' | 'Claude Code' | 'Cursor';
+  agentId: "opencode" | "claude-code" | "cursor";
+  agentName: "OpenCode" | "Claude Code" | "Cursor";
   projectPath: string;
   modelId: string;
   providerId: string;
@@ -65,69 +65,69 @@ export interface DemoSessionSeed {
 
 const DEFAULT_SESSIONS: DemoSessionSeed[] = [
   {
-    sessionId: 'demo-opencode-1',
-    sessionName: 'Implement dashboard view with real-time updates',
-    agentId: 'opencode',
-    agentName: 'OpenCode',
-    projectPath: '/Users/demo/workspace/tokentop',
-    modelId: 'claude-3-5-sonnet',
-    providerId: 'anthropic',
+    sessionId: "demo-opencode-1",
+    sessionName: "Implement dashboard view with real-time updates",
+    agentId: "opencode",
+    agentName: "OpenCode",
+    projectPath: "/Users/demo/workspace/tokentop",
+    modelId: "claude-3-5-sonnet",
+    providerId: "anthropic",
     baseTokens: 3200,
     baseCost: 1.24,
   },
   {
-    sessionId: 'demo-opencode-2',
-    sessionName: 'Fix Kubernetes deployment configuration',
-    agentId: 'opencode',
-    agentName: 'OpenCode',
-    projectPath: '/Users/demo/workspace/infra',
-    modelId: 'gpt-4.1',
-    providerId: 'openai',
+    sessionId: "demo-opencode-2",
+    sessionName: "Fix Kubernetes deployment configuration",
+    agentId: "opencode",
+    agentName: "OpenCode",
+    projectPath: "/Users/demo/workspace/infra",
+    modelId: "gpt-4.1",
+    providerId: "openai",
     baseTokens: 2100,
     baseCost: 0.92,
   },
   {
-    sessionId: 'demo-claude-1',
-    sessionName: 'Add authentication flow to mobile app',
-    agentId: 'claude-code',
-    agentName: 'Claude Code',
-    projectPath: '/Users/demo/workspace/mobile',
-    modelId: 'claude-3-opus',
-    providerId: 'anthropic',
+    sessionId: "demo-claude-1",
+    sessionName: "Add authentication flow to mobile app",
+    agentId: "claude-code",
+    agentName: "Claude Code",
+    projectPath: "/Users/demo/workspace/mobile",
+    modelId: "claude-3-opus",
+    providerId: "anthropic",
     baseTokens: 1800,
     baseCost: 0.78,
   },
   {
-    sessionId: 'demo-cursor-1',
-    sessionName: 'Refactor API endpoints for better performance',
-    agentId: 'cursor',
-    agentName: 'Cursor',
-    projectPath: '/Users/demo/workspace/webapp',
-    modelId: 'gemini-2.0-pro',
-    providerId: 'google-gemini',
+    sessionId: "demo-cursor-1",
+    sessionName: "Refactor API endpoints for better performance",
+    agentId: "cursor",
+    agentName: "Cursor",
+    projectPath: "/Users/demo/workspace/webapp",
+    modelId: "gemini-2.0-pro",
+    providerId: "google-gemini",
     baseTokens: 2600,
     baseCost: 0.64,
   },
   {
-    sessionId: 'demo-opencode-old-1',
-    sessionName: 'Migrate legacy API to REST v2',
-    agentId: 'opencode',
-    agentName: 'OpenCode',
-    projectPath: '/Users/demo/workspace/legacy-api',
-    modelId: 'claude-3-5-sonnet',
-    providerId: 'anthropic',
+    sessionId: "demo-opencode-old-1",
+    sessionName: "Migrate legacy API to REST v2",
+    agentId: "opencode",
+    agentName: "OpenCode",
+    projectPath: "/Users/demo/workspace/legacy-api",
+    modelId: "claude-3-5-sonnet",
+    providerId: "anthropic",
     baseTokens: 5400,
     baseCost: 2.18,
     inactive: true,
   },
   {
-    sessionId: 'demo-claude-old-1',
-    sessionName: 'Update documentation with new API examples',
-    agentId: 'claude-code',
-    agentName: 'Claude Code',
-    projectPath: '/Users/demo/workspace/docs-site',
-    modelId: 'gpt-4.1',
-    providerId: 'openai',
+    sessionId: "demo-claude-old-1",
+    sessionName: "Update documentation with new API examples",
+    agentId: "claude-code",
+    agentName: "Claude Code",
+    projectPath: "/Users/demo/workspace/docs-site",
+    modelId: "gpt-4.1",
+    providerId: "openai",
     baseTokens: 3800,
     baseCost: 1.56,
     inactive: true,
@@ -135,22 +135,22 @@ const DEFAULT_SESSIONS: DemoSessionSeed[] = [
 ];
 
 const PROVIDER_LIMITS: Record<string, { label: string; windowMinutes: number }> = {
-  anthropic: { label: 'Daily Tokens', windowMinutes: 1440 },
-  openai: { label: 'Daily Tokens', windowMinutes: 1440 },
-  'google-gemini': { label: 'Daily Tokens', windowMinutes: 1440 },
+  anthropic: { label: "Daily Tokens", windowMinutes: 1440 },
+  openai: { label: "Daily Tokens", windowMinutes: 1440 },
+  "google-gemini": { label: "Daily Tokens", windowMinutes: 1440 },
 };
 
 const EXTRA_PROVIDERS: Array<{ id: string; label: string; balance?: string }> = [
-  { id: 'codex', label: 'ChatGPT Plus', balance: '$18.00' },
-  { id: 'github-copilot', label: 'Copilot Pro', balance: '$26.00' },
-  { id: 'perplexity', label: 'Perplexity Pro', balance: '$12.50' },
-  { id: 'antigravity', label: 'Antigravity AI', balance: '$31.00' },
-  { id: 'minimax', label: 'MiniMax', balance: '$22.00' },
-  { id: 'cohere', label: 'Cohere Enterprise', balance: '$45.00' },
-  { id: 'mistral', label: 'Mistral API', balance: '$15.00' },
-  { id: 'groq', label: 'Groq Cloud', balance: '$8.50' },
-  { id: 'together', label: 'Together AI', balance: '$20.00' },
-  { id: 'fireworks', label: 'Fireworks AI', balance: '$12.00' },
+  { id: "codex", label: "ChatGPT Plus", balance: "$18.00" },
+  { id: "github-copilot", label: "Copilot Pro", balance: "$26.00" },
+  { id: "perplexity", label: "Perplexity Pro", balance: "$12.50" },
+  { id: "antigravity", label: "Antigravity AI", balance: "$31.00" },
+  { id: "minimax", label: "MiniMax", balance: "$22.00" },
+  { id: "cohere", label: "Cohere Enterprise", balance: "$45.00" },
+  { id: "mistral", label: "Mistral API", balance: "$15.00" },
+  { id: "groq", label: "Groq Cloud", balance: "$8.50" },
+  { id: "together", label: "Together AI", balance: "$20.00" },
+  { id: "fireworks", label: "Fireworks AI", balance: "$12.00" },
 ];
 
 function clamp(value: number, min: number, max: number): number {
@@ -212,7 +212,7 @@ export class DemoSimulator {
 
   constructor(options: DemoSimulatorOptions = {}) {
     const seed = options.seed ?? 1337;
-    this.preset = options.preset ?? 'normal';
+    this.preset = options.preset ?? "normal";
     this.presetConfig = DEMO_PRESETS[this.preset];
     this.rng = new DemoRng(seed);
     const now = Date.now();
@@ -221,14 +221,14 @@ export class DemoSimulator {
     const sessionCount = Math.min(this.presetConfig.sessionCount, DEFAULT_SESSIONS.length);
 
     // Select sessions: include a mix of inactive history and active sessions per preset size.
-    const inactiveSessions = DEFAULT_SESSIONS.filter(s => s.inactive ?? false);
-    const activeSessions = DEFAULT_SESSIONS.filter(s => !(s.inactive ?? false));
+    const inactiveSessions = DEFAULT_SESSIONS.filter((s) => s.inactive ?? false);
+    const activeSessions = DEFAULT_SESSIONS.filter((s) => !(s.inactive ?? false));
     const desiredInactive = Math.max(1, Math.round(sessionCount * 0.3));
     let inactiveCount = Math.min(inactiveSessions.length, desiredInactive);
     if (activeSessions.length > 0) {
       inactiveCount = Math.min(inactiveCount, sessionCount - 1);
     }
-    let activeCount = Math.min(activeSessions.length, sessionCount - inactiveCount);
+    const activeCount = Math.min(activeSessions.length, sessionCount - inactiveCount);
     if (activeCount + inactiveCount < sessionCount) {
       inactiveCount = Math.min(inactiveSessions.length, sessionCount - activeCount);
     }
@@ -250,7 +250,7 @@ export class DemoSimulator {
           tokens: { input: inputTokens, output: outputTokens },
           requestCount: Math.max(1, Math.floor(tokens / 800)),
           costUsd: cost,
-          pricingSource: 'fallback',
+          pricingSource: "fallback",
         },
       ];
 
@@ -263,23 +263,31 @@ export class DemoSimulator {
         : now - this.rng.range(10_000, 50_000);
 
       const nowDate = new Date(now);
-      const startOfDay = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate()).getTime();
+      const startOfDay = new Date(
+        nowDate.getFullYear(),
+        nowDate.getMonth(),
+        nowDate.getDate(),
+      ).getTime();
       const dayOfWeek = nowDate.getDay();
-      const startOfWeek = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate() - dayOfWeek).getTime();
+      const startOfWeek = new Date(
+        nowDate.getFullYear(),
+        nowDate.getMonth(),
+        nowDate.getDate() - dayOfWeek,
+      ).getTime();
       const startOfMonth = new Date(nowDate.getFullYear(), nowDate.getMonth(), 1).getTime();
 
       const costInDay = lastActivityAt >= startOfDay ? cost : 0;
       const costInWeek = lastActivityAt >= startOfWeek ? cost : 0;
       const costInMonth = lastActivityAt >= startOfMonth ? cost : 0;
 
-      const baseSession: Omit<AgentSessionAggregate, 'endedAt'> = {
+      const baseSession: Omit<AgentSessionAggregate, "endedAt"> = {
         sessionId: seedSession.sessionId,
         agentId: seedSession.agentId,
         agentName: seedSession.agentName,
         projectPath: seedSession.projectPath,
         startedAt,
         lastActivityAt,
-        status: isInactive ? 'idle' : (index % 3 === 0 ? 'idle' : 'active'),
+        status: isInactive ? "idle" : index % 3 === 0 ? "idle" : "active",
         totals: {
           input: inputTokens,
           output: outputTokens,
@@ -297,12 +305,10 @@ export class DemoSimulator {
         baseSession.sessionName = seedSession.sessionName;
       }
 
-      return isInactive
-        ? { ...baseSession, endedAt: lastActivityAt }
-        : baseSession;
+      return isInactive ? { ...baseSession, endedAt: lastActivityAt } : baseSession;
     });
 
-    const sessionProviderIds = new Set(selectedSessions.map(s => s.providerId));
+    const sessionProviderIds = new Set(selectedSessions.map((s) => s.providerId));
     this.fixedProviderIds = Array.from(sessionProviderIds);
 
     const extraCount = Math.min(this.presetConfig.extraProviderCount, EXTRA_PROVIDERS.length);
@@ -317,7 +323,11 @@ export class DemoSimulator {
     const providerTotals = new Map<string, { tokens: number; cost: number; requests: number }>();
     for (const session of this.sessions) {
       for (const stream of session.streams) {
-        const current = providerTotals.get(stream.providerId) ?? { tokens: 0, cost: 0, requests: 0 };
+        const current = providerTotals.get(stream.providerId) ?? {
+          tokens: 0,
+          cost: 0,
+          requests: 0,
+        };
         const streamTokens = stream.tokens.input + stream.tokens.output;
         providerTotals.set(stream.providerId, {
           tokens: current.tokens + streamTokens,
@@ -329,12 +339,12 @@ export class DemoSimulator {
 
     for (const providerId of this.fixedProviderIds) {
       const totals = providerTotals.get(providerId) ?? { tokens: 0, cost: 0, requests: 0 };
-      const limit = PROVIDER_LIMITS[providerId] ?? { label: 'Daily Tokens', windowMinutes: 1440 };
+      const limit = PROVIDER_LIMITS[providerId] ?? { label: "Daily Tokens", windowMinutes: 1440 };
       const usedPercent = clamp((totals.tokens / 50_000) * 100, 5, 98);
       const limitReached = usedPercent > 95;
 
       this.providerUsage.set(providerId, {
-        planType: 'Pro',
+        planType: "Pro",
         limitReached,
         limits: {
           primary: {
@@ -355,14 +365,14 @@ export class DemoSimulator {
             total: totals.cost,
             input: totals.cost * 0.55,
             output: totals.cost * 0.45,
-            currency: 'USD',
+            currency: "USD",
           },
-          source: 'estimated',
+          source: "estimated",
         },
         credits: {
           hasCredits: true,
           unlimited: false,
-          balance: '$42.50',
+          balance: "$42.50",
         },
         fetchedAt: now,
       });
@@ -377,7 +387,7 @@ export class DemoSimulator {
         limits: {
           primary: {
             usedPercent,
-            label: 'Monthly Tokens',
+            label: "Monthly Tokens",
             windowMinutes: 43200,
             resetsAt: now + 10 * 24 * 60 * 60 * 1000,
           },
@@ -391,14 +401,14 @@ export class DemoSimulator {
             total: usedPercent * 0.08,
             input: usedPercent * 0.04,
             output: usedPercent * 0.04,
-            currency: 'USD',
+            currency: "USD",
           },
-          source: 'estimated',
+          source: "estimated",
         },
         credits: {
           hasCredits: true,
           unlimited: false,
-          balance: provider.balance ?? '$25.00',
+          balance: provider.balance ?? "$25.00",
         },
         fetchedAt: now,
       });
@@ -409,7 +419,11 @@ export class DemoSimulator {
     const providerTotals = new Map<string, { tokens: number; cost: number; requests: number }>();
     for (const session of this.sessions) {
       for (const stream of session.streams) {
-        const current = providerTotals.get(stream.providerId) ?? { tokens: 0, cost: 0, requests: 0 };
+        const current = providerTotals.get(stream.providerId) ?? {
+          tokens: 0,
+          cost: 0,
+          requests: 0,
+        };
         const streamTokens = stream.tokens.input + stream.tokens.output;
         providerTotals.set(stream.providerId, {
           tokens: current.tokens + streamTokens,
@@ -421,13 +435,13 @@ export class DemoSimulator {
 
     for (const providerId of this.fixedProviderIds) {
       const totals = providerTotals.get(providerId) ?? { tokens: 0, cost: 0, requests: 0 };
-      const limit = PROVIDER_LIMITS[providerId] ?? { label: 'Daily Tokens', windowMinutes: 1440 };
+      const limit = PROVIDER_LIMITS[providerId] ?? { label: "Daily Tokens", windowMinutes: 1440 };
       const usedPercent = clamp((totals.tokens / 50_000) * 100, 5, 98);
       const limitReached = usedPercent > 95;
 
       const existing = this.providerUsage.get(providerId);
       this.providerUsage.set(providerId, {
-        planType: existing?.planType ?? 'Pro',
+        planType: existing?.planType ?? "Pro",
         limitReached,
         limits: {
           primary: {
@@ -448,14 +462,14 @@ export class DemoSimulator {
             total: totals.cost,
             input: totals.cost * 0.55,
             output: totals.cost * 0.45,
-            currency: 'USD',
+            currency: "USD",
           },
-          source: 'estimated',
+          source: "estimated",
         },
         credits: existing?.credits ?? {
           hasCredits: true,
           unlimited: false,
-          balance: '$42.50',
+          balance: "$42.50",
         },
         fetchedAt: now,
       });
@@ -487,9 +501,9 @@ export class DemoSimulator {
             total: newPercent * 0.08,
             input: newPercent * 0.04,
             output: newPercent * 0.04,
-            currency: 'USD',
+            currency: "USD",
           },
-          source: 'estimated',
+          source: "estimated",
         },
         fetchedAt: now,
       });
@@ -514,16 +528,17 @@ export class DemoSimulator {
       const sessionRng = tickRng.fork(sessionIndex);
       const isIdle = sessionRng.next() < this.presetConfig.idleProbability;
       if (isIdle) {
-        return { ...session, status: 'idle' as const };
+        return { ...session, status: "idle" as const };
       }
 
       const isBurst = sessionRng.next() < this.presetConfig.burstProbability;
       const burstFactor = isBurst ? this.presetConfig.burstMultiplier : 1;
       const activityFactor = sessionRng.range(0.4, 1.6) * burstFactor;
-      const tokensPerSec = session.agentId === 'opencode' ? 35 : session.agentId === 'claude-code' ? 28 : 22;
+      const tokensPerSec =
+        session.agentId === "opencode" ? 35 : session.agentId === "claude-code" ? 28 : 22;
       const deltaTokens = Math.floor(tokensPerSec * activityFactor * activityMultiplier * dtSec);
       if (deltaTokens === 0) {
-        return { ...session, status: 'idle' as const };
+        return { ...session, status: "idle" as const };
       }
       const inputDelta = Math.floor(deltaTokens * 0.6);
       const outputDelta = deltaTokens - inputDelta;
@@ -542,9 +557,9 @@ export class DemoSimulator {
 
       usageEvents.push({
         timestamp: now,
-        source: 'agent',
-        provider: updatedStreams[0]?.providerId ?? 'anthropic',
-        model: updatedStreams[0]?.modelId ?? 'claude-3-5-sonnet',
+        source: "agent",
+        provider: updatedStreams[0]?.providerId ?? "anthropic",
+        model: updatedStreams[0]?.modelId ?? "claude-3-5-sonnet",
         agentId: session.agentId,
         sessionId: session.sessionId,
         projectPath: session.projectPath ?? null,
@@ -554,12 +569,12 @@ export class DemoSimulator {
         cacheWriteTokens: Math.floor(deltaTokens * 0.02),
         costUsd: costDelta,
         requestCount: Math.max(1, Math.floor(deltaTokens / 700)),
-        pricingSource: 'fallback',
+        pricingSource: "fallback",
       });
 
       return {
         ...session,
-        status: 'active' as const,
+        status: "active" as const,
         lastActivityAt: now,
         totals: {
           ...session.totals,
@@ -593,17 +608,25 @@ export class DemoSimulator {
   }
 
   getProviderIds(): string[] {
-    return [...this.fixedProviderIds, ...this.fixedExtraProviders.map(p => p.id)];
+    return [...this.fixedProviderIds, ...this.fixedExtraProviders.map((p) => p.id)];
   }
 
-  generateHistoricalCostDataByProvider(daysBack: number): Array<{ date: number; provider: string; cost: number; tokens: number; requests: number }> {
+  generateHistoricalCostDataByProvider(
+    daysBack: number,
+  ): Array<{ date: number; provider: string; cost: number; tokens: number; requests: number }> {
     const totalDaily = this.generateHistoricalCostData(daysBack);
-    const result: Array<{ date: number; provider: string; cost: number; tokens: number; requests: number }> = [];
+    const result: Array<{
+      date: number;
+      provider: string;
+      cost: number;
+      tokens: number;
+      requests: number;
+    }> = [];
 
     const providerShares = [
-      { id: 'anthropic', share: 0.50 },
-      { id: 'openai', share: 0.25 },
-      { id: 'google-gemini', share: 0.15 },
+      { id: "anthropic", share: 0.5 },
+      { id: "openai", share: 0.25 },
+      { id: "google-gemini", share: 0.15 },
     ];
 
     const providerRng = this.rng.fork(88888);
@@ -636,15 +659,23 @@ export class DemoSimulator {
     return result;
   }
 
-  generateHistoricalCostDataByModel(daysBack: number): Array<{ date: number; model: string; cost: number; tokens: number; requests: number }> {
+  generateHistoricalCostDataByModel(
+    daysBack: number,
+  ): Array<{ date: number; model: string; cost: number; tokens: number; requests: number }> {
     const totalDaily = this.generateHistoricalCostData(daysBack);
-    const result: Array<{ date: number; model: string; cost: number; tokens: number; requests: number }> = [];
+    const result: Array<{
+      date: number;
+      model: string;
+      cost: number;
+      tokens: number;
+      requests: number;
+    }> = [];
 
     const modelShares = [
-      { id: 'claude-3-5-sonnet', share: 0.40 },
-      { id: 'claude-3-opus', share: 0.20 },
-      { id: 'gpt-4.1', share: 0.25 },
-      { id: 'gemini-2.0-pro', share: 0.15 },
+      { id: "claude-3-5-sonnet", share: 0.4 },
+      { id: "claude-3-opus", share: 0.2 },
+      { id: "gpt-4.1", share: 0.25 },
+      { id: "gemini-2.0-pro", share: 0.15 },
     ];
 
     const modelRng = this.rng.fork(77777);
@@ -677,14 +708,22 @@ export class DemoSimulator {
     return result;
   }
 
-  generateHistoricalCostDataByProject(daysBack: number): Array<{ date: number; projectPath: string; cost: number; tokens: number; requests: number }> {
+  generateHistoricalCostDataByProject(
+    daysBack: number,
+  ): Array<{ date: number; projectPath: string; cost: number; tokens: number; requests: number }> {
     const totalDaily = this.generateHistoricalCostData(daysBack);
-    const result: Array<{ date: number; projectPath: string; cost: number; tokens: number; requests: number }> = [];
+    const result: Array<{
+      date: number;
+      projectPath: string;
+      cost: number;
+      tokens: number;
+      requests: number;
+    }> = [];
 
     const projectShares = [
-      { path: '/Users/demo/workspace/tokentop', share: 0.45 },
-      { path: '/Users/demo/workspace/webapp', share: 0.30 },
-      { path: '/Users/demo/workspace/infra', share: 0.25 },
+      { path: "/Users/demo/workspace/tokentop", share: 0.45 },
+      { path: "/Users/demo/workspace/webapp", share: 0.3 },
+      { path: "/Users/demo/workspace/infra", share: 0.25 },
     ];
 
     const projectRng = this.rng.fork(66666);
@@ -724,19 +763,19 @@ export class DemoSimulator {
     const result: Array<{ date: number; cost: number }> = [];
 
     const baseCost = this.presetConfig.activityMultiplier * 2.5;
-    
+
     for (let i = daysBack - 1; i >= 0; i--) {
       const dayTimestamp = now - i * msPerDay;
       const dayRng = historyRng.fork(i);
-      
+
       const isWeekend = new Date(dayTimestamp).getDay() % 6 === 0;
       const weekendFactor = isWeekend ? 0.4 : 1.0;
-      
+
       const variance = dayRng.range(0.5, 1.5);
       const spikeFactor = dayRng.next() < 0.1 ? dayRng.range(1.5, 2.5) : 1.0;
-      
+
       const cost = baseCost * variance * weekendFactor * spikeFactor;
-      
+
       result.push({ date: dayTimestamp, cost: Math.round(cost * 100) / 100 });
     }
 

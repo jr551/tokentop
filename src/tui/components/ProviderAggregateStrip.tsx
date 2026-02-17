@@ -1,10 +1,10 @@
-import { useMemo } from 'react';
-import { useTerminalDimensions } from '@opentui/react';
-import { useColors } from '../contexts/ThemeContext.tsx';
-import type { ProviderState } from '../contexts/PluginContext.tsx';
+import { useTerminalDimensions } from "@opentui/react";
+import { useMemo } from "react";
+import type { ProviderState } from "../contexts/PluginContext.tsx";
+import { useColors } from "../contexts/ThemeContext.tsx";
 
 function pad(str: string, len: number): string {
-  return str.length >= len ? str.slice(0, len) : str + ' '.repeat(len - str.length);
+  return str.length >= len ? str.slice(0, len) : str + " ".repeat(len - str.length);
 }
 
 function formatCost(val: number): string {
@@ -65,7 +65,7 @@ export function computeAggregates(providers: ProviderState[]): ProviderAggregate
       const todayTotal = cost.actual?.total ?? cost.estimated?.total ?? 0;
       costToday += todayTotal;
       costMtd += todayTotal;
-      if (cost.source === 'estimated') {
+      if (cost.source === "estimated") {
         costTodayEstimated = true;
         costMtdEstimated = true;
       }
@@ -122,48 +122,72 @@ export function ProviderAggregateStrip({ providers }: ProviderAggregateStripProp
 
   const agg = useMemo(() => computeAggregates(providers), [providers]);
 
-  const costTodayStr = `${agg.costTodayEstimated ? '~' : ''}${formatCost(agg.costToday)}`;
-  const costMtdStr = `${agg.costMtdEstimated ? '~' : ''}${formatCost(agg.costMtd)}`;
-  const tokensStr = `${agg.tokens24hEstimated ? '~' : ''}${formatTokens(agg.totalTokens24h)}`;
+  const costTodayStr = `${agg.costTodayEstimated ? "~" : ""}${formatCost(agg.costToday)}`;
+  const costMtdStr = `${agg.costMtdEstimated ? "~" : ""}${formatCost(agg.costMtd)}`;
+  const tokensStr = `${agg.tokens24hEstimated ? "~" : ""}${formatTokens(agg.totalTokens24h)}`;
 
-  const trendStr = agg.trendVsYesterday !== null
-    ? (agg.trendVsYesterday >= 0 ? `+${agg.trendVsYesterday.toFixed(0)}%` : `${agg.trendVsYesterday.toFixed(0)}%`)
-    : '—';
-  const trendColor = agg.trendVsYesterday !== null
-    ? (agg.trendVsYesterday > 10 ? colors.warning : agg.trendVsYesterday < -10 ? colors.success : colors.textMuted)
-    : colors.textSubtle;
+  const trendStr =
+    agg.trendVsYesterday !== null
+      ? agg.trendVsYesterday >= 0
+        ? `+${agg.trendVsYesterday.toFixed(0)}%`
+        : `${agg.trendVsYesterday.toFixed(0)}%`
+      : "—";
+  const trendColor =
+    agg.trendVsYesterday !== null
+      ? agg.trendVsYesterday > 10
+        ? colors.warning
+        : agg.trendVsYesterday < -10
+          ? colors.success
+          : colors.textMuted
+      : colors.textSubtle;
 
   return (
     <box flexDirection="column" flexShrink={0}>
       <box flexDirection="row" height={1} gap={2} paddingX={1}>
         <text height={1}>
           <span fg={colors.textMuted}>HEALTH </span>
-          {agg.okCount > 0 && <span fg={colors.success}>{pad(`${agg.okCount} ok`, isCompact ? 5 : 5)}</span>}
-          {agg.warnCount > 0 && <span fg={colors.warning}> {pad(`${agg.warnCount} warn`, isCompact ? 7 : 7)}</span>}
-          {agg.errCount > 0 && <span fg={colors.error}> {pad(`${agg.errCount} err`, isCompact ? 6 : 6)}</span>}
+          {agg.okCount > 0 && (
+            <span fg={colors.success}>{pad(`${agg.okCount} ok`, isCompact ? 5 : 5)}</span>
+          )}
+          {agg.warnCount > 0 && (
+            <span fg={colors.warning}> {pad(`${agg.warnCount} warn`, isCompact ? 7 : 7)}</span>
+          )}
+          {agg.errCount > 0 && (
+            <span fg={colors.error}> {pad(`${agg.errCount} err`, isCompact ? 6 : 6)}</span>
+          )}
           {agg.okCount === 0 && agg.warnCount === 0 && agg.errCount === 0 && (
             <span fg={colors.textSubtle}>no providers</span>
           )}
         </text>
 
-        <text fg={colors.textSubtle} height={1}>│</text>
+        <text fg={colors.textSubtle} height={1}>
+          │
+        </text>
 
         <text height={1}>
           <span fg={colors.textMuted}>TODAY </span>
-          <span fg={agg.costTodayEstimated ? colors.textMuted : colors.success}>{costTodayStr}</span>
+          <span fg={agg.costTodayEstimated ? colors.textMuted : colors.success}>
+            {costTodayStr}
+          </span>
         </text>
 
         {!isCompact && (
           <>
-            <text fg={colors.textSubtle} height={1}>│</text>
+            <text fg={colors.textSubtle} height={1}>
+              │
+            </text>
             <text height={1}>
               <span fg={colors.textMuted}>MTD </span>
-              <span fg={agg.costMtdEstimated ? colors.textMuted : colors.success}>{costMtdStr}</span>
+              <span fg={agg.costMtdEstimated ? colors.textMuted : colors.success}>
+                {costMtdStr}
+              </span>
             </text>
           </>
         )}
 
-        <text fg={colors.textSubtle} height={1}>│</text>
+        <text fg={colors.textSubtle} height={1}>
+          │
+        </text>
 
         <text height={1}>
           <span fg={colors.textMuted}>TOKENS </span>
@@ -184,7 +208,9 @@ export function ProviderAggregateStrip({ providers }: ProviderAggregateStripProp
           </text>
         )}
 
-        <text fg={colors.textSubtle} height={1}>│</text>
+        <text fg={colors.textSubtle} height={1}>
+          │
+        </text>
 
         <text height={1}>
           <span fg={colors.textMuted}>vs YESTERDAY </span>
@@ -193,7 +219,7 @@ export function ProviderAggregateStrip({ providers }: ProviderAggregateStripProp
       </box>
 
       <box height={1} overflow="hidden">
-        <text fg={colors.border}>{'─'.repeat(300)}</text>
+        <text fg={colors.border}>{"─".repeat(300)}</text>
       </box>
     </box>
   );

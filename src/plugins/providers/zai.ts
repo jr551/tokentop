@@ -1,15 +1,15 @@
 import type {
-  ProviderPlugin,
-  ProviderFetchContext,
-  ProviderUsageData,
-  UsageLimit,
-  ProviderAuth,
-  PluginContext,
   CredentialResult,
   Credentials,
-} from '../types/provider.ts';
+  PluginContext,
+  ProviderAuth,
+  ProviderFetchContext,
+  ProviderPlugin,
+  ProviderUsageData,
+  UsageLimit,
+} from "../types/provider.ts";
 
-const ZAI_USAGE_URL = 'https://api.z.ai/api/monitor/usage/quota/limit';
+const ZAI_USAGE_URL = "https://api.z.ai/api/monitor/usage/quota/limit";
 
 interface ZaiLimitEntry {
   type?: string;
@@ -28,29 +28,29 @@ interface ZaiUsageResponse {
 
 export const zaiCodingPlanPlugin: ProviderPlugin = {
   apiVersion: 2,
-  id: 'zai-coding-plan',
-  type: 'provider',
-  name: 'Z.ai Coding Plan',
-  version: '1.0.0',
+  id: "zai-coding-plan",
+  type: "provider",
+  name: "Z.ai Coding Plan",
+  version: "1.0.0",
 
   meta: {
-    description: 'Z.ai coding plan usage and quota tracking',
-    homepage: 'https://z.ai',
-    brandColor: '#10b981',
+    description: "Z.ai coding plan usage and quota tracking",
+    homepage: "https://z.ai",
+    brandColor: "#10b981",
   },
 
   permissions: {
     network: {
       enabled: true,
-      allowedDomains: ['api.z.ai'],
+      allowedDomains: ["api.z.ai"],
     },
     filesystem: {
       read: true,
-      paths: ['~/.local/share/opencode'],
+      paths: ["~/.local/share/opencode"],
     },
     env: {
       read: true,
-      vars: ['ZAI_API_KEY'],
+      vars: ["ZAI_API_KEY"],
     },
   },
 
@@ -64,26 +64,33 @@ export const zaiCodingPlanPlugin: ProviderPlugin = {
   auth: {
     async discover(ctx: PluginContext): Promise<CredentialResult> {
       // 1. Try OpenCode auth (api, wellknown, or oauth)
-      const entry = await ctx.authSources.opencode.getProviderEntry('zai-coding-plan');
+      const entry = await ctx.authSources.opencode.getProviderEntry("zai-coding-plan");
       if (entry) {
-        if (entry.type === 'api' && entry.key) {
-          return { ok: true, credentials: { apiKey: entry.key, source: 'opencode' } };
+        if (entry.type === "api" && entry.key) {
+          return { ok: true, credentials: { apiKey: entry.key, source: "opencode" } };
         }
-        if (entry.type === 'wellknown' && (entry.token || entry.key)) {
-          return { ok: true, credentials: { apiKey: (entry.token || entry.key)!, source: 'opencode' } };
+        if (entry.type === "wellknown" && (entry.token || entry.key)) {
+          return {
+            ok: true,
+            credentials: { apiKey: (entry.token || entry.key)!, source: "opencode" },
+          };
         }
-        if (entry.type === 'oauth' && entry.access) {
-          return { ok: true, credentials: { apiKey: entry.access, source: 'opencode' } };
+        if (entry.type === "oauth" && entry.access) {
+          return { ok: true, credentials: { apiKey: entry.access, source: "opencode" } };
         }
       }
 
       // 2. Try env vars
-      const apiKey = ctx.authSources.env.get('ZAI_API_KEY');
+      const apiKey = ctx.authSources.env.get("ZAI_API_KEY");
       if (apiKey) {
-        return { ok: true, credentials: { apiKey, source: 'env' } };
+        return { ok: true, credentials: { apiKey, source: "env" } };
       }
 
-      return { ok: false, reason: 'missing', message: 'No Z.ai API key found. Configure Z.ai in OpenCode.' };
+      return {
+        ok: false,
+        reason: "missing",
+        message: "No Z.ai API key found. Configure Z.ai in OpenCode.",
+      };
     },
 
     isConfigured(credentials: Credentials): boolean {
@@ -99,29 +106,29 @@ export const zaiCodingPlanPlugin: ProviderPlugin = {
     if (!token) {
       return {
         fetchedAt: Date.now(),
-        error: 'API key required. Configure Z.ai in OpenCode.',
+        error: "API key required. Configure Z.ai in OpenCode.",
       };
     }
 
     try {
       const response = await http.fetch(ZAI_USAGE_URL, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
         },
       });
 
       if (!response.ok) {
-        log.warn('Failed to fetch Z.ai usage', { status: response.status });
-        
+        log.warn("Failed to fetch Z.ai usage", { status: response.status });
+
         if (response.status === 401 || response.status === 403) {
           return {
             fetchedAt: Date.now(),
-            error: 'Authorization failed. Check your Z.ai API key.',
+            error: "Authorization failed. Check your Z.ai API key.",
           };
         }
-        
+
         return {
           fetchedAt: Date.now(),
           error: `API error: ${response.status} ${response.statusText}`,
@@ -133,7 +140,7 @@ export const zaiCodingPlanPlugin: ProviderPlugin = {
       if (!data || data.success !== true) {
         return {
           fetchedAt: Date.now(),
-          planType: 'Z.ai',
+          planType: "Z.ai",
           allowed: true,
         };
       }
@@ -142,18 +149,18 @@ export const zaiCodingPlanPlugin: ProviderPlugin = {
       if (limits.length === 0) {
         return {
           fetchedAt: Date.now(),
-          planType: 'Z.ai',
+          planType: "Z.ai",
           allowed: true,
         };
       }
 
       const parsedLimits = limits
-        .map(limit => ({
+        .map((limit) => ({
           type: limit.type,
           usedPercent: resolveUsedPercent(limit),
           remaining: limit.remaining,
         }))
-        .filter(l => l.usedPercent !== null);
+        .filter((l) => l.usedPercent !== null);
 
       let primary: UsageLimit | undefined;
       for (const limit of parsedLimits) {
@@ -166,13 +173,14 @@ export const zaiCodingPlanPlugin: ProviderPlugin = {
         }
       }
 
-      const limitReached = parsedLimits.some(l => 
-        (l.usedPercent !== null && l.usedPercent >= 100) ||
-        (typeof l.remaining === 'number' && l.remaining <= 0)
+      const limitReached = parsedLimits.some(
+        (l) =>
+          (l.usedPercent !== null && l.usedPercent >= 100) ||
+          (typeof l.remaining === "number" && l.remaining <= 0),
       );
 
       const result: ProviderUsageData = {
-        planType: 'Z.ai Coding Plan',
+        planType: "Z.ai Coding Plan",
         allowed: !limitReached,
         limitReached,
         fetchedAt: Date.now(),
@@ -184,26 +192,27 @@ export const zaiCodingPlanPlugin: ProviderPlugin = {
 
       return result;
     } catch (err) {
-      log.error('Failed to fetch Z.ai usage', { error: err });
+      log.error("Failed to fetch Z.ai usage", { error: err });
       return {
         fetchedAt: Date.now(),
-        error: err instanceof Error ? err.message : 'Unknown error',
+        error: err instanceof Error ? err.message : "Unknown error",
       };
     }
   },
 };
 
 function resolveUsedPercent(limit: ZaiLimitEntry): number | null {
-  if (typeof limit.percentage === 'number') {
+  if (typeof limit.percentage === "number") {
     return Math.round(Math.max(0, Math.min(100, limit.percentage)));
   }
 
   const total = limit.usage;
-  const used = typeof limit.currentValue === 'number'
-    ? limit.currentValue
-    : (total !== undefined && typeof limit.remaining === 'number')
-      ? Math.max(0, total - limit.remaining)
-      : undefined;
+  const used =
+    typeof limit.currentValue === "number"
+      ? limit.currentValue
+      : total !== undefined && typeof limit.remaining === "number"
+        ? Math.max(0, total - limit.remaining)
+        : undefined;
 
   if (total && used !== undefined && total > 0) {
     return Math.round((used / total) * 100);
@@ -213,13 +222,13 @@ function resolveUsedPercent(limit: ZaiLimitEntry): number | null {
 }
 
 function formatLimitType(type?: string): string {
-  if (!type) return 'Quota';
+  if (!type) return "Quota";
   switch (type) {
-    case 'TIME_LIMIT':
-      return 'Time';
-    case 'TOKENS_LIMIT':
-      return 'Tokens';
+    case "TIME_LIMIT":
+      return "Time";
+    case "TOKENS_LIMIT":
+      return "Tokens";
     default:
-      return type.replace(/_/g, ' ').toLowerCase();
+      return type.replace(/_/g, " ").toLowerCase();
   }
 }

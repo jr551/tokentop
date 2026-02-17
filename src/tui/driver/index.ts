@@ -1,53 +1,49 @@
 export {
-  createDriver,
-  type Driver,
-  type DriverOptions,
-  type CaptureResult,
-  type WaitOptions,
-  type StableOptions,
-  type KeyModifiers,
-} from './driver.ts';
-
-export {
-  diffFrames,
-  highlightDiff,
-  createCharDiff,
-  type DiffResult,
-  type LineChange,
-  type DiffOptions,
-} from './diff.ts';
-
-export {
-  assertSnapshot,
-  listGoldenFiles,
-  deleteGoldenFile,
-  getGoldenFile,
-  type AssertResult,
   type AssertOptions,
+  type AssertResult,
+  assertSnapshot,
+  deleteGoldenFile,
   type GoldenFile,
   type GoldenFileInfo,
-} from './assertions.ts';
-
+  getGoldenFile,
+  listGoldenFiles,
+} from "./assertions.ts";
 export {
-  createRecorder,
-  replayRecording,
-  saveRecording,
-  loadRecording,
-  listRecordings,
-  deleteRecording,
-  type Recorder,
-  type Recording,
-  type RecordedCommand,
-  type RecorderOptions,
-  type ReplayOptions,
-  type ReplayResult,
-} from './recorder.ts';
-
-export {
+  type CoverageReport,
+  type CoverageTracker,
   createCoverageTracker,
   detectViewFromFrame,
   formatCoverageReport,
-  type CoverageTracker,
-  type CoverageReport,
   type ViewVisit,
-} from './coverage.ts';
+} from "./coverage.ts";
+export {
+  createCharDiff,
+  type DiffOptions,
+  type DiffResult,
+  diffFrames,
+  highlightDiff,
+  type LineChange,
+} from "./diff.ts";
+export {
+  type CaptureResult,
+  createDriver,
+  type Driver,
+  type DriverOptions,
+  type KeyModifiers,
+  type StableOptions,
+  type WaitOptions,
+} from "./driver.ts";
+export {
+  createRecorder,
+  deleteRecording,
+  listRecordings,
+  loadRecording,
+  type RecordedCommand,
+  type Recorder,
+  type RecorderOptions,
+  type Recording,
+  type ReplayOptions,
+  type ReplayResult,
+  replayRecording,
+  saveRecording,
+} from "./recorder.ts";

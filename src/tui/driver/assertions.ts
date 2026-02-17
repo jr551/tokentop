@@ -1,8 +1,8 @@
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import { diffFrames, highlightDiff, type DiffResult } from './diff.ts';
+import * as fs from "fs/promises";
+import * as path from "path";
+import { type DiffResult, diffFrames, highlightDiff } from "./diff.ts";
 
-const DEFAULT_GOLDEN_DIR = './golden';
+const DEFAULT_GOLDEN_DIR = "./golden";
 
 export interface GoldenFile {
   version: 1;
@@ -37,7 +37,7 @@ export interface AssertOptions {
 function parseGoldenFile(content: string): GoldenFile | null {
   try {
     const parsed = JSON.parse(content);
-    if (parsed.version === 1 && typeof parsed.frame === 'string') {
+    if (parsed.version === 1 && typeof parsed.frame === "string") {
       return parsed as GoldenFile;
     }
     return null;
@@ -46,7 +46,12 @@ function parseGoldenFile(content: string): GoldenFile | null {
   }
 }
 
-function createGoldenContent(frame: string, width: number, height: number, existingCreatedAt?: string): string {
+function createGoldenContent(
+  frame: string,
+  width: number,
+  height: number,
+  existingCreatedAt?: string,
+): string {
   const now = new Date().toISOString();
   const golden: GoldenFile = {
     version: 1,
@@ -61,7 +66,7 @@ function createGoldenContent(frame: string, width: number, height: number, exist
 
 async function tryReadFile(filePath: string): Promise<string | null> {
   try {
-    return await fs.readFile(filePath, 'utf-8');
+    return await fs.readFile(filePath, "utf-8");
   } catch {
     return null;
   }
@@ -70,14 +75,13 @@ async function tryReadFile(filePath: string): Promise<string | null> {
 async function tryUnlink(filePath: string): Promise<void> {
   try {
     await fs.unlink(filePath);
-  } catch {
-  }
+  } catch {}
 }
 
 export async function assertSnapshot(
   name: string,
   actual: string,
-  options: AssertOptions = {}
+  options: AssertOptions = {},
 ): Promise<AssertResult> {
   const {
     goldenDir = DEFAULT_GOLDEN_DIR,
@@ -115,18 +119,18 @@ export async function assertSnapshot(
         passed: false,
         goldenExists,
         goldenPath: path.resolve(goldenPath),
-        message: 'Cannot create golden file: width and height are required',
+        message: "Cannot create golden file: width and height are required",
       };
     }
 
     const content = createGoldenContent(actual, width, height, golden?.createdAt);
-    await fs.writeFile(goldenPath, content, 'utf-8');
+    await fs.writeFile(goldenPath, content, "utf-8");
 
     if (actualGoldenPath === legacyPath) {
       await tryUnlink(legacyPath);
     }
 
-    const action = goldenExists ? 'Updated' : 'Created new';
+    const action = goldenExists ? "Updated" : "Created new";
     return {
       passed: true,
       goldenExists: !goldenExists ? false : true,
@@ -163,7 +167,7 @@ export async function assertSnapshot(
       passed: false,
       goldenExists: false,
       goldenPath: path.resolve(goldenPath),
-      message: 'Golden file is corrupted or in unknown format',
+      message: "Golden file is corrupted or in unknown format",
     };
   }
 
@@ -208,14 +212,17 @@ export async function listGoldenFiles(goldenDir: string = DEFAULT_GOLDEN_DIR): P
   try {
     const files = await fs.readdir(goldenDir);
     return files
-      .filter((f) => f.endsWith('.golden.json') || f.endsWith('.golden.txt'))
-      .map((f) => f.replace('.golden.json', '').replace('.golden.txt', ''));
+      .filter((f) => f.endsWith(".golden.json") || f.endsWith(".golden.txt"))
+      .map((f) => f.replace(".golden.json", "").replace(".golden.txt", ""));
   } catch {
     return [];
   }
 }
 
-export async function deleteGoldenFile(name: string, goldenDir: string = DEFAULT_GOLDEN_DIR): Promise<boolean> {
+export async function deleteGoldenFile(
+  name: string,
+  goldenDir: string = DEFAULT_GOLDEN_DIR,
+): Promise<boolean> {
   const jsonPath = path.join(goldenDir, `${name}.golden.json`);
   const txtPath = path.join(goldenDir, `${name}.golden.txt`);
 
@@ -224,14 +231,12 @@ export async function deleteGoldenFile(name: string, goldenDir: string = DEFAULT
   try {
     await fs.unlink(jsonPath);
     deleted = true;
-  } catch {
-  }
+  } catch {}
 
   try {
     await fs.unlink(txtPath);
     deleted = true;
-  } catch {
-  }
+  } catch {}
 
   return deleted;
 }
@@ -246,7 +251,10 @@ export interface GoldenFileInfo {
   isLegacy: boolean;
 }
 
-export async function getGoldenFile(name: string, goldenDir: string = DEFAULT_GOLDEN_DIR): Promise<GoldenFileInfo | null> {
+export async function getGoldenFile(
+  name: string,
+  goldenDir: string = DEFAULT_GOLDEN_DIR,
+): Promise<GoldenFileInfo | null> {
   const jsonPath = path.join(goldenDir, `${name}.golden.json`);
   const txtPath = path.join(goldenDir, `${name}.golden.txt`);
 

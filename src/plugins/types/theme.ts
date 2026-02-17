@@ -1,5 +1,5 @@
-import { z } from 'zod';
-import type { BasePlugin } from './base.ts';
+import { z } from "zod";
+import type { BasePlugin } from "./base.ts";
 
 export const ThemeColorsSchema = z.object({
   background: z.string(),
@@ -27,34 +27,42 @@ export const ThemeColorsSchema = z.object({
 export type ThemeColors = z.infer<typeof ThemeColorsSchema>;
 
 export const ThemeComponentsSchema = z.object({
-  header: z.object({
-    background: z.string().optional(),
-    foreground: z.string().optional(),
-    titleColor: z.string().optional(),
-    titleAccentColor: z.string().optional(),
-  }).optional(),
-  statusBar: z.object({
-    background: z.string().optional(),
-    foreground: z.string().optional(),
-  }).optional(),
-  commandPalette: z.object({
-    background: z.string().optional(),
-    border: z.string().optional(),
-  }).optional(),
-  gauge: z.object({
-    height: z.number().optional(),
-    borderRadius: z.number().optional(),
-  }).optional(),
+  header: z
+    .object({
+      background: z.string().optional(),
+      foreground: z.string().optional(),
+      titleColor: z.string().optional(),
+      titleAccentColor: z.string().optional(),
+    })
+    .optional(),
+  statusBar: z
+    .object({
+      background: z.string().optional(),
+      foreground: z.string().optional(),
+    })
+    .optional(),
+  commandPalette: z
+    .object({
+      background: z.string().optional(),
+      border: z.string().optional(),
+    })
+    .optional(),
+  gauge: z
+    .object({
+      height: z.number().optional(),
+      borderRadius: z.number().optional(),
+    })
+    .optional(),
 });
 
 export type ThemeComponents = z.infer<typeof ThemeComponentsSchema>;
 
-export type ColorScheme = 'light' | 'dark';
+export type ColorScheme = "light" | "dark";
 
-export type ColorSchemePreference = 'auto' | 'light' | 'dark';
+export type ColorSchemePreference = "auto" | "light" | "dark";
 
 export interface ThemePlugin extends BasePlugin {
-  readonly type: 'theme';
+  readonly type: "theme";
   readonly family: string;
   readonly colorScheme: ColorScheme;
   readonly colors: ThemeColors;

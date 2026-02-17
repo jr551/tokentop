@@ -1,9 +1,8 @@
-import { createTestRenderer } from '@opentui/core/testing';
-import { AppContext, createRoot } from '@opentui/react';
-import React from 'react';
-import { act } from 'react';
-import { createAppElement, type CreateAppOptions } from '../createApp.tsx';
-import { TestModeContext } from '../hooks/useSafeRenderer.ts';
+import { createTestRenderer } from "@opentui/core/testing";
+import { AppContext, createRoot } from "@opentui/react";
+import React, { act } from "react";
+import { type CreateAppOptions, createAppElement } from "../createApp.tsx";
+import { TestModeContext } from "../hooks/useSafeRenderer.ts";
 
 export interface DriverOptions {
   width?: number;
@@ -44,22 +43,22 @@ export interface Driver {
   launch(): Promise<void>;
   close(): Promise<void>;
   isRunning(): boolean;
-  
+
   sendKeys(keys: string): Promise<void>;
   pressKey(key: string, modifiers?: KeyModifiers): Promise<void>;
   typeText(text: string, delay?: number): Promise<void>;
   pressEnter(): Promise<void>;
   pressEscape(): Promise<void>;
   pressTab(): Promise<void>;
-  pressArrow(direction: 'up' | 'down' | 'left' | 'right'): Promise<void>;
-  
+  pressArrow(direction: "up" | "down" | "left" | "right"): Promise<void>;
+
   capture(): Promise<string>;
   captureWithMeta(): Promise<CaptureResult>;
-  
+
   waitForText(text: string, options?: WaitOptions): Promise<boolean>;
   waitForStable(options?: StableOptions): Promise<void>;
   settle(): Promise<void>;
-  
+
   resize(cols: number, rows: number): Promise<void>;
   getSize(): { width: number; height: number };
 }
@@ -67,19 +66,19 @@ export interface Driver {
 export async function createDriver(options: DriverOptions = {}): Promise<Driver> {
   const width = options.width ?? 100;
   const height = options.height ?? 30;
-  const appOptions = { 
-    ...options.appOptions, 
+  const appOptions = {
+    ...options.appOptions,
     debug: options.appOptions?.debug ?? false,
     testMode: true,
   };
-  
+
   let testSetup: TestSetup | null = null;
   let currentWidth = width;
   let currentHeight = height;
 
   const assertRunning = (): TestSetup => {
     if (!testSetup) {
-      throw new Error('Driver not launched. Call launch() first.');
+      throw new Error("Driver not launched. Call launch() first.");
     }
     return testSetup;
   };
@@ -87,39 +86,35 @@ export async function createDriver(options: DriverOptions = {}): Promise<Driver>
   const driver: Driver = {
     async launch() {
       if (testSetup) {
-        throw new Error('Driver already launched. Call close() first.');
+        throw new Error("Driver already launched. Call close() first.");
       }
-      
+
       (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
-      
-      const coreTestSetup = await createTestRenderer({ 
-        width: currentWidth, 
+
+      const coreTestSetup = await createTestRenderer({
+        width: currentWidth,
         height: currentHeight,
       });
-      
+
       const root = createRoot(coreTestSetup.renderer);
-      
+
       const appElement = createAppElement(appOptions);
-      
+
       const wrappedApp = React.createElement(
         AppContext.Provider,
-        { 
-          value: { 
-            keyHandler: coreTestSetup.renderer.keyInput, 
-            renderer: coreTestSetup.renderer 
-          } 
+        {
+          value: {
+            keyHandler: coreTestSetup.renderer.keyInput,
+            renderer: coreTestSetup.renderer,
+          },
         },
-        React.createElement(
-          TestModeContext.Provider,
-          { value: true },
-          appElement
-        )
+        React.createElement(TestModeContext.Provider, { value: true }, appElement),
       );
-      
+
       act(() => {
         root.render(wrappedApp);
       });
-      
+
       testSetup = { ...coreTestSetup, root };
       await testSetup.renderOnce();
     },
@@ -143,21 +138,21 @@ export async function createDriver(options: DriverOptions = {}): Promise<Driver>
 
     async sendKeys(keys: string) {
       const setup = assertRunning();
-      
+
       for (const char of keys) {
-        if (char === '\r' || char === '\n') {
+        if (char === "\r" || char === "\n") {
           setup.mockInput.pressEnter();
-        } else if (char === '\t') {
+        } else if (char === "\t") {
           setup.mockInput.pressTab();
-        } else if (char === '\x1b') {
+        } else if (char === "\x1b") {
           setup.mockInput.pressEscape();
-        } else if (char === '\x7f') {
+        } else if (char === "\x7f") {
           setup.mockInput.pressBackspace();
         } else {
           setup.mockInput.pressKey(char);
         }
       }
-      
+
       await this.settle();
     },
 
@@ -191,7 +186,7 @@ export async function createDriver(options: DriverOptions = {}): Promise<Driver>
       await this.settle();
     },
 
-    async pressArrow(direction: 'up' | 'down' | 'left' | 'right') {
+    async pressArrow(direction: "up" | "down" | "left" | "right") {
       const setup = assertRunning();
       setup.mockInput.pressArrow(direction);
       await this.settle();
@@ -216,23 +211,23 @@ export async function createDriver(options: DriverOptions = {}): Promise<Driver>
     async waitForText(text: string, options: WaitOptions = {}): Promise<boolean> {
       const { timeout = 5000, interval = 50 } = options;
       const start = Date.now();
-      
+
       while (Date.now() - start < timeout) {
         const frame = await this.capture();
         if (frame.includes(text)) {
           return true;
         }
-        await new Promise(resolve => setTimeout(resolve, interval));
+        await new Promise((resolve) => setTimeout(resolve, interval));
       }
-      
+
       return false;
     },
 
     async waitForStable(options: StableOptions = {}): Promise<void> {
       const { maxIterations = 10, intervalMs = 50, stableFrames = 2 } = options;
-      let lastFrame = '';
+      let lastFrame = "";
       let stableCount = 0;
-      
+
       for (let i = 0; i < maxIterations; i++) {
         const frame = await this.capture();
         if (frame === lastFrame) {
@@ -244,7 +239,7 @@ export async function createDriver(options: DriverOptions = {}): Promise<Driver>
           stableCount = 0;
         }
         lastFrame = frame;
-        await new Promise(resolve => setTimeout(resolve, intervalMs));
+        await new Promise((resolve) => setTimeout(resolve, intervalMs));
       }
     },
 

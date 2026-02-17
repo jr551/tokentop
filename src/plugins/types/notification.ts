@@ -1,21 +1,21 @@
-import type { BasePlugin, PluginLogger } from './base.ts';
+import type { BasePlugin, PluginLogger } from "./base.ts";
 
 // ---------------------------------------------------------------------------
 // Notification Events
 // ---------------------------------------------------------------------------
 
-export type NotificationSeverity = 'info' | 'warning' | 'critical';
+export type NotificationSeverity = "info" | "warning" | "critical";
 
 export type NotificationEventType =
-  | 'budget.thresholdCrossed'
-  | 'budget.limitReached'
-  | 'provider.fetchFailed'
-  | 'provider.limitReached'
-  | 'provider.recovered'
-  | 'plugin.crashed'
-  | 'plugin.disabled'
-  | 'app.started'
-  | 'app.updated';
+  | "budget.thresholdCrossed"
+  | "budget.limitReached"
+  | "provider.fetchFailed"
+  | "provider.limitReached"
+  | "provider.recovered"
+  | "plugin.crashed"
+  | "plugin.disabled"
+  | "app.started"
+  | "app.updated";
 
 export interface NotificationEvent {
   type: NotificationEventType;
@@ -41,7 +41,7 @@ export interface NotificationContext {
 // ---------------------------------------------------------------------------
 
 export interface NotificationPlugin extends BasePlugin {
-  readonly type: 'notification';
+  readonly type: "notification";
 
   initialize(ctx: NotificationContext): Promise<void>;
   notify(ctx: NotificationContext, event: NotificationEvent): Promise<void>;

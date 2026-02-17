@@ -11,9 +11,9 @@
  * 2. **Deep-freeze** — prevents plugins from mutating the PluginContext.
  */
 
-import { AsyncLocalStorage } from 'async_hooks';
-import { PluginPermissionError, type PluginPermissions } from './types/base.ts';
-import { createPluginLogger } from './sandbox.ts';
+import { AsyncLocalStorage } from "async_hooks";
+import { createPluginLogger } from "./sandbox.ts";
+import { PluginPermissionError, type PluginPermissions } from "./types/base.ts";
 
 // ---------------------------------------------------------------------------
 // Plugin execution context (AsyncLocalStorage)
@@ -68,10 +68,7 @@ export function installGlobalFetchGuard(): void {
   const originalFetch = globalThis.fetch;
 
   const guardedFetch: typeof fetch = Object.assign(
-    function guardedFetch(
-      input: string | URL | Request,
-      init?: RequestInit,
-    ): Promise<Response> {
+    function guardedFetch(input: string | URL | Request, init?: RequestInit): Promise<Response> {
       const guard = pluginGuardStorage.getStore();
 
       if (!guard) {
@@ -82,34 +79,32 @@ export function installGlobalFetchGuard(): void {
 
       if (!permissions.network?.enabled) {
         const log = createPluginLogger(pluginId);
-        log.error('Network access blocked — plugin has not declared network permissions');
-        throw new PluginPermissionError(
-          pluginId,
-          'network',
-          'Network access not permitted',
-        );
+        log.error("Network access blocked — plugin has not declared network permissions");
+        throw new PluginPermissionError(pluginId, "network", "Network access not permitted");
       }
 
       const allowedDomains = permissions.network.allowedDomains;
       if (allowedDomains && allowedDomains.length > 0) {
-        const url = typeof input === 'string'
-          ? new URL(input)
-          : input instanceof URL
-            ? input
-            : new URL(input.url);
+        const url =
+          typeof input === "string"
+            ? new URL(input)
+            : input instanceof URL
+              ? input
+              : new URL(input.url);
 
         const isAllowed = allowedDomains.some(
-          (domain) =>
-            url.hostname === domain || url.hostname.endsWith(`.${domain}`),
+          (domain) => url.hostname === domain || url.hostname.endsWith(`.${domain}`),
         );
 
         if (!isAllowed) {
           const log = createPluginLogger(pluginId);
-          log.error(`Network blocked: domain "${url.hostname}" not in allowlist [${allowedDomains.join(', ')}]`);
+          log.error(
+            `Network blocked: domain "${url.hostname}" not in allowlist [${allowedDomains.join(", ")}]`,
+          );
           throw new PluginPermissionError(
             pluginId,
-            'network',
-            `Domain "${url.hostname}" not in allowlist: ${allowedDomains.join(', ')}`,
+            "network",
+            `Domain "${url.hostname}" not in allowlist: ${allowedDomains.join(", ")}`,
           );
         }
       }
@@ -136,7 +131,7 @@ const frozenObjects = new WeakSet<object>();
  */
 export function deepFreeze<T>(obj: T): T {
   if (obj === null || obj === undefined) return obj;
-  if (typeof obj !== 'object') return obj;
+  if (typeof obj !== "object") return obj;
 
   const o = obj as object;
 
@@ -146,7 +141,7 @@ export function deepFreeze<T>(obj: T): T {
   Object.freeze(o);
 
   for (const value of Object.values(o)) {
-    if (value !== null && typeof value === 'object') {
+    if (value !== null && typeof value === "object") {
       deepFreeze(value);
     }
   }

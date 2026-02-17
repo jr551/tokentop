@@ -1,15 +1,15 @@
-import { useColors } from '../contexts/ThemeContext.tsx';
-import { UsageGauge } from './UsageGauge.tsx';
-import { Sparkline } from './Sparkline.tsx';
-import type { ProviderState } from '../contexts/PluginContext.tsx';
-import type { UsageLimit } from '@/plugins/types/provider.ts';
+import type { UsageLimit } from "@/plugins/types/provider.ts";
+import type { ProviderState } from "../contexts/PluginContext.tsx";
+import { useColors } from "../contexts/ThemeContext.tsx";
+import { Sparkline } from "./Sparkline.tsx";
+import { UsageGauge } from "./UsageGauge.tsx";
 
 function pad(str: string, len: number): string {
-  return str.length >= len ? str.slice(0, len) : str + ' '.repeat(len - str.length);
+  return str.length >= len ? str.slice(0, len) : str + " ".repeat(len - str.length);
 }
 
 function padStart(str: string, len: number): string {
-  return str.length >= len ? str.slice(0, len) : ' '.repeat(len - str.length) + str;
+  return str.length >= len ? str.slice(0, len) : " ".repeat(len - str.length) + str;
 }
 
 function formatTokenCount(val: number): string {
@@ -26,9 +26,9 @@ function formatCost(val: number): string {
 
 function formatTimestamp(ts: number): string {
   const d = new Date(ts);
-  const h = d.getHours().toString().padStart(2, '0');
-  const m = d.getMinutes().toString().padStart(2, '0');
-  const s = d.getSeconds().toString().padStart(2, '0');
+  const h = d.getHours().toString().padStart(2, "0");
+  const m = d.getMinutes().toString().padStart(2, "0");
+  const s = d.getSeconds().toString().padStart(2, "0");
   return `${h}:${m}:${s}`;
 }
 
@@ -69,11 +69,10 @@ export function ProviderDetailPanel({ provider }: ProviderDetailPanelProps) {
     if (usage.limits?.secondary) allLimits.push(usage.limits.secondary);
   }
 
-  const historyValues = provider.history.map(s => s.usedPercent ?? 0);
+  const historyValues = provider.history.map((s) => s.usedPercent ?? 0);
   const peak = historyValues.length > 0 ? Math.max(...historyValues) : 0;
-  const avg = historyValues.length > 0
-    ? historyValues.reduce((a, b) => a + b, 0) / historyValues.length
-    : 0;
+  const avg =
+    historyValues.length > 0 ? historyValues.reduce((a, b) => a + b, 0) / historyValues.length : 0;
 
   const tokens = usage.tokens;
   const cost = usage.cost;
@@ -93,7 +92,7 @@ export function ProviderDetailPanel({ provider }: ProviderDetailPanelProps) {
       <box flexDirection="row" justifyContent="space-between" height={1}>
         <text fg={providerColor} height={1}>
           <strong>{provider.plugin.name}</strong>
-          {usage.planType ? ` · ${usage.planType}` : ''}
+          {usage.planType ? ` · ${usage.planType}` : ""}
         </text>
         <text fg={colors.textMuted} height={1}>
           {`Last: ${formatTimestamp(lastRefreshed)}`}
@@ -105,11 +104,14 @@ export function ProviderDetailPanel({ provider }: ProviderDetailPanelProps) {
           {allLimits.length > 0 && (
             <box flexDirection="column" gap={1}>
               {allLimits.map((limit, idx) => {
-                const label = limit.label ?? 'Usage';
-                const windowStr = limit.windowMinutes ? formatWindow(limit.windowMinutes) : undefined;
-                const labelHasWindow = label.toLowerCase().includes('window') ||
-                  label.toLowerCase().includes('hour') ||
-                  label.toLowerCase().includes('day');
+                const label = limit.label ?? "Usage";
+                const windowStr = limit.windowMinutes
+                  ? formatWindow(limit.windowMinutes)
+                  : undefined;
+                const labelHasWindow =
+                  label.toLowerCase().includes("window") ||
+                  label.toLowerCase().includes("hour") ||
+                  label.toLowerCase().includes("day");
                 return (
                   <box key={idx} flexDirection="column">
                     <UsageGauge
@@ -128,26 +130,30 @@ export function ProviderDetailPanel({ provider }: ProviderDetailPanelProps) {
 
           {tokens && (
             <box flexDirection="column">
-              <text fg={colors.textMuted} height={1}>TOKEN BREAKDOWN</text>
+              <text fg={colors.textMuted} height={1}>
+                TOKEN BREAKDOWN
+              </text>
               <box flexDirection="column">
                 <text height={1}>
-                  <span fg={colors.textMuted}>{pad('Input:', 14)}</span>
+                  <span fg={colors.textMuted}>{pad("Input:", 14)}</span>
                   <span fg={colors.text}>{padStart(formatTokenCount(tokens.input), 10)}</span>
                 </text>
                 <text height={1}>
-                  <span fg={colors.textMuted}>{pad('Output:', 14)}</span>
+                  <span fg={colors.textMuted}>{pad("Output:", 14)}</span>
                   <span fg={colors.text}>{padStart(formatTokenCount(tokens.output), 10)}</span>
                 </text>
                 {tokens.cacheRead !== undefined && tokens.cacheRead > 0 && (
                   <text height={1}>
-                    <span fg={colors.textMuted}>{pad('Cache Read:', 14)}</span>
+                    <span fg={colors.textMuted}>{pad("Cache Read:", 14)}</span>
                     <span fg={colors.text}>{padStart(formatTokenCount(tokens.cacheRead), 10)}</span>
                   </text>
                 )}
                 {tokens.cacheWrite !== undefined && tokens.cacheWrite > 0 && (
                   <text height={1}>
-                    <span fg={colors.textMuted}>{pad('Cache Write:', 14)}</span>
-                    <span fg={colors.text}>{padStart(formatTokenCount(tokens.cacheWrite), 10)}</span>
+                    <span fg={colors.textMuted}>{pad("Cache Write:", 14)}</span>
+                    <span fg={colors.text}>
+                      {padStart(formatTokenCount(tokens.cacheWrite), 10)}
+                    </span>
                   </text>
                 )}
               </box>
@@ -158,22 +164,24 @@ export function ProviderDetailPanel({ provider }: ProviderDetailPanelProps) {
         <box flexDirection="column" flexGrow={1} gap={1}>
           {cost && (
             <box flexDirection="column">
-              <text fg={colors.textMuted} height={1}>COST BREAKDOWN</text>
+              <text fg={colors.textMuted} height={1}>
+                COST BREAKDOWN
+              </text>
               {cost.actual && (
                 <box flexDirection="column">
                   <text height={1}>
-                    <span fg={colors.textMuted}>{pad('Total:', 14)}</span>
+                    <span fg={colors.textMuted}>{pad("Total:", 14)}</span>
                     <span fg={colors.success}>{padStart(formatCost(cost.actual.total), 10)}</span>
                   </text>
                   {cost.actual.input !== undefined && (
                     <text height={1}>
-                      <span fg={colors.textMuted}>{pad('Input:', 14)}</span>
+                      <span fg={colors.textMuted}>{pad("Input:", 14)}</span>
                       <span fg={colors.text}>{padStart(formatCost(cost.actual.input), 10)}</span>
                     </text>
                   )}
                   {cost.actual.output !== undefined && (
                     <text height={1}>
-                      <span fg={colors.textMuted}>{pad('Output:', 14)}</span>
+                      <span fg={colors.textMuted}>{pad("Output:", 14)}</span>
                       <span fg={colors.text}>{padStart(formatCost(cost.actual.output), 10)}</span>
                     </text>
                   )}
@@ -182,19 +190,25 @@ export function ProviderDetailPanel({ provider }: ProviderDetailPanelProps) {
               {!cost.actual && cost.estimated && (
                 <box flexDirection="column">
                   <text height={1}>
-                    <span fg={colors.textMuted}>{pad('Total:', 14)}</span>
-                    <span fg={colors.textMuted}>{padStart(`~${formatCost(cost.estimated.total)}`, 10)}</span>
+                    <span fg={colors.textMuted}>{pad("Total:", 14)}</span>
+                    <span fg={colors.textMuted}>
+                      {padStart(`~${formatCost(cost.estimated.total)}`, 10)}
+                    </span>
                   </text>
                   {cost.estimated.input !== undefined && (
                     <text height={1}>
-                      <span fg={colors.textMuted}>{pad('Input:', 14)}</span>
-                      <span fg={colors.textMuted}>{padStart(`~${formatCost(cost.estimated.input)}`, 10)}</span>
+                      <span fg={colors.textMuted}>{pad("Input:", 14)}</span>
+                      <span fg={colors.textMuted}>
+                        {padStart(`~${formatCost(cost.estimated.input)}`, 10)}
+                      </span>
                     </text>
                   )}
                   {cost.estimated.output !== undefined && (
                     <text height={1}>
-                      <span fg={colors.textMuted}>{pad('Output:', 14)}</span>
-                      <span fg={colors.textMuted}>{padStart(`~${formatCost(cost.estimated.output)}`, 10)}</span>
+                      <span fg={colors.textMuted}>{pad("Output:", 14)}</span>
+                      <span fg={colors.textMuted}>
+                        {padStart(`~${formatCost(cost.estimated.output)}`, 10)}
+                      </span>
                     </text>
                   )}
                 </box>
@@ -204,9 +218,11 @@ export function ProviderDetailPanel({ provider }: ProviderDetailPanelProps) {
 
           {credits && (
             <box flexDirection="row" gap={1} height={1}>
-              <text fg={colors.textMuted} height={1}>Credits:</text>
+              <text fg={colors.textMuted} height={1}>
+                Credits:
+              </text>
               <text fg={credits.unlimited ? colors.success : colors.text} height={1}>
-                {credits.unlimited ? 'Unlimited' : credits.balance ?? '—'}
+                {credits.unlimited ? "Unlimited" : (credits.balance ?? "—")}
               </text>
             </box>
           )}
@@ -216,7 +232,9 @@ export function ProviderDetailPanel({ provider }: ProviderDetailPanelProps) {
       {historyValues.length >= 2 && (
         <box flexDirection="column" paddingTop={1}>
           <box flexDirection="row" justifyContent="space-between" height={1}>
-            <text fg={colors.textMuted} height={1}>USAGE TREND</text>
+            <text fg={colors.textMuted} height={1}>
+              USAGE TREND
+            </text>
             <text fg={colors.textSubtle} height={1}>
               {`peak:${Math.round(peak)}%  avg:${Math.round(avg)}%`}
             </text>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface ExitAnimationItem<T> {
   item: T;
@@ -27,7 +27,7 @@ interface ExitingEntry<T> {
 
 export function useExitAnimation<T>(
   items: T[],
-  options: UseExitAnimationOptions<T>
+  options: UseExitAnimationOptions<T>,
 ): UseExitAnimationResult<T> {
   const { durationMs = 500, fps = 30, getKey, bulkThreshold = 10 } = options;
   const prevKeysRef = useRef<Set<string>>(new Set());
@@ -123,7 +123,7 @@ export function useExitAnimation<T>(
     for (const [, entry] of exitingRef.current) {
       const elapsed = now - entry.startTime;
       const progress = Math.min(1, elapsed / durationMs);
-      const eased = Math.pow(progress, 2);
+      const eased = progress ** 2;
 
       result.push({
         item: entry.item,

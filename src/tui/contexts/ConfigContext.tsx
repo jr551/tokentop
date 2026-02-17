@@ -1,14 +1,14 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import { loadConfig, saveConfig, DEFAULT_CONFIG, type AppConfig } from '@/config/schema.ts';
-import { useDemoMode } from './DemoModeContext.tsx';
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from "react";
+import { type AppConfig, DEFAULT_CONFIG, loadConfig, saveConfig } from "@/config/schema.ts";
+import { useDemoMode } from "./DemoModeContext.tsx";
 
 interface ConfigContextValue {
   config: AppConfig;
   isLoading: boolean;
   updateConfig: (updates: Partial<AppConfig>) => void;
-  updateRefresh: (updates: Partial<AppConfig['refresh']>) => void;
-  updateDisplay: (updates: Partial<AppConfig['display']>) => void;
-  updateNotifications: (updates: Partial<AppConfig['notifications']>) => void;
+  updateRefresh: (updates: Partial<AppConfig["refresh"]>) => void;
+  updateDisplay: (updates: Partial<AppConfig["display"]>) => void;
+  updateNotifications: (updates: Partial<AppConfig["notifications"]>) => void;
   resetToDefaults: () => void;
   saveNow: () => Promise<void>;
 }
@@ -32,21 +32,23 @@ export function ConfigProvider({ children, initialConfig }: ConfigProviderProps)
     },
     display: {
       ...DEFAULT_CONFIG.display,
-      defaultTimeWindow: '1h',
+      defaultTimeWindow: "1h",
       sidebarCollapsed: false,
     },
     budgets: {
       daily: 50,
       weekly: 200,
       monthly: 800,
-      currency: 'USD',
+      currency: "USD",
     },
     alerts: {
       ...DEFAULT_CONFIG.alerts,
       criticalPercent: 90,
     },
   };
-  const [config, setConfig] = useState<AppConfig>(initialConfig ?? (demoMode ? demoConfig : DEFAULT_CONFIG));
+  const [config, setConfig] = useState<AppConfig>(
+    initialConfig ?? (demoMode ? demoConfig : DEFAULT_CONFIG),
+  );
   const [isLoading, setIsLoading] = useState(!initialConfig);
   const [pendingSave, setPendingSave] = useState(false);
 
@@ -79,7 +81,7 @@ export function ConfigProvider({ children, initialConfig }: ConfigProviderProps)
     setPendingSave(true);
   }, []);
 
-  const updateRefresh = useCallback((updates: Partial<AppConfig['refresh']>) => {
+  const updateRefresh = useCallback((updates: Partial<AppConfig["refresh"]>) => {
     setConfig((prev) => ({
       ...prev,
       refresh: { ...prev.refresh, ...updates },
@@ -87,7 +89,7 @@ export function ConfigProvider({ children, initialConfig }: ConfigProviderProps)
     setPendingSave(true);
   }, []);
 
-  const updateDisplay = useCallback((updates: Partial<AppConfig['display']>) => {
+  const updateDisplay = useCallback((updates: Partial<AppConfig["display"]>) => {
     setConfig((prev) => ({
       ...prev,
       display: { ...prev.display, ...updates },
@@ -95,7 +97,7 @@ export function ConfigProvider({ children, initialConfig }: ConfigProviderProps)
     setPendingSave(true);
   }, []);
 
-  const updateNotifications = useCallback((updates: Partial<AppConfig['notifications']>) => {
+  const updateNotifications = useCallback((updates: Partial<AppConfig["notifications"]>) => {
     setConfig((prev) => ({
       ...prev,
       notifications: { ...prev.notifications, ...updates },
@@ -135,7 +137,7 @@ export function ConfigProvider({ children, initialConfig }: ConfigProviderProps)
 export function useConfig(): ConfigContextValue {
   const context = useContext(ConfigContext);
   if (!context) {
-    throw new Error('useConfig must be used within a ConfigProvider');
+    throw new Error("useConfig must be used within a ConfigProvider");
   }
   return context;
 }

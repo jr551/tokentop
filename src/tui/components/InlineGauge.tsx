@@ -1,4 +1,4 @@
-import { useColors } from '../contexts/ThemeContext.tsx';
+import { useColors } from "../contexts/ThemeContext.tsx";
 
 interface InlineGaugeProps {
   percent: number | null;
@@ -10,7 +10,7 @@ export function InlineGauge({ percent, width = 20, color }: InlineGaugeProps) {
   const colors = useColors();
 
   if (percent === null || percent === undefined) {
-    const emptyBar = '·'.repeat(width);
+    const emptyBar = "·".repeat(width);
     return <text fg={colors.textSubtle}>{emptyBar}</text>;
   }
 
@@ -18,12 +18,15 @@ export function InlineGauge({ percent, width = 20, color }: InlineGaugeProps) {
   const filledWidth = Math.round((clamped / 100) * width);
   const emptyWidth = width - filledWidth;
 
-  const fillColor = clamped >= 90 ? colors.gaugeDanger :
-                    clamped >= 70 ? colors.gaugeWarning :
-                    color ?? colors.gaugeFill;
+  const fillColor =
+    clamped >= 90
+      ? colors.gaugeDanger
+      : clamped >= 70
+        ? colors.gaugeWarning
+        : (color ?? colors.gaugeFill);
 
-  const filledBar = '█'.repeat(filledWidth);
-  const emptyBar = '·'.repeat(emptyWidth);
+  const filledBar = "█".repeat(filledWidth);
+  const emptyBar = "·".repeat(emptyWidth);
 
   return (
     <text>

@@ -1,4 +1,4 @@
-import { useColors } from '../contexts/ThemeContext.tsx';
+import { useColors } from "../contexts/ThemeContext.tsx";
 
 export interface HintItem {
   key: string;
@@ -15,7 +15,7 @@ export function FooterHints({ hints }: FooterHintsProps) {
   return (
     <box flexDirection="row" height={1} paddingLeft={1}>
       <text fg={colors.textSubtle}>
-        {hints.map((h, i) => `${h.key} ${h.action}${i < hints.length - 1 ? '  ' : ''}`).join('')}
+        {hints.map((h, i) => `${h.key} ${h.action}${i < hints.length - 1 ? "  " : ""}`).join("")}
       </text>
     </box>
   );

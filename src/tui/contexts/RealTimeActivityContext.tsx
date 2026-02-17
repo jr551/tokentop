@@ -1,10 +1,18 @@
-import { createContext, useContext, useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
-import { pluginRegistry } from '@/plugins/registry.ts';
-import type { ActivityUpdate } from '@/plugins/types/agent.ts';
-import { createPluginContext } from '@/plugins/plugin-context-factory.ts';
-import { usePlugins } from './PluginContext.tsx';
-import { useLogs } from './LogContext.tsx';
-import { useDemoMode } from './DemoModeContext.tsx';
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { createPluginContext } from "@/plugins/plugin-context-factory.ts";
+import { pluginRegistry } from "@/plugins/registry.ts";
+import type { ActivityUpdate } from "@/plugins/types/agent.ts";
+import { useDemoMode } from "./DemoModeContext.tsx";
+import { useLogs } from "./LogContext.tsx";
+import { usePlugins } from "./PluginContext.tsx";
 
 type ActivityListener = (delta: number, timestamp: number) => void;
 
@@ -22,7 +30,7 @@ export function RealTimeActivityProvider({ children }: { children: ReactNode }) 
   const { isInitialized: pluginsInitialized } = usePlugins();
   const { debug, info } = useLogs();
   const { demoMode } = useDemoMode();
-  
+
   const lastSeenRef = useRef<Map<string, number>>(new Map());
   const listenersRef = useRef<Set<ActivityListener>>(new Set());
   const cleanupRef = useRef<(() => void) | null>(null);
@@ -34,35 +42,38 @@ export function RealTimeActivityProvider({ children }: { children: ReactNode }) 
     };
   }, []);
 
-  const handleActivityUpdate = useCallback((update: ActivityUpdate) => {
-    const key = `${update.sessionId}:${update.messageId}`;
-    const prevTokens = lastSeenRef.current.get(key) ?? 0;
-    const newTokens = update.tokens.input + update.tokens.output + (update.tokens.reasoning ?? 0);
-    const delta = Math.max(0, newTokens - prevTokens);
-    
-    if (delta > 0) {
-      lastSeenRef.current.set(key, newTokens);
-      setLastActivityAt(update.timestamp);
-      debug(`Real-time activity: +${delta} tokens`, { sessionId: update.sessionId }, 'realtime');
-      
-      for (const listener of listenersRef.current) {
-        listener(delta, update.timestamp);
+  const handleActivityUpdate = useCallback(
+    (update: ActivityUpdate) => {
+      const key = `${update.sessionId}:${update.messageId}`;
+      const prevTokens = lastSeenRef.current.get(key) ?? 0;
+      const newTokens = update.tokens.input + update.tokens.output + (update.tokens.reasoning ?? 0);
+      const delta = Math.max(0, newTokens - prevTokens);
+
+      if (delta > 0) {
+        lastSeenRef.current.set(key, newTokens);
+        setLastActivityAt(update.timestamp);
+        debug(`Real-time activity: +${delta} tokens`, { sessionId: update.sessionId }, "realtime");
+
+        for (const listener of listenersRef.current) {
+          listener(delta, update.timestamp);
+        }
       }
-    }
-  }, [debug]);
+    },
+    [debug],
+  );
 
   useEffect(() => {
     if (demoMode || !pluginsInitialized) return;
 
-    const agentPlugins = pluginRegistry.getAll('agent');
+    const agentPlugins = pluginRegistry.getAll("agent");
     const cleanups: (() => void)[] = [];
 
     for (const plugin of agentPlugins) {
       if (plugin.capabilities.realTimeTracking && plugin.startActivityWatch) {
         const ctx = createPluginContext(plugin.id, plugin.permissions);
-        info(`Starting real-time activity watch for ${plugin.id}`, undefined, 'realtime');
+        info(`Starting real-time activity watch for ${plugin.id}`, undefined, "realtime");
         plugin.startActivityWatch(ctx, handleActivityUpdate);
-        
+
         if (plugin.stopActivityWatch) {
           const stopFn = plugin.stopActivityWatch.bind(plugin, ctx);
           cleanups.push(stopFn);
@@ -73,7 +84,9 @@ export function RealTimeActivityProvider({ children }: { children: ReactNode }) 
     if (cleanups.length > 0) {
       setIsWatching(true);
       cleanupRef.current = () => {
-        cleanups.forEach(fn => fn());
+        cleanups.forEach((fn) => {
+          fn();
+        });
         setIsWatching(false);
       };
     }
@@ -104,16 +117,14 @@ export function RealTimeActivityProvider({ children }: { children: ReactNode }) 
   };
 
   return (
-    <RealTimeActivityContext.Provider value={value}>
-      {children}
-    </RealTimeActivityContext.Provider>
+    <RealTimeActivityContext.Provider value={value}>{children}</RealTimeActivityContext.Provider>
   );
 }
 
 export function useRealTimeActivity(): RealTimeActivityContextValue {
   const context = useContext(RealTimeActivityContext);
   if (!context) {
-    throw new Error('useRealTimeActivity must be used within RealTimeActivityProvider');
+    throw new Error("useRealTimeActivity must be used within RealTimeActivityProvider");
   }
   return context;
 }

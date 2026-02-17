@@ -1,6 +1,6 @@
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import type { Driver } from './driver.ts';
+import * as fs from "fs/promises";
+import * as path from "path";
+import type { Driver } from "./driver.ts";
 
 export interface RecordedCommand {
   action: string;
@@ -35,7 +35,7 @@ export interface Recorder {
 export function createRecorder(
   width: number,
   height: number,
-  options: RecorderOptions = {}
+  options: RecorderOptions = {},
 ): Recorder {
   const { captureFrames = false, name = `recording-${Date.now()}` } = options;
 
@@ -109,11 +109,7 @@ export function createRecorder(
 export interface ReplayOptions {
   speed?: number;
   stepMode?: boolean;
-  onStep?: (
-    cmd: RecordedCommand,
-    index: number,
-    total: number
-  ) => Promise<void>;
+  onStep?: (cmd: RecordedCommand, index: number, total: number) => Promise<void>;
   onFrame?: (frame: string, cmd: RecordedCommand) => void;
 }
 
@@ -128,7 +124,7 @@ export interface ReplayResult {
 export async function replayRecording(
   driver: Driver,
   recording: Recording,
-  options: ReplayOptions = {}
+  options: ReplayOptions = {},
 ): Promise<ReplayResult> {
   const { speed = 1, stepMode = false, onStep, onFrame } = options;
 
@@ -184,66 +180,61 @@ export async function replayRecording(
   return result;
 }
 
-async function executeCommand(
-  driver: Driver,
-  cmd: RecordedCommand
-): Promise<void> {
+async function executeCommand(driver: Driver, cmd: RecordedCommand): Promise<void> {
   const params = cmd.params ?? {};
 
   switch (cmd.action) {
-    case 'sendKeys':
-      await driver.sendKeys(String(params.keys ?? ''));
+    case "sendKeys":
+      await driver.sendKeys(String(params.keys ?? ""));
       break;
 
-    case 'pressKey':
+    case "pressKey":
       await driver.pressKey(
-        String(params.key ?? ''),
-        params.modifiers as Record<string, boolean> | undefined
+        String(params.key ?? ""),
+        params.modifiers as Record<string, boolean> | undefined,
       );
       break;
 
-    case 'pressTab':
+    case "pressTab":
       await driver.pressTab();
       break;
 
-    case 'pressEnter':
+    case "pressEnter":
       await driver.pressEnter();
       break;
 
-    case 'pressEscape':
+    case "pressEscape":
       await driver.pressEscape();
       break;
 
-    case 'pressArrow':
-      await driver.pressArrow(params.direction as 'up' | 'down' | 'left' | 'right');
+    case "pressArrow":
+      await driver.pressArrow(params.direction as "up" | "down" | "left" | "right");
       break;
 
-    case 'typeText':
+    case "typeText":
       await driver.typeText(
-        String(params.text ?? ''),
-        typeof params.delay === 'number' ? params.delay : 0
+        String(params.text ?? ""),
+        typeof params.delay === "number" ? params.delay : 0,
       );
       break;
 
-    case 'resize':
+    case "resize":
       await driver.resize(
-        typeof params.cols === 'number' ? params.cols : 100,
-        typeof params.rows === 'number' ? params.rows : 30
+        typeof params.cols === "number" ? params.cols : 100,
+        typeof params.rows === "number" ? params.rows : 30,
       );
       break;
 
-    case 'waitForStable':
+    case "waitForStable":
       await driver.waitForStable({
-        maxIterations:
-          typeof params.maxIterations === 'number' ? params.maxIterations : 10,
-        intervalMs:
-          typeof params.intervalMs === 'number' ? params.intervalMs : 50,
+        maxIterations: typeof params.maxIterations === "number" ? params.maxIterations : 10,
+        intervalMs: typeof params.intervalMs === "number" ? params.intervalMs : 50,
       });
       break;
 
-    case 'waitForText':
-      await driver.waitForText(String(params.text ?? ''), {
-        timeout: typeof params.timeout === 'number' ? params.timeout : 5000,
+    case "waitForText":
+      await driver.waitForText(String(params.text ?? ""), {
+        timeout: typeof params.timeout === "number" ? params.timeout : 5000,
       });
       break;
 
@@ -253,37 +244,35 @@ async function executeCommand(
   }
 }
 
-const DEFAULT_RECORDINGS_DIR = './recordings';
+const DEFAULT_RECORDINGS_DIR = "./recordings";
 
 export async function saveRecording(
   recording: Recording,
-  dir: string = DEFAULT_RECORDINGS_DIR
+  dir: string = DEFAULT_RECORDINGS_DIR,
 ): Promise<string> {
   await fs.mkdir(dir, { recursive: true });
   const filePath = path.join(dir, `${recording.name}.json`);
-  await fs.writeFile(filePath, JSON.stringify(recording, null, 2), 'utf-8');
+  await fs.writeFile(filePath, JSON.stringify(recording, null, 2), "utf-8");
   return path.resolve(filePath);
 }
 
 export async function loadRecording(
   name: string,
-  dir: string = DEFAULT_RECORDINGS_DIR
+  dir: string = DEFAULT_RECORDINGS_DIR,
 ): Promise<Recording | null> {
   const filePath = path.join(dir, `${name}.json`);
   try {
-    const content = await fs.readFile(filePath, 'utf-8');
+    const content = await fs.readFile(filePath, "utf-8");
     return JSON.parse(content) as Recording;
   } catch {
     return null;
   }
 }
 
-export async function listRecordings(
-  dir: string = DEFAULT_RECORDINGS_DIR
-): Promise<string[]> {
+export async function listRecordings(dir: string = DEFAULT_RECORDINGS_DIR): Promise<string[]> {
   try {
     const files = await fs.readdir(dir);
-    return files.filter((f) => f.endsWith('.json')).map((f) => f.replace('.json', ''));
+    return files.filter((f) => f.endsWith(".json")).map((f) => f.replace(".json", ""));
   } catch {
     return [];
   }
@@ -291,7 +280,7 @@ export async function listRecordings(
 
 export async function deleteRecording(
   name: string,
-  dir: string = DEFAULT_RECORDINGS_DIR
+  dir: string = DEFAULT_RECORDINGS_DIR,
 ): Promise<boolean> {
   const filePath = path.join(dir, `${name}.json`);
   try {

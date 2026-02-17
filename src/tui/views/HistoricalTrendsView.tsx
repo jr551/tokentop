@@ -1,17 +1,23 @@
-import { useState, useMemo, useEffect } from 'react';
-import { useKeyboard, useTerminalDimensions } from '@opentui/react';
-import { useColors } from '../contexts/ThemeContext.tsx';
-import { useStorageReady } from '../contexts/StorageContext.tsx';
-import { useDemoMode } from '../contexts/DemoModeContext.tsx';
-import { queryUsageTimeSeries, queryProviderDailyCosts, queryModelDailyCosts, queryProjectDailyCosts, isDatabaseInitialized } from '@/storage/index.ts';
+import { useKeyboard, useTerminalDimensions } from "@opentui/react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  isDatabaseInitialized,
+  queryModelDailyCosts,
+  queryProjectDailyCosts,
+  queryProviderDailyCosts,
+  queryUsageTimeSeries,
+} from "@/storage/index.ts";
+import { useDemoMode } from "../contexts/DemoModeContext.tsx";
+import { useStorageReady } from "../contexts/StorageContext.tsx";
+import { useColors } from "../contexts/ThemeContext.tsx";
 
 // ============================================================================
 // Types
 // ============================================================================
 
-type TimePeriod = '7d' | '30d' | '90d';
-type MetricType = 'cost' | 'tokens' | 'requests';
-type BreakdownDimension = 'provider' | 'model' | 'project' | 'off';
+type TimePeriod = "7d" | "30d" | "90d";
+type MetricType = "cost" | "tokens" | "requests";
+type BreakdownDimension = "provider" | "model" | "project" | "off";
 
 interface ChartPoint {
   label: string;
@@ -46,17 +52,29 @@ interface PeriodSummary {
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 const METRIC_LABELS: Record<MetricType, string> = {
-  cost: 'COST',
-  tokens: 'TOKENS',
-  requests: 'REQUESTS',
+  cost: "COST",
+  tokens: "TOKENS",
+  requests: "REQUESTS",
 };
 
 const CHART_CHARS = {
-  h: '─', v: '│', tl: '╭', tr: '╮', bl: '╰', br: '╯', cross: '┼', t_l: '┤',
+  h: "─",
+  v: "│",
+  tl: "╭",
+  tr: "╮",
+  bl: "╰",
+  br: "╯",
+  cross: "┼",
+  t_l: "┤",
 };
 
 const GHOST_CHARS = {
-  h: '╌', v: '╎', tl: '╭', tr: '╮', bl: '╰', br: '╯',
+  h: "╌",
+  v: "╎",
+  tl: "╭",
+  tr: "╮",
+  bl: "╰",
+  br: "╯",
 };
 
 // ============================================================================
@@ -84,53 +102,63 @@ function fmtNumber(val: number): string {
 
 function fmtMetricValue(val: number, metric: MetricType): string {
   switch (metric) {
-    case 'cost': return fmtCurrency(val);
-    case 'tokens': return fmtTokens(val);
-    case 'requests': return fmtNumber(val);
+    case "cost":
+      return fmtCurrency(val);
+    case "tokens":
+      return fmtTokens(val);
+    case "requests":
+      return fmtNumber(val);
   }
 }
 
 function fmtYAxisLabel(val: number, metric: MetricType): string {
   switch (metric) {
-    case 'cost': return `$${Math.round(val)}`.padStart(5);
-    case 'tokens': return fmtTokens(val).padStart(5);
-    case 'requests': return `${Math.round(val)}`.padStart(5);
+    case "cost":
+      return `$${Math.round(val)}`.padStart(5);
+    case "tokens":
+      return fmtTokens(val).padStart(5);
+    case "requests":
+      return `${Math.round(val)}`.padStart(5);
   }
 }
 
-function fmtDeltaPct(current: number, previous: number, hasPreviousData = true): { text: string; positive: boolean } {
+function fmtDeltaPct(
+  current: number,
+  previous: number,
+  hasPreviousData = true,
+): { text: string; positive: boolean } {
   if (!hasPreviousData) {
-    return { text: '—', positive: true };
+    return { text: "—", positive: true };
   }
   if (previous === 0) {
-    return current > 0 ? { text: '▲ new', positive: false } : { text: '── 0%', positive: true };
+    return current > 0 ? { text: "▲ new", positive: false } : { text: "── 0%", positive: true };
   }
   const pct = ((current - previous) / previous) * 100;
-  const sign = pct >= 0 ? '▲' : '▼';
+  const sign = pct >= 0 ? "▲" : "▼";
   return { text: `${sign} ${Math.abs(pct).toFixed(0)}%`, positive: pct <= 0 };
 }
 
 function miniSparkline(values: number[], width: number): string {
-  if (values.length === 0) return ' '.repeat(width);
+  if (values.length === 0) return " ".repeat(width);
   const max = Math.max(...values, 0.001);
-  const blocks = '▁▂▃▄▅▆▇█';
+  const blocks = "▁▂▃▄▅▆▇█";
   const step = Math.max(1, values.length / width);
-  let result = '';
+  let result = "";
   for (let i = 0; i < width; i++) {
     const idx = Math.min(Math.floor(i * step), values.length - 1);
     const v = values[idx] ?? 0;
     const normalized = Math.min(7, Math.floor((v / max) * 8));
-    result += v <= 0 ? '▁' : (blocks[normalized] ?? '▁');
+    result += v <= 0 ? "▁" : (blocks[normalized] ?? "▁");
   }
   return result;
 }
 
 function padRight(str: string, len: number): string {
-  return str.length >= len ? str.slice(0, len) : str + ' '.repeat(len - str.length);
+  return str.length >= len ? str.slice(0, len) : str + " ".repeat(len - str.length);
 }
 
 function truncate(str: string, maxLen: number): string {
-  return str.length <= maxLen ? str : str.slice(0, maxLen - 1) + '…';
+  return str.length <= maxLen ? str : str.slice(0, maxLen - 1) + "…";
 }
 
 // ============================================================================
@@ -138,24 +166,27 @@ function truncate(str: string, maxLen: number): string {
 // ============================================================================
 
 function getDaysBack(period: TimePeriod): number {
-  return period === '30d' ? 30 : period === '90d' ? 90 : 7;
+  return period === "30d" ? 30 : period === "90d" ? 90 : 7;
 }
 
 function formatDateLabel(date: Date, period: TimePeriod, index: number): string {
-  if (period === '7d') return date.toLocaleDateString('en-US', { weekday: 'short' });
-  if (period === '30d') return index % 5 === 0 ? date.getUTCDate().toString() : '';
-  return index % 15 === 0 ? `${date.getUTCMonth() + 1}/${date.getUTCDate()}` : '';
+  if (period === "7d") return date.toLocaleDateString("en-US", { weekday: "short" });
+  if (period === "30d") return index % 5 === 0 ? date.getUTCDate().toString() : "";
+  return index % 15 === 0 ? `${date.getUTCMonth() + 1}/${date.getUTCDate()}` : "";
 }
 
 function getDayName(date: Date): string {
-  return date.toLocaleDateString('en-US', { weekday: 'short' });
+  return date.toLocaleDateString("en-US", { weekday: "short" });
 }
 
 function getMetricValue(point: ChartPoint, metric: MetricType): number {
   switch (metric) {
-    case 'cost': return point.costUsd;
-    case 'tokens': return point.tokens;
-    case 'requests': return point.requestCount;
+    case "cost":
+      return point.costUsd;
+    case "tokens":
+      return point.tokens;
+    case "requests":
+      return point.requestCount;
   }
 }
 
@@ -163,7 +194,8 @@ function computeSummary(points: ChartPoint[], metric: MetricType): PeriodSummary
   const totalCost = points.reduce((sum, p) => sum + p.costUsd, 0);
   const totalTokens = points.reduce((sum, p) => sum + p.tokens, 0);
   const totalRequests = points.reduce((sum, p) => sum + p.requestCount, 0);
-  const metricTotal = metric === 'tokens' ? totalTokens : metric === 'requests' ? totalRequests : totalCost;
+  const metricTotal =
+    metric === "tokens" ? totalTokens : metric === "requests" ? totalRequests : totalCost;
   const avgPerDay = points.length > 0 ? metricTotal / points.length : 0;
 
   let peakDay: { label: string; value: number } | null = null;
@@ -231,19 +263,30 @@ function fetchProviderBreakdown(period: TimePeriod): ProviderContribution[] {
   try {
     const rows = queryProviderDailyCosts(startMs, now, MS_PER_DAY);
 
-    const providerMap = new Map<string, {
-      cost: number; tokens: number; requests: number;
-      dailyCosts: Map<number, number>;
-    }>();
+    const providerMap = new Map<
+      string,
+      {
+        cost: number;
+        tokens: number;
+        requests: number;
+        dailyCosts: Map<number, number>;
+      }
+    >();
 
     for (const row of rows) {
       const entry = providerMap.get(row.provider) ?? {
-        cost: 0, tokens: 0, requests: 0, dailyCosts: new Map(),
+        cost: 0,
+        tokens: 0,
+        requests: 0,
+        dailyCosts: new Map(),
       };
       entry.cost += row.costUsd;
       entry.tokens += row.tokens;
       entry.requests += row.requestCount;
-      entry.dailyCosts.set(row.bucketStart, (entry.dailyCosts.get(row.bucketStart) ?? 0) + row.costUsd);
+      entry.dailyCosts.set(
+        row.bucketStart,
+        (entry.dailyCosts.get(row.bucketStart) ?? 0) + row.costUsd,
+      );
       providerMap.set(row.provider, entry);
     }
 
@@ -283,19 +326,30 @@ function fetchModelBreakdown(period: TimePeriod): ProviderContribution[] {
   try {
     const rows = queryModelDailyCosts(startMs, now, MS_PER_DAY);
 
-    const modelMap = new Map<string, {
-      cost: number; tokens: number; requests: number;
-      dailyCosts: Map<number, number>;
-    }>();
+    const modelMap = new Map<
+      string,
+      {
+        cost: number;
+        tokens: number;
+        requests: number;
+        dailyCosts: Map<number, number>;
+      }
+    >();
 
     for (const row of rows) {
       const entry = modelMap.get(row.model) ?? {
-        cost: 0, tokens: 0, requests: 0, dailyCosts: new Map(),
+        cost: 0,
+        tokens: 0,
+        requests: 0,
+        dailyCosts: new Map(),
       };
       entry.cost += row.costUsd;
       entry.tokens += row.tokens;
       entry.requests += row.requestCount;
-      entry.dailyCosts.set(row.bucketStart, (entry.dailyCosts.get(row.bucketStart) ?? 0) + row.costUsd);
+      entry.dailyCosts.set(
+        row.bucketStart,
+        (entry.dailyCosts.get(row.bucketStart) ?? 0) + row.costUsd,
+      );
       modelMap.set(row.model, entry);
     }
 
@@ -335,20 +389,31 @@ function fetchProjectBreakdown(period: TimePeriod): ProviderContribution[] {
   try {
     const rows = queryProjectDailyCosts(startMs, now, MS_PER_DAY);
 
-    const projectMap = new Map<string, {
-      cost: number; tokens: number; requests: number;
-      dailyCosts: Map<number, number>;
-    }>();
+    const projectMap = new Map<
+      string,
+      {
+        cost: number;
+        tokens: number;
+        requests: number;
+        dailyCosts: Map<number, number>;
+      }
+    >();
 
     for (const row of rows) {
-      const displayName = row.projectPath.split('/').pop() ?? row.projectPath;
+      const displayName = row.projectPath.split("/").pop() ?? row.projectPath;
       const entry = projectMap.get(displayName) ?? {
-        cost: 0, tokens: 0, requests: 0, dailyCosts: new Map(),
+        cost: 0,
+        tokens: 0,
+        requests: 0,
+        dailyCosts: new Map(),
       };
       entry.cost += row.costUsd;
       entry.tokens += row.tokens;
       entry.requests += row.requestCount;
-      entry.dailyCosts.set(row.bucketStart, (entry.dailyCosts.get(row.bucketStart) ?? 0) + row.costUsd);
+      entry.dailyCosts.set(
+        row.bucketStart,
+        (entry.dailyCosts.get(row.bucketStart) ?? 0) + row.costUsd,
+      );
       projectMap.set(displayName, entry);
     }
 
@@ -383,19 +448,16 @@ function fetchProjectBreakdown(period: TimePeriod): ProviderContribution[] {
 // ============================================================================
 
 function fetchDemoTimeSeries(
-  simulator: NonNullable<ReturnType<typeof useDemoMode>['simulator']>,
+  simulator: NonNullable<ReturnType<typeof useDemoMode>["simulator"]>,
   period: TimePeriod,
-  offsetPeriods = 0
+  offsetPeriods = 0,
 ): ChartPoint[] {
   const daysBack = getDaysBack(period);
   const totalDays = daysBack * (1 + offsetPeriods);
   const historicalData = simulator.generateHistoricalCostData(totalDays);
 
   const sliceEnd = historicalData.length - offsetPeriods * daysBack;
-  const periodData = historicalData.slice(
-    Math.max(0, sliceEnd - daysBack),
-    sliceEnd
-  );
+  const periodData = historicalData.slice(Math.max(0, sliceEnd - daysBack), sliceEnd);
 
   return periodData.map((item, index) => {
     const d = new Date(item.date);
@@ -412,15 +474,20 @@ function fetchDemoTimeSeries(
 }
 
 function fetchDemoProviderBreakdown(
-  simulator: NonNullable<ReturnType<typeof useDemoMode>['simulator']>,
-  period: TimePeriod
+  simulator: NonNullable<ReturnType<typeof useDemoMode>["simulator"]>,
+  period: TimePeriod,
 ): ProviderContribution[] {
   const daysBack = getDaysBack(period);
   const byProvider = simulator.generateHistoricalCostDataByProvider(daysBack);
 
-  const providerMap = new Map<string, {
-    cost: number; tokens: number; requests: number;
-  }>();
+  const providerMap = new Map<
+    string,
+    {
+      cost: number;
+      tokens: number;
+      requests: number;
+    }
+  >();
   const providerDayMap = new Map<string, Map<number, number>>();
 
   for (const entry of byProvider) {
@@ -430,7 +497,9 @@ function fetchDemoProviderBreakdown(
     providerDayMap.get(entry.provider)!.set(entry.date, entry.cost);
 
     const existing = providerMap.get(entry.provider) ?? {
-      cost: 0, tokens: 0, requests: 0,
+      cost: 0,
+      tokens: 0,
+      requests: 0,
     };
     existing.cost += entry.cost;
     existing.tokens += entry.tokens;
@@ -439,12 +508,12 @@ function fetchDemoProviderBreakdown(
   }
 
   const totalCost = Array.from(providerMap.values()).reduce((sum, p) => sum + p.cost, 0);
-  const allDates = [...new Set(byProvider.map(e => e.date))].sort((a, b) => a - b);
+  const allDates = [...new Set(byProvider.map((e) => e.date))].sort((a, b) => a - b);
 
   return Array.from(providerMap.entries())
     .map(([provider, d]) => {
       const dayMap = providerDayMap.get(provider) ?? new Map();
-      const dailyCosts = allDates.map(date => dayMap.get(date) ?? 0);
+      const dailyCosts = allDates.map((date) => dayMap.get(date) ?? 0);
       return {
         provider,
         cost: d.cost,
@@ -459,8 +528,8 @@ function fetchDemoProviderBreakdown(
 }
 
 function fetchDemoModelBreakdown(
-  simulator: NonNullable<ReturnType<typeof useDemoMode>['simulator']>,
-  period: TimePeriod
+  simulator: NonNullable<ReturnType<typeof useDemoMode>["simulator"]>,
+  period: TimePeriod,
 ): ProviderContribution[] {
   const daysBack = getDaysBack(period);
   const byModel = simulator.generateHistoricalCostDataByModel(daysBack);
@@ -480,12 +549,12 @@ function fetchDemoModelBreakdown(
   }
 
   const totalCost = Array.from(modelMap.values()).reduce((sum, p) => sum + p.cost, 0);
-  const allDates = [...new Set(byModel.map(e => e.date))].sort((a, b) => a - b);
+  const allDates = [...new Set(byModel.map((e) => e.date))].sort((a, b) => a - b);
 
   return Array.from(modelMap.entries())
     .map(([model, d]) => {
       const dayMap = modelDayMap.get(model) ?? new Map();
-      const dailyCosts = allDates.map(date => dayMap.get(date) ?? 0);
+      const dailyCosts = allDates.map((date) => dayMap.get(date) ?? 0);
       return {
         provider: model,
         cost: d.cost,
@@ -500,8 +569,8 @@ function fetchDemoModelBreakdown(
 }
 
 function fetchDemoProjectBreakdown(
-  simulator: NonNullable<ReturnType<typeof useDemoMode>['simulator']>,
-  period: TimePeriod
+  simulator: NonNullable<ReturnType<typeof useDemoMode>["simulator"]>,
+  period: TimePeriod,
 ): ProviderContribution[] {
   const daysBack = getDaysBack(period);
   const byProject = simulator.generateHistoricalCostDataByProject(daysBack);
@@ -510,9 +579,11 @@ function fetchDemoProjectBreakdown(
   const projectDayMap = new Map<string, Map<number, number>>();
 
   for (const entry of byProject) {
-    const displayName = entry.projectPath.split('/').pop() ?? entry.projectPath;
+    const displayName = entry.projectPath.split("/").pop() ?? entry.projectPath;
     if (!projectDayMap.has(displayName)) projectDayMap.set(displayName, new Map());
-    projectDayMap.get(displayName)!.set(entry.date, (projectDayMap.get(displayName)!.get(entry.date) ?? 0) + entry.cost);
+    projectDayMap
+      .get(displayName)!
+      .set(entry.date, (projectDayMap.get(displayName)!.get(entry.date) ?? 0) + entry.cost);
 
     const existing = projectMap.get(displayName) ?? { cost: 0, tokens: 0, requests: 0 };
     existing.cost += entry.cost;
@@ -522,12 +593,12 @@ function fetchDemoProjectBreakdown(
   }
 
   const totalCost = Array.from(projectMap.values()).reduce((sum, p) => sum + p.cost, 0);
-  const allDates = [...new Set(byProject.map(e => e.date))].sort((a, b) => a - b);
+  const allDates = [...new Set(byProject.map((e) => e.date))].sort((a, b) => a - b);
 
   return Array.from(projectMap.entries())
     .map(([project, d]) => {
       const dayMap = projectDayMap.get(project) ?? new Map();
-      const dailyCosts = allDates.map(date => dayMap.get(date) ?? 0);
+      const dailyCosts = allDates.map((date) => dayMap.get(date) ?? 0);
       return {
         provider: project,
         cost: d.cost,
@@ -542,8 +613,8 @@ function fetchDemoProjectBreakdown(
 }
 
 function fetchDemoPrevContributors(
-  simulator: NonNullable<ReturnType<typeof useDemoMode>['simulator']>,
-  period: TimePeriod
+  simulator: NonNullable<ReturnType<typeof useDemoMode>["simulator"]>,
+  period: TimePeriod,
 ): ProviderContribution[] {
   const daysBack = getDaysBack(period);
   const allByProvider = simulator.generateHistoricalCostDataByProvider(daysBack * 2);
@@ -572,7 +643,7 @@ function fetchDemoPrevContributors(
 // AsciiChart component (enhanced with comparison + cursor)
 // ============================================================================
 
-type CellType = 'empty' | 'main' | 'ghost' | 'cursor';
+type CellType = "empty" | "main" | "ghost" | "cursor";
 
 interface AsciiChartProps {
   data: ChartPoint[];
@@ -589,35 +660,53 @@ interface AsciiChartProps {
 }
 
 const AsciiChart = ({
-  data, comparisonData, metric, cursorIndex,
-  height, width, color, ghostColor, cursorColor, labelColor, gridColor,
+  data,
+  comparisonData,
+  metric,
+  cursorIndex,
+  height,
+  width,
+  color,
+  ghostColor,
+  cursorColor,
+  labelColor,
+  gridColor,
 }: AsciiChartProps) => {
   const chartHeight = height - 2;
   const yAxisWidth = 6;
   const chartWidth = width - yAxisWidth;
 
   if (data.length < 2 || chartHeight < 3 || chartWidth < 10) {
-    return <box><text fg={labelColor}>Chart too small</text></box>;
+    return (
+      <box>
+        <text fg={labelColor}>Chart too small</text>
+      </box>
+    );
   }
 
-  const values = data.map(d => getMetricValue(d, metric));
-  const compValues = comparisonData?.map(d => getMetricValue(d, metric)) ?? [];
+  const values = data.map((d) => getMetricValue(d, metric));
+  const compValues = comparisonData?.map((d) => getMetricValue(d, metric)) ?? [];
   const allValues = [...values, ...compValues];
-  const maxVal = Math.max(...allValues, metric === 'cost' ? 10 : 100) * 1.1;
+  const maxVal = Math.max(...allValues, metric === "cost" ? 10 : 100) * 1.1;
   const minVal = 0;
 
   const normalize = (v: number) =>
-    Math.min(chartHeight - 1, Math.max(0, Math.floor(((v - minVal) / (maxVal - minVal)) * chartHeight)));
+    Math.min(
+      chartHeight - 1,
+      Math.max(0, Math.floor(((v - minVal) / (maxVal - minVal)) * chartHeight)),
+    );
 
-  const gridChars: string[][] = Array.from({ length: chartHeight }, () => Array(chartWidth).fill(' '));
+  const gridChars: string[][] = Array.from({ length: chartHeight }, () =>
+    Array(chartWidth).fill(" "),
+  );
   const gridTypes: CellType[][] = Array.from({ length: chartHeight }, () =>
-    Array<CellType>(chartWidth).fill('empty')
+    Array<CellType>(chartWidth).fill("empty"),
   );
 
   const plotLine = (
     vals: number[],
     chars: { h: string; v: string; tl: string; tr: string; bl: string; br: string },
-    cellType: CellType
+    cellType: CellType,
   ) => {
     if (vals.length < 2) return;
     const normalized = vals.map(normalize);
@@ -639,23 +728,47 @@ const AsciiChart = ({
       }
 
       if (y2 > y1) {
-        if (xMid < chartWidth && gridChars[y1]) { gridChars[y1]![xMid] = chars.br; gridTypes[y1]![xMid] = cellType; }
+        if (xMid < chartWidth && gridChars[y1]) {
+          gridChars[y1]![xMid] = chars.br;
+          gridTypes[y1]![xMid] = cellType;
+        }
         for (let y = y1 + 1; y < y2; y++) {
-          if (xMid < chartWidth && gridChars[y]) { gridChars[y]![xMid] = chars.v; gridTypes[y]![xMid] = cellType; }
+          if (xMid < chartWidth && gridChars[y]) {
+            gridChars[y]![xMid] = chars.v;
+            gridTypes[y]![xMid] = cellType;
+          }
         }
-        if (xMid < chartWidth && gridChars[y2]) { gridChars[y2]![xMid] = chars.tl; gridTypes[y2]![xMid] = cellType; }
+        if (xMid < chartWidth && gridChars[y2]) {
+          gridChars[y2]![xMid] = chars.tl;
+          gridTypes[y2]![xMid] = cellType;
+        }
       } else if (y2 < y1) {
-        if (xMid < chartWidth && gridChars[y1]) { gridChars[y1]![xMid] = chars.tr; gridTypes[y1]![xMid] = cellType; }
-        for (let y = y1 - 1; y > y2; y--) {
-          if (xMid < chartWidth && gridChars[y]) { gridChars[y]![xMid] = chars.v; gridTypes[y]![xMid] = cellType; }
+        if (xMid < chartWidth && gridChars[y1]) {
+          gridChars[y1]![xMid] = chars.tr;
+          gridTypes[y1]![xMid] = cellType;
         }
-        if (xMid < chartWidth && gridChars[y2]) { gridChars[y2]![xMid] = chars.bl; gridTypes[y2]![xMid] = cellType; }
+        for (let y = y1 - 1; y > y2; y--) {
+          if (xMid < chartWidth && gridChars[y]) {
+            gridChars[y]![xMid] = chars.v;
+            gridTypes[y]![xMid] = cellType;
+          }
+        }
+        if (xMid < chartWidth && gridChars[y2]) {
+          gridChars[y2]![xMid] = chars.bl;
+          gridTypes[y2]![xMid] = cellType;
+        }
       } else {
-        if (xMid < chartWidth && gridChars[y1]) { gridChars[y1]![xMid] = chars.h; gridTypes[y1]![xMid] = cellType; }
+        if (xMid < chartWidth && gridChars[y1]) {
+          gridChars[y1]![xMid] = chars.h;
+          gridTypes[y1]![xMid] = cellType;
+        }
       }
 
       for (let x = xMid + 1; x < xEnd; x++) {
-        if (x < chartWidth && gridChars[y2]) { gridChars[y2]![x] = chars.h; gridTypes[y2]![x] = cellType; }
+        if (x < chartWidth && gridChars[y2]) {
+          gridChars[y2]![x] = chars.h;
+          gridTypes[y2]![x] = cellType;
+        }
       }
 
       currentX += stepsPerPoint;
@@ -671,9 +784,9 @@ const AsciiChart = ({
 
   // Plot ghost first (comparison), then main on top
   if (compValues.length >= 2) {
-    plotLine(compValues, GHOST_CHARS, 'ghost');
+    plotLine(compValues, GHOST_CHARS, "ghost");
   }
-  plotLine(values, CHART_CHARS, 'main');
+  plotLine(values, CHART_CHARS, "main");
 
   // Cursor overlay — final pass, draws on top of chart data
   let cursorCol: number | null = null;
@@ -683,12 +796,12 @@ const AsciiChart = ({
     if (cursorCol >= 0 && cursorCol < chartWidth) {
       for (let y = 0; y < chartHeight; y++) {
         const cellType = gridTypes[y]?.[cursorCol];
-        if (cellType === 'empty') {
-          gridChars[y]![cursorCol] = '┆';
-        } else if (cellType === 'main' || cellType === 'ghost') {
-          gridChars[y]![cursorCol] = '╋';
+        if (cellType === "empty") {
+          gridChars[y]![cursorCol] = "┆";
+        } else if (cellType === "main" || cellType === "ghost") {
+          gridChars[y]![cursorCol] = "╋";
         }
-        gridTypes[y]![cursorCol] = 'cursor';
+        gridTypes[y]![cursorCol] = "cursor";
       }
     }
   }
@@ -699,25 +812,35 @@ const AsciiChart = ({
     const rowVal = minVal + (r / (chartHeight - 1)) * (maxVal - minVal);
     const labelCount = Math.max(3, Math.min(7, Math.floor(chartHeight / 5) + 1));
     const labelStep = (chartHeight - 1) / (labelCount - 1);
-    const showLabel = Array.from({ length: labelCount }, (_, i) => Math.round(i * labelStep)).includes(r);
-    const label = showLabel ? fmtYAxisLabel(rowVal, metric) : '     ';
+    const showLabel = Array.from({ length: labelCount }, (_, i) =>
+      Math.round(i * labelStep),
+    ).includes(r);
+    const label = showLabel ? fmtYAxisLabel(rowVal, metric) : "     ";
     const sep = r === 0 ? CHART_CHARS.cross : CHART_CHARS.t_l;
 
     rows.push(
       <box key={`row-${r}`} flexDirection="row" height={1}>
-        <text width={5} height={1} fg={labelColor}>{label}</text>
-        <text width={1} height={1} fg={gridColor}>{sep}</text>
+        <text width={5} height={1} fg={labelColor}>
+          {label}
+        </text>
+        <text width={1} height={1} fg={gridColor}>
+          {sep}
+        </text>
         <text flexGrow={1} height={1}>
           {(gridChars[r] ?? []).map((char, cx) => {
-            const type = gridTypes[r]?.[cx] ?? 'empty';
+            const type = gridTypes[r]?.[cx] ?? "empty";
             let fg: string | undefined;
-            if (type === 'main') fg = color;
-            else if (type === 'ghost') fg = ghostColor;
-            else if (type === 'cursor') fg = cursorColor;
-            return <span key={cx} {...(fg ? { fg } : {})}>{char}</span>;
+            if (type === "main") fg = color;
+            else if (type === "ghost") fg = ghostColor;
+            else if (type === "cursor") fg = cursorColor;
+            return (
+              <span key={cx} {...(fg ? { fg } : {})}>
+                {char}
+              </span>
+            );
           })}
         </text>
-      </box>
+      </box>,
     );
   }
 
@@ -730,22 +853,31 @@ const AsciiChart = ({
       const padLen = Math.max(0, cursorCol + yAxisWidth - 1);
       cursorIndicator = (
         <box height={1}>
-          <text height={1} fg={cursorColor}>{' '.repeat(padLen)}{indicatorText}</text>
+          <text height={1} fg={cursorColor}>
+            {" ".repeat(padLen)}
+            {indicatorText}
+          </text>
         </box>
       );
     }
   }
 
   // X-axis labels
-  const labelParts = data.map((d, i) => {
-    if (!d.label) return '';
-    if (cursorIndex === i) return `[${d.label}]`;
-    return d.label;
-  }).filter(l => l).join('   ').slice(0, chartWidth);
+  const labelParts = data
+    .map((d, i) => {
+      if (!d.label) return "";
+      if (cursorIndex === i) return `[${d.label}]`;
+      return d.label;
+    })
+    .filter((l) => l)
+    .join("   ")
+    .slice(0, chartWidth);
 
   const labelRow = (
     <box flexDirection="row" height={1} paddingLeft={yAxisWidth}>
-      <text height={1} fg={labelColor}>{labelParts}</text>
+      <text height={1} fg={labelColor}>
+        {labelParts}
+      </text>
     </box>
   );
 
@@ -767,34 +899,69 @@ function PeriodSummarySection({ summary, metric }: { summary: PeriodSummary; met
 
   return (
     <box flexDirection="column" paddingX={1}>
-      <text fg={colors.textMuted} height={1}><strong>PERIOD SUMMARY</strong></text>
+      <text fg={colors.textMuted} height={1}>
+        <strong>PERIOD SUMMARY</strong>
+      </text>
       <box flexDirection="row" justifyContent="space-between" height={1}>
-        <text fg={colors.textMuted} height={1}>Total</text>
-        <text fg={colors.success} height={1}><strong>{fmtMetricValue(metric === 'cost' ? summary.totalCost : metric === 'tokens' ? summary.totalTokens : summary.totalRequests, metric)}</strong></text>
+        <text fg={colors.textMuted} height={1}>
+          Total
+        </text>
+        <text fg={colors.success} height={1}>
+          <strong>
+            {fmtMetricValue(
+              metric === "cost"
+                ? summary.totalCost
+                : metric === "tokens"
+                  ? summary.totalTokens
+                  : summary.totalRequests,
+              metric,
+            )}
+          </strong>
+        </text>
       </box>
       <box flexDirection="row" justifyContent="space-between" height={1}>
-        <text fg={colors.textMuted} height={1}>Avg/day</text>
-        <text fg={colors.text} height={1}>{fmtMetricValue(summary.avgPerDay, metric)}</text>
+        <text fg={colors.textMuted} height={1}>
+          Avg/day
+        </text>
+        <text fg={colors.text} height={1}>
+          {fmtMetricValue(summary.avgPerDay, metric)}
+        </text>
       </box>
       {summary.peakDay && (
         <box flexDirection="row" justifyContent="space-between" height={1}>
-          <text fg={colors.textMuted} height={1}>Peak</text>
-          <text fg={colors.warning} height={1}>{summary.peakDay.label} {fmtMetricValue(summary.peakDay.value, metric)}</text>
+          <text fg={colors.textMuted} height={1}>
+            Peak
+          </text>
+          <text fg={colors.warning} height={1}>
+            {summary.peakDay.label} {fmtMetricValue(summary.peakDay.value, metric)}
+          </text>
         </box>
       )}
       {summary.lowDay && (
         <box flexDirection="row" justifyContent="space-between" height={1}>
-          <text fg={colors.textMuted} height={1}>Low</text>
-          <text fg={colors.info} height={1}>{summary.lowDay.label} {fmtMetricValue(summary.lowDay.value, metric)}</text>
+          <text fg={colors.textMuted} height={1}>
+            Low
+          </text>
+          <text fg={colors.info} height={1}>
+            {summary.lowDay.label} {fmtMetricValue(summary.lowDay.value, metric)}
+          </text>
         </box>
       )}
       <box flexDirection="row" justifyContent="space-between" height={1}>
-        <text fg={colors.textMuted} height={1}>Requests</text>
-        <text fg={colors.text} height={1}>{fmtNumber(summary.totalRequests)}</text>
+        <text fg={colors.textMuted} height={1}>
+          Requests
+        </text>
+        <text fg={colors.text} height={1}>
+          {fmtNumber(summary.totalRequests)}
+        </text>
       </box>
       <box flexDirection="row" justifyContent="space-between" height={1}>
-        <text fg={colors.textMuted} height={1}>Tokens</text>
-        <text fg={colors.text} height={1}>{fmtTokens(summary.totalTokens)}</text>
+        <text fg={colors.textMuted} height={1}>
+          Tokens
+        </text>
+        <text fg={colors.text} height={1}>
+          {fmtTokens(summary.totalTokens)}
+        </text>
       </box>
     </box>
   );
@@ -804,7 +971,15 @@ function PeriodSummarySection({ summary, metric }: { summary: PeriodSummary; met
 // InsightPanel — vs Previous Period
 // ============================================================================
 
-function DeltaSection({ current, previous, hasPrevData }: { current: PeriodSummary; previous: PeriodSummary; hasPrevData: boolean }) {
+function DeltaSection({
+  current,
+  previous,
+  hasPrevData,
+}: {
+  current: PeriodSummary;
+  previous: PeriodSummary;
+  hasPrevData: boolean;
+}) {
   const colors = useColors();
   const costDelta = fmtDeltaPct(current.totalCost, previous.totalCost, hasPrevData);
   const tokensDelta = fmtDeltaPct(current.totalTokens, previous.totalTokens, hasPrevData);
@@ -812,18 +987,32 @@ function DeltaSection({ current, previous, hasPrevData }: { current: PeriodSumma
 
   return (
     <box flexDirection="column" paddingX={1}>
-      <text fg={colors.textMuted} height={1}><strong>vs PREVIOUS</strong></text>
+      <text fg={colors.textMuted} height={1}>
+        <strong>vs PREVIOUS</strong>
+      </text>
       <box flexDirection="row" justifyContent="space-between" height={1}>
-        <text fg={colors.textMuted} height={1}>Cost</text>
-        <text fg={costDelta.positive ? colors.success : colors.error} height={1}>{costDelta.text}</text>
+        <text fg={colors.textMuted} height={1}>
+          Cost
+        </text>
+        <text fg={costDelta.positive ? colors.success : colors.error} height={1}>
+          {costDelta.text}
+        </text>
       </box>
       <box flexDirection="row" justifyContent="space-between" height={1}>
-        <text fg={colors.textMuted} height={1}>Tokens</text>
-        <text fg={tokensDelta.positive ? colors.success : colors.error} height={1}>{tokensDelta.text}</text>
+        <text fg={colors.textMuted} height={1}>
+          Tokens
+        </text>
+        <text fg={tokensDelta.positive ? colors.success : colors.error} height={1}>
+          {tokensDelta.text}
+        </text>
       </box>
       <box flexDirection="row" justifyContent="space-between" height={1}>
-        <text fg={colors.textMuted} height={1}>Requests</text>
-        <text fg={reqDelta.positive ? colors.success : colors.error} height={1}>{reqDelta.text}</text>
+        <text fg={colors.textMuted} height={1}>
+          Requests
+        </text>
+        <text fg={reqDelta.positive ? colors.success : colors.error} height={1}>
+          {reqDelta.text}
+        </text>
       </box>
     </box>
   );
@@ -834,7 +1023,10 @@ function DeltaSection({ current, previous, hasPrevData }: { current: PeriodSumma
 // ============================================================================
 
 function ComparisonTable({
-  current, previous, currentContributors, previousContributors,
+  current,
+  previous,
+  currentContributors,
+  previousContributors,
 }: {
   current: PeriodSummary;
   previous: PeriodSummary;
@@ -847,7 +1039,7 @@ function ComparisonTable({
 
   const providerDeltas: Array<{ name: string; delta: ReturnType<typeof fmtDeltaPct> }> = [];
   for (const curr of currentContributors) {
-    const prev = previousContributors.find(p => p.provider === curr.provider);
+    const prev = previousContributors.find((p) => p.provider === curr.provider);
     providerDeltas.push({
       name: curr.provider,
       delta: fmtDeltaPct(curr.cost, prev?.cost ?? 0),
@@ -856,46 +1048,84 @@ function ComparisonTable({
 
   return (
     <box flexDirection="column" paddingX={1}>
-      <text fg={colors.textMuted} height={1}><strong>COMPARISON</strong></text>
+      <text fg={colors.textMuted} height={1}>
+        <strong>COMPARISON</strong>
+      </text>
       <box flexDirection="row" height={1}>
-        <text fg={colors.textMuted} width={10} height={1}>{padRight('', 10)}</text>
-        <text fg={colors.textSubtle} width={8} height={1}>{'This'.padStart(8)}</text>
-        <text fg={colors.textSubtle} width={8} height={1}>{'Prev'.padStart(8)}</text>
+        <text fg={colors.textMuted} width={10} height={1}>
+          {padRight("", 10)}
+        </text>
+        <text fg={colors.textSubtle} width={8} height={1}>
+          {"This".padStart(8)}
+        </text>
+        <text fg={colors.textSubtle} width={8} height={1}>
+          {"Prev".padStart(8)}
+        </text>
       </box>
       <box flexDirection="row" height={1}>
-        <text fg={colors.textMuted} width={10} height={1}>{padRight('Cost', 10)}</text>
-        <text fg={colors.text} width={8} height={1}>{fmtCurrency(current.totalCost).padStart(8)}</text>
-        <text fg={colors.textSubtle} width={8} height={1}>{fmtCurrency(previous.totalCost).padStart(8)}</text>
+        <text fg={colors.textMuted} width={10} height={1}>
+          {padRight("Cost", 10)}
+        </text>
+        <text fg={colors.text} width={8} height={1}>
+          {fmtCurrency(current.totalCost).padStart(8)}
+        </text>
+        <text fg={colors.textSubtle} width={8} height={1}>
+          {fmtCurrency(previous.totalCost).padStart(8)}
+        </text>
       </box>
       <box flexDirection="row" height={1}>
-        <text fg={colors.textMuted} width={10} height={1}>{padRight('Tokens', 10)}</text>
-        <text fg={colors.text} width={8} height={1}>{fmtTokens(current.totalTokens).padStart(8)}</text>
-        <text fg={colors.textSubtle} width={8} height={1}>{fmtTokens(previous.totalTokens).padStart(8)}</text>
+        <text fg={colors.textMuted} width={10} height={1}>
+          {padRight("Tokens", 10)}
+        </text>
+        <text fg={colors.text} width={8} height={1}>
+          {fmtTokens(current.totalTokens).padStart(8)}
+        </text>
+        <text fg={colors.textSubtle} width={8} height={1}>
+          {fmtTokens(previous.totalTokens).padStart(8)}
+        </text>
       </box>
 
       <box paddingX={0} height={1}>
-        <text fg={colors.border} height={1}>{'─'.repeat(26)}</text>
+        <text fg={colors.border} height={1}>
+          {"─".repeat(26)}
+        </text>
       </box>
 
       <box flexDirection="row" justifyContent="space-between" height={1}>
-        <text fg={colors.textMuted} height={1}>Cost Δ</text>
-        <text fg={costDelta.positive ? colors.success : colors.error} height={1}>{costDelta.text}</text>
+        <text fg={colors.textMuted} height={1}>
+          Cost Δ
+        </text>
+        <text fg={costDelta.positive ? colors.success : colors.error} height={1}>
+          {costDelta.text}
+        </text>
       </box>
       <box flexDirection="row" justifyContent="space-between" height={1}>
-        <text fg={colors.textMuted} height={1}>Tokens Δ</text>
-        <text fg={tokensDelta.positive ? colors.success : colors.error} height={1}>{tokensDelta.text}</text>
+        <text fg={colors.textMuted} height={1}>
+          Tokens Δ
+        </text>
+        <text fg={tokensDelta.positive ? colors.success : colors.error} height={1}>
+          {tokensDelta.text}
+        </text>
       </box>
 
       {providerDeltas.length > 0 && (
         <box flexDirection="column">
           <box paddingX={0} height={1}>
-            <text fg={colors.border} height={1}>{'─'.repeat(26)}</text>
+            <text fg={colors.border} height={1}>
+              {"─".repeat(26)}
+            </text>
           </box>
-          <text fg={colors.textMuted} height={1}><strong>BIGGEST CHANGES</strong></text>
-          {providerDeltas.slice(0, 3).map(pd => (
+          <text fg={colors.textMuted} height={1}>
+            <strong>BIGGEST CHANGES</strong>
+          </text>
+          {providerDeltas.slice(0, 3).map((pd) => (
             <box key={pd.name} flexDirection="row" justifyContent="space-between" height={1}>
-              <text fg={colors.text} height={1}>{truncate(pd.name, 12)}</text>
-              <text fg={pd.delta.positive ? colors.success : colors.error} height={1}>{pd.delta.text}</text>
+              <text fg={colors.text} height={1}>
+                {truncate(pd.name, 12)}
+              </text>
+              <text fg={pd.delta.positive ? colors.success : colors.error} height={1}>
+                {pd.delta.text}
+              </text>
             </box>
           ))}
         </box>
@@ -909,7 +1139,9 @@ function ComparisonTable({
 // ============================================================================
 
 function ContributorsSection({
-  contributors, breakdown, panelWidth,
+  contributors,
+  breakdown,
+  panelWidth,
 }: {
   contributors: ProviderContribution[];
   breakdown: BreakdownDimension;
@@ -917,7 +1149,7 @@ function ContributorsSection({
 }) {
   const colors = useColors();
 
-  if (breakdown === 'off' || contributors.length === 0) return null;
+  if (breakdown === "off" || contributors.length === 0) return null;
 
   // panelWidth includes border(2) + paddingX(2) from InsightPanel = 4 cols overhead
   const innerWidth = panelWidth - 4;
@@ -927,14 +1159,21 @@ function ContributorsSection({
 
   return (
     <box flexDirection="column" paddingX={1}>
-      <text fg={colors.textMuted} height={1}><strong>TOP {breakdown === 'model' ? 'MODELS' : breakdown === 'project' ? 'PROJECTS' : 'PROVIDERS'}</strong></text>
+      <text fg={colors.textMuted} height={1}>
+        <strong>
+          TOP{" "}
+          {breakdown === "model" ? "MODELS" : breakdown === "project" ? "PROJECTS" : "PROVIDERS"}
+        </strong>
+      </text>
       {contributors.map((c) => (
         <box key={c.provider} flexDirection="column">
           <box flexDirection="row" height={1}>
             <text fg={colors.primary} width={nameWidth} height={1}>
               {padRight(truncate(c.provider, nameWidth), nameWidth)}
             </text>
-            <text fg={colors.text} height={1}>{fmtCurrency(c.cost).padStart(costColWidth)}</text>
+            <text fg={colors.text} height={1}>
+              {fmtCurrency(c.cost).padStart(costColWidth)}
+            </text>
           </box>
           <box flexDirection="row" height={1}>
             <text fg={colors.textSubtle} width={5} height={1}>
@@ -955,7 +1194,12 @@ function ContributorsSection({
 // ============================================================================
 
 function CursorDayDetail({
-  currentDay, previousDay, metric, contributors, cursorIndex, breakdown,
+  currentDay,
+  previousDay,
+  metric,
+  contributors,
+  cursorIndex,
+  breakdown,
 }: {
   currentDay: ChartPoint;
   previousDay: ChartPoint | null;
@@ -972,38 +1216,70 @@ function CursorDayDetail({
 
   return (
     <box flexDirection="column" paddingX={1}>
-      <text fg={colors.primary} height={1}><strong>{currentDay.dayName} DETAIL</strong></text>
+      <text fg={colors.primary} height={1}>
+        <strong>{currentDay.dayName} DETAIL</strong>
+      </text>
       <box flexDirection="row" justifyContent="space-between" height={1}>
-        <text fg={colors.textMuted} height={1}>Cost</text>
-        <text fg={colors.success} height={1}><strong>{fmtCurrency(currentDay.costUsd)}</strong></text>
+        <text fg={colors.textMuted} height={1}>
+          Cost
+        </text>
+        <text fg={colors.success} height={1}>
+          <strong>{fmtCurrency(currentDay.costUsd)}</strong>
+        </text>
       </box>
       <box flexDirection="row" justifyContent="space-between" height={1}>
-        <text fg={colors.textMuted} height={1}>Tokens</text>
-        <text fg={colors.text} height={1}>{fmtTokens(currentDay.tokens)}</text>
+        <text fg={colors.textMuted} height={1}>
+          Tokens
+        </text>
+        <text fg={colors.text} height={1}>
+          {fmtTokens(currentDay.tokens)}
+        </text>
       </box>
       <box flexDirection="row" justifyContent="space-between" height={1}>
-        <text fg={colors.textMuted} height={1}>Requests</text>
-        <text fg={colors.text} height={1}>{fmtNumber(currentDay.requestCount)}</text>
+        <text fg={colors.textMuted} height={1}>
+          Requests
+        </text>
+        <text fg={colors.text} height={1}>
+          {fmtNumber(currentDay.requestCount)}
+        </text>
       </box>
       {dayDelta && (
         <box flexDirection="row" justifyContent="space-between" height={1}>
-          <text fg={colors.textMuted} height={1}>vs prev day</text>
-          <text fg={dayDelta.positive ? colors.success : colors.error} height={1}>{dayDelta.text}</text>
+          <text fg={colors.textMuted} height={1}>
+            vs prev day
+          </text>
+          <text fg={dayDelta.positive ? colors.success : colors.error} height={1}>
+            {dayDelta.text}
+          </text>
         </box>
       )}
 
       {contributors.length > 0 && (
         <box flexDirection="column">
           <box height={1}>
-            <text fg={colors.border} height={1}>{'─'.repeat(20)}</text>
+            <text fg={colors.border} height={1}>
+              {"─".repeat(20)}
+            </text>
           </box>
-          <text fg={colors.textMuted} height={1}><strong>{breakdown === 'model' ? 'TOP MODELS' : breakdown === 'project' ? 'TOP PROJECTS' : 'PROVIDERS'}</strong></text>
+          <text fg={colors.textMuted} height={1}>
+            <strong>
+              {breakdown === "model"
+                ? "TOP MODELS"
+                : breakdown === "project"
+                  ? "TOP PROJECTS"
+                  : "PROVIDERS"}
+            </strong>
+          </text>
           {contributors.map((c) => {
             const dayCost = c.dailyCosts[cursorIndex] ?? 0;
             return (
               <box key={c.provider} flexDirection="row" justifyContent="space-between" height={1}>
-                <text fg={colors.primary} height={1}>{truncate(c.provider, 12)}</text>
-                <text fg={colors.text} height={1}>{fmtCurrency(dayCost)}</text>
+                <text fg={colors.primary} height={1}>
+                  {truncate(c.provider, 12)}
+                </text>
+                <text fg={colors.text} height={1}>
+                  {fmtCurrency(dayCost)}
+                </text>
               </box>
             );
           })}
@@ -1018,7 +1294,9 @@ function CursorDayDetail({
 // ============================================================================
 
 function CondensedStrip({
-  summary, prevSummary, contributors,
+  summary,
+  prevSummary,
+  contributors,
 }: {
   summary: PeriodSummary;
   prevSummary: PeriodSummary;
@@ -1030,21 +1308,30 @@ function CondensedStrip({
   return (
     <box flexDirection="row" height={2} paddingX={1} gap={2}>
       <box flexDirection="column">
-        <text fg={colors.textMuted} height={1}>Total: <span fg={colors.success}><strong>{fmtCurrency(summary.totalCost)}</strong></span></text>
         <text fg={colors.textMuted} height={1}>
-          {'Avg: '}{fmtCurrency(summary.avgPerDay)}{'/d  '}
+          Total:{" "}
+          <span fg={colors.success}>
+            <strong>{fmtCurrency(summary.totalCost)}</strong>
+          </span>
+        </text>
+        <text fg={colors.textMuted} height={1}>
+          {"Avg: "}
+          {fmtCurrency(summary.avgPerDay)}
+          {"/d  "}
           <span fg={costDelta.positive ? colors.success : colors.error}>{costDelta.text}</span>
         </text>
       </box>
       {contributors.length > 0 && (
         <box flexDirection="column">
-          <text fg={colors.textMuted} height={1}>Top:</text>
+          <text fg={colors.textMuted} height={1}>
+            Top:
+          </text>
           <text height={1}>
             {contributors.slice(0, 3).map((c, i) => (
               <span key={c.provider}>
-                {i > 0 ? '  ' : ''}
+                {i > 0 ? "  " : ""}
                 <span fg={colors.primary}>{truncate(c.provider, 8)}</span>
-                <span fg={colors.text}>{' '}{fmtCurrency(c.cost)}</span>
+                <span fg={colors.text}> {fmtCurrency(c.cost)}</span>
               </span>
             ))}
           </text>
@@ -1059,8 +1346,18 @@ function CondensedStrip({
 // ============================================================================
 
 function InsightPanel({
-  summary, prevSummary, contributors, previousContributors,
-  metric, breakdown, comparisonMode, cursorMode, cursorIndex, data, panelWidth, hasPrevData,
+  summary,
+  prevSummary,
+  contributors,
+  previousContributors,
+  metric,
+  breakdown,
+  comparisonMode,
+  cursorMode,
+  cursorIndex,
+  data,
+  panelWidth,
+  hasPrevData,
 }: {
   summary: PeriodSummary;
   prevSummary: PeriodSummary;
@@ -1140,13 +1437,17 @@ function InsightPanel({
       <PeriodSummarySection summary={summary} metric={metric} />
 
       <box paddingX={1} height={1}>
-        <text fg={colors.border} height={1}>{'─'.repeat(Math.max(0, panelWidth - 4))}</text>
+        <text fg={colors.border} height={1}>
+          {"─".repeat(Math.max(0, panelWidth - 4))}
+        </text>
       </box>
 
       <DeltaSection current={summary} previous={prevSummary} hasPrevData={hasPrevData} />
 
       <box paddingX={1} height={1}>
-        <text fg={colors.border} height={1}>{'─'.repeat(Math.max(0, panelWidth - 4))}</text>
+        <text fg={colors.border} height={1}>
+          {"─".repeat(Math.max(0, panelWidth - 4))}
+        </text>
       </box>
 
       <ContributorsSection
@@ -1169,9 +1470,9 @@ export function HistoricalTrendsView() {
   const { width: terminalWidth, height: terminalHeight } = useTerminalDimensions();
 
   // State
-  const [period, setPeriod] = useState<TimePeriod>('7d');
-  const [metric, setMetric] = useState<MetricType>('cost');
-  const [breakdown, setBreakdown] = useState<BreakdownDimension>('provider');
+  const [period, setPeriod] = useState<TimePeriod>("7d");
+  const [metric, setMetric] = useState<MetricType>("cost");
+  const [breakdown, setBreakdown] = useState<BreakdownDimension>("provider");
   const [showInsight, setShowInsight] = useState(true);
   const [comparisonMode, setComparisonMode] = useState(false);
   const [cursorMode, setCursorMode] = useState(false);
@@ -1198,7 +1499,10 @@ export function HistoricalTrendsView() {
   const viewChrome = 8;
   // Narrow mode has condensed strip (2 rows) + vertical gap (1 row)
   const stripOverhead = isNarrow ? 3 : 0;
-  const chartHeight = Math.max(isNarrow ? 6 : 8, terminalHeight - appOverhead - viewChrome - stripOverhead);
+  const chartHeight = Math.max(
+    isNarrow ? 6 : 8,
+    terminalHeight - appOverhead - viewChrome - stripOverhead,
+  );
 
   // Fetch time series data
   useEffect(() => {
@@ -1214,17 +1518,18 @@ export function HistoricalTrendsView() {
 
   // Fetch breakdown contributors based on dimension
   useEffect(() => {
-    if (breakdown === 'off') {
+    if (breakdown === "off") {
       setContributors([]);
       return;
     }
     if (demoMode && simulator) {
-      if (breakdown === 'model') setContributors(fetchDemoModelBreakdown(simulator, period));
-      else if (breakdown === 'project') setContributors(fetchDemoProjectBreakdown(simulator, period));
+      if (breakdown === "model") setContributors(fetchDemoModelBreakdown(simulator, period));
+      else if (breakdown === "project")
+        setContributors(fetchDemoProjectBreakdown(simulator, period));
       else setContributors(fetchDemoProviderBreakdown(simulator, period));
     } else if (isStorageReady) {
-      if (breakdown === 'model') setContributors(fetchModelBreakdown(period));
-      else if (breakdown === 'project') setContributors(fetchProjectBreakdown(period));
+      if (breakdown === "model") setContributors(fetchModelBreakdown(period));
+      else if (breakdown === "project") setContributors(fetchProjectBreakdown(period));
       else setContributors(fetchProviderBreakdown(period));
     }
   }, [isStorageReady, period, breakdown, demoMode, simulator]);
@@ -1254,7 +1559,7 @@ export function HistoricalTrendsView() {
             requests: 0,
             dailyCosts: [],
           }))
-          .sort((a, b) => b.cost - a.cost)
+          .sort((a, b) => b.cost - a.cost),
       );
     } catch {
       setPrevContributors([]);
@@ -1269,86 +1574,110 @@ export function HistoricalTrendsView() {
   // Computed values
   const summary = useMemo(() => computeSummary(data, metric), [data, metric]);
   const prevSummary = useMemo(() => computeSummary(prevData, metric), [prevData, metric]);
-  const hasData = data.some(p => p.costUsd > 0 || p.tokens > 0 || p.requestCount > 0);
-  const hasPrevData = prevData.some(p => p.costUsd > 0 || p.tokens > 0 || p.requestCount > 0);
+  const hasData = data.some((p) => p.costUsd > 0 || p.tokens > 0 || p.requestCount > 0);
+  const hasPrevData = prevData.some((p) => p.costUsd > 0 || p.tokens > 0 || p.requestCount > 0);
   const totalForMetric = useMemo(() => {
     switch (metric) {
-      case 'cost': return data.reduce((acc, p) => acc + p.costUsd, 0);
-      case 'tokens': return data.reduce((acc, p) => acc + p.tokens, 0);
-      case 'requests': return data.reduce((acc, p) => acc + p.requestCount, 0);
+      case "cost":
+        return data.reduce((acc, p) => acc + p.costUsd, 0);
+      case "tokens":
+        return data.reduce((acc, p) => acc + p.tokens, 0);
+      case "requests":
+        return data.reduce((acc, p) => acc + p.requestCount, 0);
     }
   }, [data, metric]);
 
   // Keyboard
   useKeyboard((key) => {
-    if (key.name === 'left' || key.name === 'h') {
+    if (key.name === "left" || key.name === "h") {
       if (cursorMode) {
-        setCursorIndex(prev => Math.max(0, prev - 1));
+        setCursorIndex((prev) => Math.max(0, prev - 1));
       } else {
-        setPeriod(prev => prev === '90d' ? '30d' : prev === '30d' ? '7d' : '7d');
+        setPeriod((prev) => (prev === "90d" ? "30d" : prev === "30d" ? "7d" : "7d"));
       }
     }
-    if (key.name === 'right' || key.name === 'l') {
+    if (key.name === "right" || key.name === "l") {
       if (cursorMode) {
-        setCursorIndex(prev => Math.min(data.length - 1, prev + 1));
+        setCursorIndex((prev) => Math.min(data.length - 1, prev + 1));
       } else {
-        setPeriod(prev => prev === '7d' ? '30d' : prev === '30d' ? '90d' : '90d');
+        setPeriod((prev) => (prev === "7d" ? "30d" : prev === "30d" ? "90d" : "90d"));
       }
     }
 
-    if (key.name === 'down' || key.name === 'j') {
+    if (key.name === "down" || key.name === "j") {
       if (!cursorMode) {
         setCursorMode(true);
         setCursorIndex(0);
       } else {
-        setCursorIndex(prev => Math.min(data.length - 1, prev + 1));
+        setCursorIndex((prev) => Math.min(data.length - 1, prev + 1));
       }
     }
-    if (key.name === 'up' || key.name === 'k') {
+    if (key.name === "up" || key.name === "k") {
       if (!cursorMode) {
         setCursorMode(true);
         setCursorIndex(0);
       } else {
-        setCursorIndex(prev => Math.max(0, prev - 1));
+        setCursorIndex((prev) => Math.max(0, prev - 1));
       }
     }
 
-    if (key.name === 'escape') {
+    if (key.name === "escape") {
       if (cursorMode) setCursorMode(false);
       else if (comparisonMode) setComparisonMode(false);
     }
 
-    if (key.name === 'c') setComparisonMode(prev => !prev);
-    if (key.name === 'm') setMetric(prev => prev === 'cost' ? 'tokens' : prev === 'tokens' ? 'requests' : 'cost');
-    if (key.name === 'b') setBreakdown(prev => prev === 'provider' ? 'model' : prev === 'model' ? 'project' : prev === 'project' ? 'off' : 'provider');
-    if (key.name === 'i') setShowInsight(prev => !prev);
+    if (key.name === "c") setComparisonMode((prev) => !prev);
+    if (key.name === "m")
+      setMetric((prev) => (prev === "cost" ? "tokens" : prev === "tokens" ? "requests" : "cost"));
+    if (key.name === "b")
+      setBreakdown((prev) =>
+        prev === "provider"
+          ? "model"
+          : prev === "model"
+            ? "project"
+            : prev === "project"
+              ? "off"
+              : "provider",
+      );
+    if (key.name === "i") setShowInsight((prev) => !prev);
   });
 
-  const periodLabel = period === '7d' ? '7 days' : period === '30d' ? '30 days' : '90 days';
+  const periodLabel = period === "7d" ? "7 days" : period === "30d" ? "30 days" : "90 days";
   const modeIndicators: string[] = [];
-  if (comparisonMode) modeIndicators.push('CMP');
-  if (cursorMode) modeIndicators.push('CURSOR');
-  if (metric !== 'cost') modeIndicators.push(METRIC_LABELS[metric]);
+  if (comparisonMode) modeIndicators.push("CMP");
+  if (cursorMode) modeIndicators.push("CURSOR");
+  if (metric !== "cost") modeIndicators.push(METRIC_LABELS[metric]);
 
   return (
-    <box flexDirection="column" flexGrow={1} padding={1} border borderStyle="single" borderColor={colors.border}>
+    <box
+      flexDirection="column"
+      flexGrow={1}
+      padding={1}
+      border
+      borderStyle="single"
+      borderColor={colors.border}
+    >
       {/* Header */}
       <box flexDirection="row" justifyContent="space-between" height={1} marginBottom={1}>
         <text height={1}>
-          <span fg={colors.primary}><strong>{' '}{METRIC_LABELS[metric]} TREND{' '}</strong></span>
+          <span fg={colors.primary}>
+            <strong> {METRIC_LABELS[metric]} TREND </strong>
+          </span>
           <span fg={colors.textMuted}>({periodLabel})</span>
           {modeIndicators.length > 0 && (
-            <span fg={colors.accent}>{' '}[{modeIndicators.join(' | ')}]</span>
+            <span fg={colors.accent}> [{modeIndicators.join(" | ")}]</span>
           )}
         </text>
         <text height={1}>
           <span fg={colors.textMuted}>Total: </span>
-          <span fg={colors.success}><strong>{fmtMetricValue(totalForMetric, metric)}</strong></span>
+          <span fg={colors.success}>
+            <strong>{fmtMetricValue(totalForMetric, metric)}</strong>
+          </span>
         </text>
       </box>
 
       {/* Main content */}
-      <box flexGrow={1} flexDirection={isNarrow ? 'column' : 'row'} gap={1}>
+      <box flexGrow={1} flexDirection={isNarrow ? "column" : "row"} gap={1}>
         {/* Chart pane */}
         <box flexGrow={1} flexDirection="column" justifyContent="center" overflow="hidden">
           {!isStorageReady && !demoMode ? (
@@ -1376,8 +1705,9 @@ export function HistoricalTrendsView() {
         </box>
 
         {/* Insight panel */}
-        {showInsight && hasData && (
-          isNarrow ? (
+        {showInsight &&
+          hasData &&
+          (isNarrow ? (
             <CondensedStrip
               summary={summary}
               prevSummary={prevSummary}
@@ -1398,8 +1728,7 @@ export function HistoricalTrendsView() {
               panelWidth={panelWidth}
               hasPrevData={hasPrevData}
             />
-          )
-        )}
+          ))}
       </box>
 
       {/* Footer */}
@@ -1409,19 +1738,19 @@ export function HistoricalTrendsView() {
             <span>
               <span fg={colors.accent}>CURSOR</span>
               {isNarrow
-                ? '  ←→ move  Esc exit  c cmp  m met'
-                : '  ←→ move  Esc exit  c compare  m metric  i panel'}
+                ? "  ←→ move  Esc exit  c cmp  m met"
+                : "  ←→ move  Esc exit  c compare  m metric  i panel"}
             </span>
           ) : (
             <span>
-              <span fg={period === '7d' ? colors.primary : colors.textSubtle}>7d</span>
-              {'  '}
-              <span fg={period === '30d' ? colors.primary : colors.textSubtle}>30d</span>
-              {'  '}
-              <span fg={period === '90d' ? colors.primary : colors.textSubtle}>90d</span>
+              <span fg={period === "7d" ? colors.primary : colors.textSubtle}>7d</span>
+              {"  "}
+              <span fg={period === "30d" ? colors.primary : colors.textSubtle}>30d</span>
+              {"  "}
+              <span fg={period === "90d" ? colors.primary : colors.textSubtle}>90d</span>
               {isNarrow
-                ? '  h/l per  j/k cur  c cmp  m met  b brk  i pan'
-                : '    h/l period  ↑↓ cursor  c compare  m metric  b breakdown  i panel'}
+                ? "  h/l per  j/k cur  c cmp  m met  b brk  i pan"
+                : "    h/l period  ↑↓ cursor  c compare  m metric  b breakdown  i panel"}
             </span>
           )}
         </text>

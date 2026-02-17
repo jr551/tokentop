@@ -7,10 +7,10 @@
 // Enums & Literal Types
 // ============================================================================
 
-export type UsageEventSource = 'agent' | 'provider';
-export type SessionStatus = 'active' | 'idle';
-export type CostSource = 'api' | 'estimated';
-export type PricingSource = 'models.dev' | 'fallback' | 'unknown';
+export type UsageEventSource = "agent" | "provider";
+export type SessionStatus = "active" | "idle";
+export type CostSource = "api" | "estimated";
+export type PricingSource = "models.dev" | "fallback" | "unknown";
 
 // ============================================================================
 // App Runs Table
@@ -253,7 +253,7 @@ export interface StreamTotals {
  */
 export function computeStreamDelta(
   current: StreamTotals,
-  previous: StreamTotals | undefined
+  previous: StreamTotals | undefined,
 ): StreamTotals | null {
   if (!previous) {
     // First observation - treat as a delta from zero

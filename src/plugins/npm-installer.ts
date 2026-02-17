@@ -1,10 +1,10 @@
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import * as os from 'os';
+import * as fs from "fs/promises";
+import * as os from "os";
+import * as path from "path";
 
-const CACHE_DIR = path.join(os.homedir(), '.cache/tokentop');
-const PACKAGE_JSON_PATH = path.join(CACHE_DIR, 'package.json');
-const NODE_MODULES = path.join(CACHE_DIR, 'node_modules');
+const CACHE_DIR = path.join(os.homedir(), ".cache/tokentop");
+const PACKAGE_JSON_PATH = path.join(CACHE_DIR, "package.json");
+const NODE_MODULES = path.join(CACHE_DIR, "node_modules");
 
 interface CachePackageJson {
   name: string;
@@ -19,7 +19,7 @@ async function ensureCacheDir(): Promise<void> {
     await fs.access(PACKAGE_JSON_PATH);
   } catch {
     const skeleton: CachePackageJson = {
-      name: 'tokentop-plugin-cache',
+      name: "tokentop-plugin-cache",
       private: true,
       dependencies: {},
     };
@@ -28,20 +28,20 @@ async function ensureCacheDir(): Promise<void> {
 }
 
 function parsePackageSpec(spec: string): { name: string; version: string } {
-  const atIndex = spec.lastIndexOf('@');
+  const atIndex = spec.lastIndexOf("@");
   if (atIndex > 0) {
     return { name: spec.slice(0, atIndex), version: spec.slice(atIndex + 1) };
   }
-  return { name: spec, version: 'latest' };
+  return { name: spec, version: "latest" };
 }
 
 async function isInstalled(name: string, version: string): Promise<boolean> {
   try {
-    const pkgJsonPath = path.join(NODE_MODULES, name, 'package.json');
-    const raw = await fs.readFile(pkgJsonPath, 'utf-8');
+    const pkgJsonPath = path.join(NODE_MODULES, name, "package.json");
+    const raw = await fs.readFile(pkgJsonPath, "utf-8");
     const pkg = JSON.parse(raw) as { version?: string };
 
-    if (version === 'latest') {
+    if (version === "latest") {
       return !!pkg.version;
     }
     return pkg.version === version;
@@ -68,13 +68,13 @@ export async function installNpmPlugin(spec: string): Promise<InstallResult> {
     return { name, version, installed: false, resolvedPath };
   }
 
-  const versionArg = version === 'latest' ? name : `${name}@${version}`;
+  const versionArg = version === "latest" ? name : `${name}@${version}`;
 
   try {
-    const proc = Bun.spawn(
-      ['bun', 'add', '--force', '--exact', '--cwd', CACHE_DIR, versionArg],
-      { stdout: 'pipe', stderr: 'pipe' },
-    );
+    const proc = Bun.spawn(["bun", "add", "--force", "--exact", "--cwd", CACHE_DIR, versionArg], {
+      stdout: "pipe",
+      stderr: "pipe",
+    });
 
     const exitCode = await proc.exited;
 
@@ -101,9 +101,7 @@ export async function installNpmPlugin(spec: string): Promise<InstallResult> {
   }
 }
 
-export async function installAllNpmPlugins(
-  specs: string[],
-): Promise<InstallResult[]> {
+export async function installAllNpmPlugins(specs: string[]): Promise<InstallResult[]> {
   if (specs.length === 0) return [];
 
   await ensureCacheDir();
@@ -118,7 +116,7 @@ export async function installAllNpmPlugins(
     if (await isInstalled(name, version)) {
       results.push({ name, version, installed: false, resolvedPath });
     } else {
-      toInstall.push(version === 'latest' ? name : `${name}@${version}`);
+      toInstall.push(version === "latest" ? name : `${name}@${version}`);
       results.push({ name, version, installed: true, resolvedPath });
     }
   }
@@ -126,10 +124,10 @@ export async function installAllNpmPlugins(
   if (toInstall.length === 0) return results;
 
   try {
-    const proc = Bun.spawn(
-      ['bun', 'add', '--force', '--exact', '--cwd', CACHE_DIR, ...toInstall],
-      { stdout: 'pipe', stderr: 'pipe' },
-    );
+    const proc = Bun.spawn(["bun", "add", "--force", "--exact", "--cwd", CACHE_DIR, ...toInstall], {
+      stdout: "pipe",
+      stderr: "pipe",
+    });
 
     const exitCode = await proc.exited;
 

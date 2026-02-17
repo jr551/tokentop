@@ -1,6 +1,6 @@
-import type { CliRenderer } from '@opentui/core';
-import { useRenderer } from '@opentui/react';
-import { createContext, useContext } from 'react';
+import type { CliRenderer } from "@opentui/core";
+import { useRenderer } from "@opentui/react";
+import { createContext, useContext } from "react";
 
 /**
  * Context to signal we're in test/headless mode where renderer may not be available.
@@ -15,10 +15,10 @@ export const TestModeContext = createContext<boolean>(false);
  */
 export function useSafeRenderer(): CliRenderer | null {
   const isTestMode = useContext(TestModeContext);
-  
+
   if (isTestMode) {
     return null;
   }
-  
+
   return useRenderer();
 }

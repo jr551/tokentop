@@ -1,12 +1,13 @@
-import { useMemo } from 'react';
-import { useTerminalDimensions } from '@opentui/react';
-import { useColors } from '../contexts/ThemeContext.tsx';
-import type { ProviderState } from '../contexts/PluginContext.tsx';
-import { InlineGauge } from './InlineGauge.tsx';
-import { InlineSparkline } from './InlineSparkline.tsx';
-import { ProviderDetailPanel } from './ProviderDetailPanel.tsx';
+import { useTerminalDimensions } from "@opentui/react";
+import type React from "react";
+import { useMemo } from "react";
+import type { ProviderState } from "../contexts/PluginContext.tsx";
+import { useColors } from "../contexts/ThemeContext.tsx";
+import { InlineGauge } from "./InlineGauge.tsx";
+import { InlineSparkline } from "./InlineSparkline.tsx";
+import { ProviderDetailPanel } from "./ProviderDetailPanel.tsx";
 
-type FieldState = 'actual' | 'estimated' | 'unavailable';
+type FieldState = "actual" | "estimated" | "unavailable";
 
 interface FieldValue {
   text: string;
@@ -14,42 +15,48 @@ interface FieldValue {
 }
 
 function pad(str: string, len: number): string {
-  return str.length >= len ? str.slice(0, len) : str + ' '.repeat(len - str.length);
+  return str.length >= len ? str.slice(0, len) : str + " ".repeat(len - str.length);
 }
 
 function padStart(str: string, len: number): string {
-  return str.length >= len ? str.slice(0, len) : ' '.repeat(len - str.length) + str;
+  return str.length >= len ? str.slice(0, len) : " ".repeat(len - str.length) + str;
 }
 
 function formatTokens(val: number | undefined | null): FieldValue {
-  if (val === undefined || val === null) return { text: '—', state: 'unavailable' };
-  const formatted = val >= 1_000_000 ? `${(val / 1_000_000).toFixed(1)}M` :
-                    val >= 1_000 ? `${(val / 1_000).toFixed(1)}K` :
-                    String(Math.round(val));
-  return { text: formatted, state: 'actual' };
+  if (val === undefined || val === null) return { text: "—", state: "unavailable" };
+  const formatted =
+    val >= 1_000_000
+      ? `${(val / 1_000_000).toFixed(1)}M`
+      : val >= 1_000
+        ? `${(val / 1_000).toFixed(1)}K`
+        : String(Math.round(val));
+  return { text: formatted, state: "actual" };
 }
 
-type StatusGroup = 'error' | 'warn' | 'ok';
+type StatusGroup = "error" | "warn" | "ok";
 
-function getStatusInfo(state: ProviderState, colors: ReturnType<typeof useColors>): {
+function getStatusInfo(
+  state: ProviderState,
+  colors: ReturnType<typeof useColors>,
+): {
   icon: string;
   color: string;
   group: StatusGroup;
 } {
   if (state.usage?.error) {
-    return { icon: '✗', color: colors.error, group: 'error' };
+    return { icon: "✗", color: colors.error, group: "error" };
   }
   if (state.usage?.limitReached) {
-    return { icon: '⚠', color: colors.warning, group: 'warn' };
+    return { icon: "⚠", color: colors.warning, group: "warn" };
   }
   const maxUsage = getMaxUsage(state);
   if (maxUsage >= 80) {
-    return { icon: '!', color: colors.warning, group: 'warn' };
+    return { icon: "!", color: colors.warning, group: "warn" };
   }
   if (state.loading) {
-    return { icon: '◌', color: colors.info, group: 'ok' };
+    return { icon: "◌", color: colors.info, group: "ok" };
   }
-  return { icon: '●', color: colors.success, group: 'ok' };
+  return { icon: "●", color: colors.success, group: "ok" };
 }
 
 function getMaxUsage(state: ProviderState): number {
@@ -64,25 +71,25 @@ function getMaxUsage(state: ProviderState): number {
 }
 
 function getNextReset(state: ProviderState): string {
-  if (!state.usage?.limits) return '—';
+  if (!state.usage?.limits) return "—";
 
   const items = state.usage.limits.items ?? [];
   let resetsAt: Date | null = null;
 
   if (items.length > 0) {
-    const withReset = items.filter(i => i.resetsAt);
+    const withReset = items.filter((i) => i.resetsAt);
     if (withReset.length > 0) {
-      resetsAt = new Date(Math.min(...withReset.map(i => new Date(i.resetsAt!).getTime())));
+      resetsAt = new Date(Math.min(...withReset.map((i) => new Date(i.resetsAt!).getTime())));
     }
   } else if (state.usage.limits.primary?.resetsAt) {
     resetsAt = new Date(state.usage.limits.primary.resetsAt);
   }
 
-  if (!resetsAt) return '—';
+  if (!resetsAt) return "—";
 
   const now = Date.now();
   const diff = resetsAt.getTime() - now;
-  if (diff <= 0) return 'now';
+  if (diff <= 0) return "now";
 
   const hours = Math.floor(diff / (1000 * 60 * 60));
   const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -95,31 +102,31 @@ function getNextReset(state: ProviderState): string {
 }
 
 function getCostToday(state: ProviderState): FieldValue {
-  if (!state.usage?.cost) return { text: '—', state: 'unavailable' };
+  if (!state.usage?.cost) return { text: "—", state: "unavailable" };
   const cost = state.usage.cost;
   if (cost.actual) {
-    return { text: `$${cost.actual.total.toFixed(2)}`, state: 'actual' };
+    return { text: `$${cost.actual.total.toFixed(2)}`, state: "actual" };
   }
   if (cost.estimated) {
-    return { text: `~$${cost.estimated.total.toFixed(2)}`, state: 'estimated' };
+    return { text: `~$${cost.estimated.total.toFixed(2)}`, state: "estimated" };
   }
-  return { text: '—', state: 'unavailable' };
+  return { text: "—", state: "unavailable" };
 }
 
 function getCostMtd(state: ProviderState): FieldValue {
-  if (!state.usage?.cost) return { text: '—', state: 'unavailable' };
+  if (!state.usage?.cost) return { text: "—", state: "unavailable" };
   const cost = state.usage.cost;
   if (cost.actual) {
-    return { text: `$${cost.actual.total.toFixed(2)}`, state: 'actual' };
+    return { text: `$${cost.actual.total.toFixed(2)}`, state: "actual" };
   }
   if (cost.estimated) {
-    return { text: `~$${cost.estimated.total.toFixed(2)}`, state: 'estimated' };
+    return { text: `~$${cost.estimated.total.toFixed(2)}`, state: "estimated" };
   }
-  return { text: '—', state: 'unavailable' };
+  return { text: "—", state: "unavailable" };
 }
 
 function getTotalTokens(state: ProviderState): FieldValue {
-  if (!state.usage?.tokens) return { text: '—', state: 'unavailable' };
+  if (!state.usage?.tokens) return { text: "—", state: "unavailable" };
   const t = state.usage.tokens;
   const total = t.input + t.output + (t.cacheRead ?? 0) + (t.cacheWrite ?? 0);
   return formatTokens(total);
@@ -142,36 +149,71 @@ interface LayoutTier {
 function getLayoutTier(termWidth: number): LayoutTier {
   if (termWidth >= 140) {
     return {
-      nameWidth: 20, planWidth: 18, gaugeWidth: 28,
-      showPlan: true, showToday: true, showMtd: true,
-      showTokens: true, showReset: true, showTrend: true, sparkWidth: 12,
+      nameWidth: 20,
+      planWidth: 18,
+      gaugeWidth: 28,
+      showPlan: true,
+      showToday: true,
+      showMtd: true,
+      showTokens: true,
+      showReset: true,
+      showTrend: true,
+      sparkWidth: 12,
     };
   }
   if (termWidth >= 120) {
     return {
-      nameWidth: 18, planWidth: 16, gaugeWidth: 24,
-      showPlan: true, showToday: true, showMtd: true,
-      showTokens: true, showReset: true, showTrend: true, sparkWidth: 10,
+      nameWidth: 18,
+      planWidth: 16,
+      gaugeWidth: 24,
+      showPlan: true,
+      showToday: true,
+      showMtd: true,
+      showTokens: true,
+      showReset: true,
+      showTrend: true,
+      sparkWidth: 10,
     };
   }
   if (termWidth >= 100) {
     return {
-      nameWidth: 16, planWidth: 12, gaugeWidth: 20,
-      showPlan: true, showToday: true, showMtd: true,
-      showTokens: true, showReset: true, showTrend: true, sparkWidth: 8,
+      nameWidth: 16,
+      planWidth: 12,
+      gaugeWidth: 20,
+      showPlan: true,
+      showToday: true,
+      showMtd: true,
+      showTokens: true,
+      showReset: true,
+      showTrend: true,
+      sparkWidth: 8,
     };
   }
   if (termWidth >= 80) {
     return {
-      nameWidth: 14, planWidth: 10, gaugeWidth: 18,
-      showPlan: true, showToday: true, showMtd: false,
-      showTokens: false, showReset: true, showTrend: false, sparkWidth: 0,
+      nameWidth: 14,
+      planWidth: 10,
+      gaugeWidth: 18,
+      showPlan: true,
+      showToday: true,
+      showMtd: false,
+      showTokens: false,
+      showReset: true,
+      showTrend: false,
+      sparkWidth: 0,
     };
   }
   return {
-    nameWidth: 12, planWidth: 0, gaugeWidth: 14,
-    showPlan: false, showToday: true, showMtd: false,
-    showTokens: false, showReset: false, showTrend: false, sparkWidth: 0,
+    nameWidth: 12,
+    planWidth: 0,
+    gaugeWidth: 14,
+    showPlan: false,
+    showToday: true,
+    showMtd: false,
+    showTokens: false,
+    showReset: false,
+    showTrend: false,
+    sparkWidth: 0,
   };
 }
 
@@ -188,14 +230,27 @@ export interface ProvidersListProps {
   expandedIndex: number | null;
 }
 
-export function ProvidersList({ providers, selectedIndex, onSelect, expandedIndex }: ProvidersListProps) {
+export function ProvidersList({
+  providers,
+  selectedIndex,
+  onSelect,
+  expandedIndex,
+}: ProvidersListProps) {
   const colors = useColors();
   const { width: termWidth } = useTerminalDimensions();
 
   const layout = getLayoutTier(termWidth);
   const {
-    nameWidth, planWidth, gaugeWidth, sparkWidth,
-    showPlan, showToday, showMtd, showTokens, showReset, showTrend,
+    nameWidth,
+    planWidth,
+    gaugeWidth,
+    sparkWidth,
+    showPlan,
+    showToday,
+    showMtd,
+    showTokens,
+    showReset,
+    showTrend,
   } = layout;
 
   const grouped = useMemo(() => {
@@ -209,11 +264,11 @@ export function ProvidersList({ providers, selectedIndex, onSelect, expandedInde
     return groups;
   }, [providers, colors]);
 
-  const groupOrder: StatusGroup[] = ['error', 'warn', 'ok'];
+  const groupOrder: StatusGroup[] = ["error", "warn", "ok"];
 
   const fieldColor = (fv: FieldValue): string => {
-    if (fv.state === 'estimated') return colors.textMuted;
-    if (fv.state === 'unavailable') return colors.textSubtle;
+    if (fv.state === "estimated") return colors.textMuted;
+    if (fv.state === "unavailable") return colors.textSubtle;
     return colors.text;
   };
 
@@ -227,12 +282,12 @@ export function ProvidersList({ providers, selectedIndex, onSelect, expandedInde
     const costMtd = getCostMtd(state);
     const tokens = getTotalTokens(state);
     const maxUsage = getMaxUsage(state);
-    const plan = state.usage?.planType ?? '—';
+    const plan = state.usage?.planType ?? "—";
     const reset = getNextReset(state);
 
     const rowBg = isSelected ? selBg : undefined;
     const bgProp = rowBg ? { bg: rowBg } : {};
-    const railChar = isSelected ? '▌' : ' ';
+    const railChar = isSelected ? "▌" : " ";
 
     return (
       <box
@@ -245,7 +300,7 @@ export function ProvidersList({ providers, selectedIndex, onSelect, expandedInde
         {...(rowBg ? { backgroundColor: rowBg } : {})}
       >
         <text width={2} fg={isSelected ? colors.primary : colors.textSubtle} height={1} {...bgProp}>
-          {railChar + ' '}
+          {railChar + " "}
         </text>
         <text width={3} fg={status.color} height={1} {...bgProp}>
           {pad(`${status.icon} `, 3)}
@@ -262,17 +317,22 @@ export function ProvidersList({ providers, selectedIndex, onSelect, expandedInde
           {isSelected ? (
             <text width={gaugeWidth + 5} fg={colors.text} height={1} {...bgProp}>
               {pad(
-                '█'.repeat(Math.round((maxUsage / 100) * gaugeWidth)) +
-                '·'.repeat(gaugeWidth - Math.round((maxUsage / 100) * gaugeWidth)) +
-                ' ' + (maxUsage > 0 ? `${Math.round(maxUsage)}%` : '—'),
+                "█".repeat(Math.round((maxUsage / 100) * gaugeWidth)) +
+                  "·".repeat(gaugeWidth - Math.round((maxUsage / 100) * gaugeWidth)) +
+                  " " +
+                  (maxUsage > 0 ? `${Math.round(maxUsage)}%` : "—"),
                 gaugeWidth + 5,
               )}
             </text>
           ) : (
             <>
-              <InlineGauge percent={maxUsage > 0 ? maxUsage : null} width={gaugeWidth} color={providerColor} />
+              <InlineGauge
+                percent={maxUsage > 0 ? maxUsage : null}
+                width={gaugeWidth}
+                color={providerColor}
+              />
               <text width={5} fg={maxUsage >= 80 ? colors.warning : colors.text} height={1}>
-                {padStart(maxUsage > 0 ? `${Math.round(maxUsage)}%` : '—', 5)}
+                {padStart(maxUsage > 0 ? `${Math.round(maxUsage)}%` : "—", 5)}
               </text>
             </>
           )}
@@ -301,11 +361,13 @@ export function ProvidersList({ providers, selectedIndex, onSelect, expandedInde
           <box width={sparkWidth + 1} height={1} overflow="hidden">
             {isSelected ? (
               <text width={sparkWidth + 1} fg={colors.textMuted} height={1} {...bgProp}>
-                {' ' + '⣀'.repeat(sparkWidth)}
+                {" " + "⣀".repeat(sparkWidth)}
               </text>
             ) : (
               <>
-                <text width={1} height={1}>{' '}</text>
+                <text width={1} height={1}>
+                  {" "}
+                </text>
                 <InlineSparkline history={state.history} width={sparkWidth} />
               </>
             )}
@@ -318,27 +380,59 @@ export function ProvidersList({ providers, selectedIndex, onSelect, expandedInde
   const renderSeparator = (label: string) => (
     <box height={1} paddingX={1} key={`sep-${label}`}>
       <text fg={colors.textSubtle} height={1}>
-        {'─'.repeat(3)} {label} {'─'.repeat(Math.max(0, termWidth - label.length - 10))}
+        {"─".repeat(3)} {label} {"─".repeat(Math.max(0, termWidth - label.length - 10))}
       </text>
     </box>
   );
 
   const renderHeader = () => (
     <box flexDirection="row" height={1}>
-      <text width={2} fg={colors.textMuted} height={1}>{pad('', 2)}</text>
-      <text width={3} fg={colors.textMuted} height={1}>{pad('', 3)}</text>
-      <text width={nameWidth} fg={colors.textMuted} height={1}>{pad('PROVIDER', nameWidth)}</text>
-      {showPlan && <text width={planWidth} fg={colors.textMuted} height={1}>{pad('PLAN', planWidth)}</text>}
-      <text width={gaugeWidth + 5} fg={colors.textMuted} height={1}>{pad('HEADROOM', gaugeWidth + 5)}</text>
-      {showToday && <text width={9} fg={colors.textMuted} height={1}>{padStart('$TODAY', 9)}</text>}
-      {showMtd && <text width={9} fg={colors.textMuted} height={1}>{padStart('$MTD', 9)}</text>}
-      {showTokens && <text width={8} fg={colors.textMuted} height={1}>{padStart('TOKENS', 8)}</text>}
-      {showReset && <text width={9} fg={colors.textMuted} height={1}>{padStart('RESET', 9)}</text>}
-      {showTrend && <text width={sparkWidth + 1} fg={colors.textMuted} height={1}>{' ' + pad('TREND', sparkWidth)}</text>}
+      <text width={2} fg={colors.textMuted} height={1}>
+        {pad("", 2)}
+      </text>
+      <text width={3} fg={colors.textMuted} height={1}>
+        {pad("", 3)}
+      </text>
+      <text width={nameWidth} fg={colors.textMuted} height={1}>
+        {pad("PROVIDER", nameWidth)}
+      </text>
+      {showPlan && (
+        <text width={planWidth} fg={colors.textMuted} height={1}>
+          {pad("PLAN", planWidth)}
+        </text>
+      )}
+      <text width={gaugeWidth + 5} fg={colors.textMuted} height={1}>
+        {pad("HEADROOM", gaugeWidth + 5)}
+      </text>
+      {showToday && (
+        <text width={9} fg={colors.textMuted} height={1}>
+          {padStart("$TODAY", 9)}
+        </text>
+      )}
+      {showMtd && (
+        <text width={9} fg={colors.textMuted} height={1}>
+          {padStart("$MTD", 9)}
+        </text>
+      )}
+      {showTokens && (
+        <text width={8} fg={colors.textMuted} height={1}>
+          {padStart("TOKENS", 8)}
+        </text>
+      )}
+      {showReset && (
+        <text width={9} fg={colors.textMuted} height={1}>
+          {padStart("RESET", 9)}
+        </text>
+      )}
+      {showTrend && (
+        <text width={sparkWidth + 1} fg={colors.textMuted} height={1}>
+          {" " + pad("TREND", sparkWidth)}
+        </text>
+      )}
     </box>
   );
 
-  const rows: JSX.Element[] = [];
+  const rows: React.ReactNode[] = [];
   let isFirst = true;
 
   for (const group of groupOrder) {
@@ -346,10 +440,10 @@ export function ProvidersList({ providers, selectedIndex, onSelect, expandedInde
     if (items.length === 0) continue;
 
     if (!isFirst) {
-      const label = group === 'error' ? 'ERRORS' : group === 'warn' ? 'WARNINGS' : 'OK';
+      const label = group === "error" ? "ERRORS" : group === "warn" ? "WARNINGS" : "OK";
       rows.push(renderSeparator(label));
-    } else if (group !== 'ok' && items.length > 0) {
-      const label = group === 'error' ? 'ERRORS' : 'WARNINGS';
+    } else if (group !== "ok" && items.length > 0) {
+      const label = group === "error" ? "ERRORS" : "WARNINGS";
       rows.push(renderSeparator(label));
     }
 
@@ -359,7 +453,7 @@ export function ProvidersList({ providers, selectedIndex, onSelect, expandedInde
         rows.push(
           <box key={`detail-${item.state.plugin.id}`} paddingX={1}>
             <ProviderDetailPanel provider={item.state} />
-          </box>
+          </box>,
         );
       }
     }
@@ -371,9 +465,7 @@ export function ProvidersList({ providers, selectedIndex, onSelect, expandedInde
     <box flexDirection="column" flexGrow={1}>
       {renderHeader()}
       <scrollbox flexGrow={1}>
-        <box flexDirection="column">
-          {rows}
-        </box>
+        <box flexDirection="column">{rows}</box>
       </scrollbox>
     </box>
   );

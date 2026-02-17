@@ -1,18 +1,31 @@
-import { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo, type ReactNode } from 'react';
-import { initDatabase, closeDatabase, isDatabaseInitialized, getAppRunId } from '@/storage/db.ts';
-import { insertProviderSnapshotBatch } from '@/storage/repos/providerSnapshots.ts';
-import { insertUsageEventBatch } from '@/storage/repos/usageEvents.ts';
-import { upsertAgentSession, insertAgentSessionSnapshot, getLatestStreamTotalsForAllSessions } from '@/storage/repos/agentSessions.ts';
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { closeDatabase, getAppRunId, initDatabase, isDatabaseInitialized } from "@/storage/db.ts";
+import {
+  getLatestStreamTotalsForAllSessions,
+  insertAgentSessionSnapshot,
+  upsertAgentSession,
+} from "@/storage/repos/agentSessions.ts";
+import { insertProviderSnapshotBatch } from "@/storage/repos/providerSnapshots.ts";
+import { insertUsageEventBatch } from "@/storage/repos/usageEvents.ts";
 import type {
-  ProviderSnapshotInsert,
-  UsageEventInsert,
-  AgentSessionUpsert,
   AgentSessionSnapshotInsert,
   AgentSessionStreamSnapshotRow,
+  AgentSessionUpsert,
+  ProviderSnapshotInsert,
   StreamTotals,
-} from '@/storage/types.ts';
-import { computeStreamDelta } from '@/storage/types.ts';
-import { useDemoMode } from './DemoModeContext.tsx';
+  UsageEventInsert,
+} from "@/storage/types.ts";
+import { computeStreamDelta } from "@/storage/types.ts";
+import { useDemoMode } from "./DemoModeContext.tsx";
 
 interface StorageContextValue {
   isReady: boolean;
@@ -21,8 +34,8 @@ interface StorageContextValue {
   recordUsageEvents: (events: UsageEventInsert[]) => void;
   recordAgentSession: (
     session: AgentSessionUpsert,
-    snapshot: Omit<AgentSessionSnapshotInsert, 'agentSessionId'>,
-    streams: Omit<AgentSessionStreamSnapshotRow, 'agentSessionSnapshotId'>[]
+    snapshot: Omit<AgentSessionSnapshotInsert, "agentSessionId">,
+    streams: Omit<AgentSessionStreamSnapshotRow, "agentSessionSnapshotId">[],
   ) => number | null;
 }
 
@@ -70,13 +83,13 @@ export function StorageProvider({ children }: StorageProviderProps) {
               });
             }
           } catch (err) {
-            console.error('Failed to seed previous totals from DB:', err);
+            console.error("Failed to seed previous totals from DB:", err);
           }
           setIsReady(true);
           setAppRunId(getAppRunId());
         }
       } catch (err) {
-        console.error('Failed to initialize database:', err);
+        console.error("Failed to initialize database:", err);
       }
     }
 
@@ -90,109 +103,115 @@ export function StorageProvider({ children }: StorageProviderProps) {
     };
   }, [demoMode]);
 
-  const recordProviderSnapshots = useCallback((snapshots: ProviderSnapshotInsert[]) => {
-    if (!isReady || demoMode || snapshots.length === 0) return;
+  const recordProviderSnapshots = useCallback(
+    (snapshots: ProviderSnapshotInsert[]) => {
+      if (!isReady || demoMode || snapshots.length === 0) return;
 
-    const now = Date.now();
-    const filtered = snapshots.filter(s => {
-      const lastTs = lastProviderSnapshotRef.current.get(s.provider) ?? 0;
-      return now - lastTs >= SNAPSHOT_INTERVAL_MS;
-    });
+      const now = Date.now();
+      const filtered = snapshots.filter((s) => {
+        const lastTs = lastProviderSnapshotRef.current.get(s.provider) ?? 0;
+        return now - lastTs >= SNAPSHOT_INTERVAL_MS;
+      });
 
-    if (filtered.length === 0) return;
+      if (filtered.length === 0) return;
 
-    try {
-      insertProviderSnapshotBatch(filtered);
-      for (const s of filtered) {
-        lastProviderSnapshotRef.current.set(s.provider, now);
+      try {
+        insertProviderSnapshotBatch(filtered);
+        for (const s of filtered) {
+          lastProviderSnapshotRef.current.set(s.provider, now);
+        }
+      } catch (err) {
+        console.error("Failed to record provider snapshots:", err);
       }
-    } catch (err) {
-      console.error('Failed to record provider snapshots:', err);
-    }
-  }, [isReady, demoMode]);
+    },
+    [isReady, demoMode],
+  );
 
-  const recordUsageEvents = useCallback((events: UsageEventInsert[]) => {
-    if (!isReady || demoMode || events.length === 0) return;
+  const recordUsageEvents = useCallback(
+    (events: UsageEventInsert[]) => {
+      if (!isReady || demoMode || events.length === 0) return;
 
-    try {
-      insertUsageEventBatch(events);
-    } catch (err) {
-      console.error('Failed to record usage events:', err);
-    }
-  }, [isReady, demoMode]);
+      try {
+        insertUsageEventBatch(events);
+      } catch (err) {
+        console.error("Failed to record usage events:", err);
+      }
+    },
+    [isReady, demoMode],
+  );
 
-  const recordAgentSession = useCallback((
-    session: AgentSessionUpsert,
-    snapshot: Omit<AgentSessionSnapshotInsert, 'agentSessionId'>,
-    streams: Omit<AgentSessionStreamSnapshotRow, 'agentSessionSnapshotId'>[]
-  ): number | null => {
-    if (!isReady || demoMode) return null;
+  const recordAgentSession = useCallback(
+    (
+      session: AgentSessionUpsert,
+      snapshot: Omit<AgentSessionSnapshotInsert, "agentSessionId">,
+      streams: Omit<AgentSessionStreamSnapshotRow, "agentSessionSnapshotId">[],
+    ): number | null => {
+      if (!isReady || demoMode) return null;
 
-    const sessionKey = `${session.agentId}:${session.sessionId}`;
-    const now = Date.now();
-    const lastTs = lastSessionSnapshotRef.current.get(sessionKey) ?? 0;
+      const sessionKey = `${session.agentId}:${session.sessionId}`;
+      const now = Date.now();
+      const lastTs = lastSessionSnapshotRef.current.get(sessionKey) ?? 0;
 
-    if (now - lastTs < SNAPSHOT_INTERVAL_MS) {
-      return null;
-    }
+      if (now - lastTs < SNAPSHOT_INTERVAL_MS) {
+        return null;
+      }
 
-    try {
-      const agentSessionId = upsertAgentSession(session);
+      try {
+        const agentSessionId = upsertAgentSession(session);
 
-      const snapshotId = insertAgentSessionSnapshot(
-        { ...snapshot, agentSessionId },
-        streams
-      );
+        const snapshotId = insertAgentSessionSnapshot({ ...snapshot, agentSessionId }, streams);
 
-      lastSessionSnapshotRef.current.set(sessionKey, now);
+        lastSessionSnapshotRef.current.set(sessionKey, now);
 
-      const usageEvents: UsageEventInsert[] = [];
-      for (const stream of streams) {
-        const streamKey = `${sessionKey}:${stream.provider}:${stream.model}`;
-        const current: StreamTotals = {
-          inputTokens: stream.inputTokens,
-          outputTokens: stream.outputTokens,
-          cacheReadTokens: stream.cacheReadTokens,
-          cacheWriteTokens: stream.cacheWriteTokens,
-          costUsd: stream.costUsd,
-          requestCount: stream.requestCount,
-        };
+        const usageEvents: UsageEventInsert[] = [];
+        for (const stream of streams) {
+          const streamKey = `${sessionKey}:${stream.provider}:${stream.model}`;
+          const current: StreamTotals = {
+            inputTokens: stream.inputTokens,
+            outputTokens: stream.outputTokens,
+            cacheReadTokens: stream.cacheReadTokens,
+            cacheWriteTokens: stream.cacheWriteTokens,
+            costUsd: stream.costUsd,
+            requestCount: stream.requestCount,
+          };
 
-        const previous = previousTotalsRef.current.get(streamKey);
-        const delta = computeStreamDelta(current, previous);
+          const previous = previousTotalsRef.current.get(streamKey);
+          const delta = computeStreamDelta(current, previous);
 
-        if (delta) {
-          usageEvents.push({
-            timestamp: now,
-            source: 'agent',
-            provider: stream.provider,
-            model: stream.model,
-            agentId: session.agentId,
-            sessionId: session.sessionId,
-            projectPath: session.projectPath ?? null,
-            inputTokens: delta.inputTokens,
-            outputTokens: delta.outputTokens,
-            cacheReadTokens: delta.cacheReadTokens,
-            cacheWriteTokens: delta.cacheWriteTokens,
-            costUsd: delta.costUsd,
-            requestCount: delta.requestCount,
-            pricingSource: stream.pricingSource ?? null,
-          });
+          if (delta) {
+            usageEvents.push({
+              timestamp: now,
+              source: "agent",
+              provider: stream.provider,
+              model: stream.model,
+              agentId: session.agentId,
+              sessionId: session.sessionId,
+              projectPath: session.projectPath ?? null,
+              inputTokens: delta.inputTokens,
+              outputTokens: delta.outputTokens,
+              cacheReadTokens: delta.cacheReadTokens,
+              cacheWriteTokens: delta.cacheWriteTokens,
+              costUsd: delta.costUsd,
+              requestCount: delta.requestCount,
+              pricingSource: stream.pricingSource ?? null,
+            });
+          }
+
+          previousTotalsRef.current.set(streamKey, current);
         }
 
-        previousTotalsRef.current.set(streamKey, current);
-      }
+        if (usageEvents.length > 0) {
+          insertUsageEventBatch(usageEvents);
+        }
 
-      if (usageEvents.length > 0) {
-        insertUsageEventBatch(usageEvents);
+        return snapshotId;
+      } catch (err) {
+        console.error("Failed to record agent session:", err);
+        return null;
       }
-
-      return snapshotId;
-    } catch (err) {
-      console.error('Failed to record agent session:', err);
-      return null;
-    }
-  }, [isReady, demoMode]);
+    },
+    [isReady, demoMode],
+  );
 
   useEffect(() => {
     if (!demoMode || !isReady || !simulator) return;
@@ -204,25 +223,24 @@ export function StorageProvider({ children }: StorageProviderProps) {
     return () => clearInterval(interval);
   }, [demoMode, isReady, simulator]);
 
-  const value: StorageContextValue = useMemo(() => ({
-    isReady,
-    appRunId,
-    recordProviderSnapshots,
-    recordUsageEvents,
-    recordAgentSession,
-  }), [isReady, appRunId, recordProviderSnapshots, recordUsageEvents, recordAgentSession]);
-
-  return (
-    <StorageContext.Provider value={value}>
-      {children}
-    </StorageContext.Provider>
+  const value: StorageContextValue = useMemo(
+    () => ({
+      isReady,
+      appRunId,
+      recordProviderSnapshots,
+      recordUsageEvents,
+      recordAgentSession,
+    }),
+    [isReady, appRunId, recordProviderSnapshots, recordUsageEvents, recordAgentSession],
   );
+
+  return <StorageContext.Provider value={value}>{children}</StorageContext.Provider>;
 }
 
 export function useStorage(): StorageContextValue {
   const context = useContext(StorageContext);
   if (!context) {
-    throw new Error('useStorage must be used within StorageProvider');
+    throw new Error("useStorage must be used within StorageProvider");
   }
   return context;
 }

@@ -1,8 +1,8 @@
-import type { NotificationPlugin, NotificationEvent } from './types/notification.ts';
-import type { ProviderUsageData } from './types/provider.ts';
-import { safeInvoke } from './plugin-host.ts';
-import { createPluginLogger } from './sandbox.ts';
-import type { AppConfig } from '@/config/schema.ts';
+import type { AppConfig } from "@/config/schema.ts";
+import { safeInvoke } from "./plugin-host.ts";
+import { createPluginLogger } from "./sandbox.ts";
+import type { NotificationEvent, NotificationPlugin } from "./types/notification.ts";
+import type { ProviderUsageData } from "./types/provider.ts";
 
 interface DedupEntry {
   key: string;
@@ -42,8 +42,8 @@ class NotificationBus {
   ): Promise<void> {
     if (usage.limitReached) {
       await this.emit(`provider.limitReached:${providerId}`, {
-        type: 'provider.limitReached',
-        severity: 'critical',
+        type: "provider.limitReached",
+        severity: "critical",
         title: `${providerName} Rate Limit Reached`,
         message: `Rate limit reached for ${providerName}. Requests may be throttled.`,
         timestamp: Date.now(),
@@ -52,10 +52,15 @@ class NotificationBus {
     }
 
     const primaryPercent = usage.limits?.primary?.usedPercent;
-    if (primaryPercent !== null && primaryPercent !== undefined && primaryPercent >= 80 && !usage.limitReached) {
+    if (
+      primaryPercent !== null &&
+      primaryPercent !== undefined &&
+      primaryPercent >= 80 &&
+      !usage.limitReached
+    ) {
       await this.emit(`provider.limitReached:warning:${providerId}`, {
-        type: 'provider.limitReached',
-        severity: primaryPercent >= 95 ? 'critical' : 'warning',
+        type: "provider.limitReached",
+        severity: primaryPercent >= 95 ? "critical" : "warning",
         title: `${providerName} Approaching Limit`,
         message: `${providerName} usage at ${Math.round(primaryPercent)}%.`,
         timestamp: Date.now(),
@@ -67,7 +72,7 @@ class NotificationBus {
   async checkBudget(
     cost: number,
     limit: number,
-    budgetType: 'daily' | 'weekly' | 'monthly',
+    budgetType: "daily" | "weekly" | "monthly",
     config: AppConfig,
   ): Promise<void> {
     if (limit <= 0) return;
@@ -77,8 +82,8 @@ class NotificationBus {
 
     if (percent >= config.alerts.criticalPercent) {
       await this.emit(`budget.limitReached:${budgetType}`, {
-        type: 'budget.limitReached',
-        severity: 'critical',
+        type: "budget.limitReached",
+        severity: "critical",
         title: `${label} Budget Critical`,
         message: `${label} spending at ${Math.round(percent)}% ($${cost.toFixed(2)}/$${limit.toFixed(2)}).`,
         timestamp: Date.now(),
@@ -86,8 +91,8 @@ class NotificationBus {
       });
     } else if (percent >= config.alerts.warningPercent) {
       await this.emit(`budget.thresholdCrossed:${budgetType}`, {
-        type: 'budget.thresholdCrossed',
-        severity: 'warning',
+        type: "budget.thresholdCrossed",
+        severity: "warning",
         title: `${label} Budget Warning`,
         message: `${label} spending at ${Math.round(percent)}% ($${cost.toFixed(2)}/$${limit.toFixed(2)}).`,
         timestamp: Date.now(),
@@ -111,7 +116,7 @@ class NotificationBus {
       matchingPlugins.map((plugin) => {
         const config = this.pluginConfigs.get(plugin.id) ?? {};
         const logger = createPluginLogger(plugin.id);
-        return safeInvoke(plugin.id, 'notify', () =>
+        return safeInvoke(plugin.id, "notify", () =>
           plugin.notify({ logger, config, signal: AbortSignal.timeout(10_000) }, event),
         );
       }),

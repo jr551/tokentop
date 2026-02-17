@@ -1,12 +1,10 @@
+export { aggregateSessionUsage } from "./aggregator.ts";
+export { priceSession, priceSessions, priceStream } from "./costing.ts";
 export type {
-  AgentName,
   AgentId,
-  TokenCounts,
-  AgentSessionStream,
-  AgentSessionAggregate,
   AgentInfo,
-} from './types.ts';
-
-export { aggregateSessionUsage } from './aggregator.ts';
-
-export { priceStream, priceSession, priceSessions } from './costing.ts';
+  AgentName,
+  AgentSessionAggregate,
+  AgentSessionStream,
+  TokenCounts,
+} from "./types.ts";

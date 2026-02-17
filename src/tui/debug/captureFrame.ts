@@ -1,16 +1,16 @@
 /**
  * Frame Capture Utilities for TUI Debugging
- * 
+ *
  * Provides functions to capture the current terminal render buffer as text,
  * enabling AI-assisted debugging of visual issues.
- * 
+ *
  * @see docs/debugging.md for comprehensive usage guide
  */
 
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import type { CliRenderer } from '@opentui/core';
-import { PATHS } from '@/storage/paths.ts';
+import type { CliRenderer } from "@opentui/core";
+import * as fs from "fs/promises";
+import * as path from "path";
+import { PATHS } from "@/storage/paths.ts";
 
 /** Metadata stored alongside each frame capture */
 export interface FrameMetadata {
@@ -41,13 +41,13 @@ export interface BurstConfig {
  * Get the frames output directory
  */
 export function getFramesDir(): string {
-  return path.join(PATHS.data.logs, 'frames');
+  return path.join(PATHS.data.logs, "frames");
 }
 
 /**
  * Capture the current render buffer as a text string.
  * This captures exactly what is displayed in the terminal.
- * 
+ *
  * @param renderer - The CliRenderer instance
  * @returns The current frame as a text string with line breaks
  */
@@ -60,30 +60,30 @@ export function captureFrameText(renderer: CliRenderer): string {
  * Generate a timestamp-based filename prefix
  */
 function generateTimestamp(): string {
-  return new Date().toISOString().replace(/[:.]/g, '-');
+  return new Date().toISOString().replace(/[:.]/g, "-");
 }
 
 /**
  * Capture the current frame and write to files.
- * 
+ *
  * Creates two files:
  * - frame-{timestamp}-{label}.txt - The raw frame text
  * - frame-{timestamp}-{label}.json - Metadata (dimensions, timestamp, etc.)
- * 
+ *
  * @param renderer - The CliRenderer instance
  * @param label - Optional label for the capture (default: "manual")
  * @returns Information about the captured files
  */
 export async function captureFrameToFile(
   renderer: CliRenderer,
-  label = 'manual'
+  label = "manual",
 ): Promise<CaptureResult> {
   const dir = getFramesDir();
   await fs.mkdir(dir, { recursive: true });
 
   const ts = generateTimestamp();
   const baseName = `frame-${ts}-${label}`;
-  
+
   const frame = captureFrameText(renderer);
   const metadata: FrameMetadata = {
     timestamp: new Date().toISOString(),
@@ -96,8 +96,8 @@ export async function captureFrameToFile(
   const metadataPath = path.join(dir, `${baseName}.json`);
 
   await Promise.all([
-    fs.writeFile(framePath, frame, 'utf-8'),
-    fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2), 'utf-8'),
+    fs.writeFile(framePath, frame, "utf-8"),
+    fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2), "utf-8"),
   ]);
 
   return { framePath, metadataPath, metadata };
@@ -133,7 +133,7 @@ export class BurstRecorder {
    */
   async start(): Promise<CaptureResult[]> {
     if (this.isRecording) {
-      throw new Error('Burst recording already in progress');
+      throw new Error("Burst recording already in progress");
     }
 
     this.isRecording = true;
@@ -150,7 +150,7 @@ export class BurstRecorder {
       }
 
       this.lastCaptureTime = now;
-      
+
       try {
         const result = await this.captureFrame();
         this.capturedFrames.push(result);
@@ -184,7 +184,7 @@ export class BurstRecorder {
     }
 
     this.isRecording = false;
-    
+
     if (this.cleanupFn) {
       this.cleanupFn();
       this.cleanupFn = null;
@@ -219,13 +219,13 @@ export class BurstRecorder {
     const dir = path.join(getFramesDir(), `burst-${this.burstId}`);
     await fs.mkdir(dir, { recursive: true });
 
-    const frameNum = String(this.framesCaptured + 1).padStart(4, '0');
+    const frameNum = String(this.framesCaptured + 1).padStart(4, "0");
     const baseName = `frame-${frameNum}`;
-    
+
     const frame = captureFrameText(this.renderer);
     const metadata: FrameMetadata = {
       timestamp: new Date().toISOString(),
-      label: 'burst',
+      label: "burst",
       width: this.renderer.width,
       height: this.renderer.height,
       frameIndex: this.framesCaptured + 1,
@@ -236,8 +236,8 @@ export class BurstRecorder {
     const metadataPath = path.join(dir, `${baseName}.json`);
 
     await Promise.all([
-      fs.writeFile(framePath, frame, 'utf-8'),
-      fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2), 'utf-8'),
+      fs.writeFile(framePath, frame, "utf-8"),
+      fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2), "utf-8"),
     ]);
 
     return { framePath, metadataPath, metadata };
@@ -246,7 +246,7 @@ export class BurstRecorder {
 
 /**
  * Create a burst recorder for capturing multiple frames.
- * 
+ *
  * @example
  * ```ts
  * const recorder = createBurstRecorder(renderer, { frameCount: 5 });
@@ -254,9 +254,6 @@ export class BurstRecorder {
  * console.log(`Captured ${frames.length} frames`);
  * ```
  */
-export function createBurstRecorder(
-  renderer: CliRenderer,
-  config: BurstConfig
-): BurstRecorder {
+export function createBurstRecorder(renderer: CliRenderer, config: BurstConfig): BurstRecorder {
   return new BurstRecorder(renderer, config);
 }

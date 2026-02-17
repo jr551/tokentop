@@ -1,6 +1,12 @@
-import type { ModelPricing, ProviderPlugin, ProviderPricing } from '@/plugins/types/provider.ts';
-import { getModelPricing, getProviderModels, normalizeProviderName, setProviderAliases, clearCache as clearModelsDevCache } from './models-dev.ts';
-import { getFallbackPricing, getFallbackProviderPricing } from './fallback.ts';
+import type { ModelPricing, ProviderPlugin, ProviderPricing } from "@/plugins/types/provider.ts";
+import { getFallbackPricing, getFallbackProviderPricing } from "./fallback.ts";
+import {
+  clearCache as clearModelsDevCache,
+  getModelPricing,
+  getProviderModels,
+  normalizeProviderName,
+  setProviderAliases,
+} from "./models-dev.ts";
 
 export function initPricingFromPlugins(
   plugins: readonly ProviderPlugin[],
@@ -12,8 +18,8 @@ export function initPricingFromPlugins(
     const pricing = plugin.pricing;
     if (
       pricing &&
-      'modelsDevProviderId' in pricing &&
-      typeof (pricing as ProviderPricing).modelsDevProviderId === 'string'
+      "modelsDevProviderId" in pricing &&
+      typeof (pricing as ProviderPricing).modelsDevProviderId === "string"
     ) {
       aliases.set(plugin.id, (pricing as ProviderPricing).modelsDevProviderId!);
     }
@@ -30,10 +36,10 @@ export function initPricingFromPlugins(
 
 export async function getPricing(
   providerId: string,
-  modelId: string
+  modelId: string,
 ): Promise<ModelPricing | null> {
   const normalizedProvider = normalizeProviderName(providerId);
-  
+
   const modelsDevPricing = await getModelPricing(normalizedProvider, modelId);
   if (modelsDevPricing) return modelsDevPricing;
 
@@ -44,10 +50,10 @@ export async function getPricing(
 }
 
 export async function getProviderPricing(
-  providerId: string
+  providerId: string,
 ): Promise<Record<string, ModelPricing>> {
   const normalizedProvider = normalizeProviderName(providerId);
-  
+
   const modelsDevPricing = await getProviderModels(normalizedProvider);
   if (modelsDevPricing && Object.keys(modelsDevPricing).length > 0) {
     return modelsDevPricing;
@@ -61,6 +67,6 @@ export function clearPricingCache(): void {
   clearModelsDevCache();
 }
 
-export { estimateCost, estimateSessionCost, formatCost, formatTokenCount } from './estimator.ts';
-export type { TokenUsage } from './estimator.ts';
-export { FALLBACK_PRICING } from './fallback.ts';
+export type { TokenUsage } from "./estimator.ts";
+export { estimateCost, estimateSessionCost, formatCost, formatTokenCount } from "./estimator.ts";
+export { FALLBACK_PRICING } from "./fallback.ts";

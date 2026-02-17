@@ -1,5 +1,5 @@
-import { getDatabase } from '../db.ts';
-import type { ProviderSnapshotInsert, ProviderSnapshotRow, CostSource } from '../types.ts';
+import { getDatabase } from "../db.ts";
+import type { CostSource, ProviderSnapshotInsert, ProviderSnapshotRow } from "../types.ts";
 
 const INSERT_SQL = `
   INSERT INTO provider_snapshots (
@@ -36,7 +36,7 @@ export function insertProviderSnapshot(snapshot: ProviderSnapshotInsert): number
     snapshot.tokensOutput ?? null,
     snapshot.costUsd ?? null,
     snapshot.costSource ?? null,
-    snapshot.rawJson ?? null
+    snapshot.rawJson ?? null,
   );
 
   return Number(result.lastInsertRowid);
@@ -60,7 +60,7 @@ export function insertProviderSnapshotBatch(snapshots: ProviderSnapshotInsert[])
         s.tokensOutput ?? null,
         s.costUsd ?? null,
         s.costSource ?? null,
-        s.rawJson ?? null
+        s.rawJson ?? null,
       );
     }
   });
@@ -72,7 +72,7 @@ export function queryProviderSnapshots(
   provider: string,
   startMs: number,
   endMs: number,
-  limit = 100
+  limit = 100,
 ): ProviderSnapshotRow[] {
   const db = getDatabase();
   const rows = db.prepare(QUERY_BY_PROVIDER_SQL).all(provider, startMs, endMs, limit) as DbRow[];

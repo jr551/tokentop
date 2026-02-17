@@ -1,14 +1,14 @@
-import { useState, useEffect } from 'react';
-import { useColors } from '../contexts/ThemeContext.tsx';
+import { useEffect, useState } from "react";
+import { useColors } from "../contexts/ThemeContext.tsx";
 
 interface ToastProps {
   message: string;
   duration?: number;
   onDismiss: () => void;
-  type?: 'info' | 'success' | 'warning' | 'error';
+  type?: "info" | "success" | "warning" | "error";
 }
 
-export function Toast({ message, duration = 2000, onDismiss, type = 'success' }: ToastProps) {
+export function Toast({ message, duration = 2000, onDismiss, type = "success" }: ToastProps) {
   const colors = useColors();
 
   useEffect(() => {
@@ -43,13 +43,16 @@ export function Toast({ message, duration = 2000, onDismiss, type = 'success' }:
 
 interface ToastState {
   message: string;
-  type: 'info' | 'success' | 'warning' | 'error';
+  type: "info" | "success" | "warning" | "error";
 }
 
 export function useToast() {
   const [toast, setToast] = useState<ToastState | null>(null);
 
-  const showToast = (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'success') => {
+  const showToast = (
+    message: string,
+    type: "info" | "success" | "warning" | "error" = "success",
+  ) => {
     setToast({ message, type });
   };
 

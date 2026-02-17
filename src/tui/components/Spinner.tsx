@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from "react";
 
-const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 const FRAME_INTERVAL = 80;
 
 interface SpinnerProps {
@@ -32,5 +32,5 @@ export function useSpinner(): string {
     return () => clearInterval(interval);
   }, []);
 
-  return SPINNER_FRAMES[frameIndex] ?? '⠋';
+  return SPINNER_FRAMES[frameIndex] ?? "⠋";
 }

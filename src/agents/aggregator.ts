@@ -1,13 +1,13 @@
-import type { SessionUsageData } from '@/plugins/types/agent.ts';
+import type { SessionUsageData } from "@/plugins/types/agent.ts";
 import {
-  totalTokenCount,
   type AgentId,
   type AgentName,
   type AgentSessionAggregate,
   type AgentSessionStream,
   type StreamWindowedTokens,
   type TokenCounts,
-} from './types.ts';
+  totalTokenCount,
+} from "./types.ts";
 
 const ACTIVE_THRESHOLD_MS = 2 * 60 * 1000;
 
@@ -33,21 +33,29 @@ function sumTokens(a: TokenCounts, b: TokenCounts): TokenCounts {
     input: a.input + b.input,
     output: a.output + b.output,
   };
-  
+
   const cacheRead = (a.cacheRead ?? 0) + (b.cacheRead ?? 0);
   if (cacheRead > 0) result.cacheRead = cacheRead;
-  
+
   const cacheWrite = (a.cacheWrite ?? 0) + (b.cacheWrite ?? 0);
   if (cacheWrite > 0) result.cacheWrite = cacheWrite;
-  
+
   return result;
 }
 
 function computeWindowBoundaries(now: number) {
   const nowDate = new Date(now);
-  const startOfDay = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate()).getTime();
+  const startOfDay = new Date(
+    nowDate.getFullYear(),
+    nowDate.getMonth(),
+    nowDate.getDate(),
+  ).getTime();
   const dayOfWeek = nowDate.getDay();
-  const startOfWeek = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate() - dayOfWeek).getTime();
+  const startOfWeek = new Date(
+    nowDate.getFullYear(),
+    nowDate.getMonth(),
+    nowDate.getDate() - dayOfWeek,
+  ).getTime();
   const startOfMonth = new Date(nowDate.getFullYear(), nowDate.getMonth(), 1).getTime();
   return { startOfDay, startOfWeek, startOfMonth };
 }
@@ -60,16 +68,25 @@ interface StreamAccumulator {
 }
 
 export function aggregateSessionUsage(options: AggregateOptions): AgentSessionAggregate[] {
-  const { agentId, agentName, rows, now = Date.now(), activeThresholdMs = ACTIVE_THRESHOLD_MS } = options;
+  const {
+    agentId,
+    agentName,
+    rows,
+    now = Date.now(),
+    activeThresholdMs = ACTIVE_THRESHOLD_MS,
+  } = options;
   const { startOfDay, startOfWeek, startOfMonth } = computeWindowBoundaries(now);
 
-  const sessionMap = new Map<string, {
-    sessionName?: string;
-    projectPath?: string;
-    timestamps: number[];
-    sessionUpdatedAt?: number;
-    streamMap: Map<string, StreamAccumulator>;
-  }>();
+  const sessionMap = new Map<
+    string,
+    {
+      sessionName?: string;
+      projectPath?: string;
+      timestamps: number[];
+      sessionUpdatedAt?: number;
+      streamMap: Map<string, StreamAccumulator>;
+    }
+  >();
 
   for (const row of rows) {
     const existing = sessionMap.get(row.sessionId);
@@ -89,7 +106,7 @@ export function aggregateSessionUsage(options: AggregateOptions): AgentSessionAg
       if (row.sessionUpdatedAt) newSession.sessionUpdatedAt = row.sessionUpdatedAt;
       sessionMap.set(row.sessionId, newSession);
     }
-    
+
     const session = sessionMap.get(row.sessionId)!;
 
     session.timestamps.push(row.timestamp);
@@ -99,7 +116,10 @@ export function aggregateSessionUsage(options: AggregateOptions): AgentSessionAg
     if (row.projectPath && !session.projectPath) {
       session.projectPath = row.projectPath;
     }
-    if (row.sessionUpdatedAt && (!session.sessionUpdatedAt || row.sessionUpdatedAt > session.sessionUpdatedAt)) {
+    if (
+      row.sessionUpdatedAt &&
+      (!session.sessionUpdatedAt || row.sessionUpdatedAt > session.sessionUpdatedAt)
+    ) {
       session.sessionUpdatedAt = row.sessionUpdatedAt;
     }
 
@@ -133,7 +153,7 @@ export function aggregateSessionUsage(options: AggregateOptions): AgentSessionAg
     const startedAt = Math.min(...session.timestamps);
     const lastActivityAt = Math.max(...session.timestamps);
     const lastSeenAt = session.sessionUpdatedAt ?? lastActivityAt;
-    const status = (now - lastSeenAt) <= activeThresholdMs ? 'active' : 'idle';
+    const status = now - lastSeenAt <= activeThresholdMs ? "active" : "idle";
 
     const streams: AgentSessionStream[] = [];
     const streamWindowedTokens = new Map<string, StreamWindowedTokens>();

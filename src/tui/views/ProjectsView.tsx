@@ -1,17 +1,18 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { useKeyboard, useTerminalDimensions } from '@opentui/react';
-import { RGBA } from '@opentui/core';
-import { useAgentSessions } from '../contexts/AgentSessionContext.tsx';
-import { useColors } from '../contexts/ThemeContext.tsx';
-import { useTimeWindow } from '../contexts/TimeWindowContext.tsx';
-import { useInputFocus } from '../contexts/InputContext.tsx';
-import type { AgentSessionAggregate } from '../../agents/types.ts';
+import { RGBA } from "@opentui/core";
+import { useKeyboard, useTerminalDimensions } from "@opentui/react";
+import type React from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { AgentSessionAggregate } from "../../agents/types.ts";
+import { useAgentSessions } from "../contexts/AgentSessionContext.tsx";
+import { useInputFocus } from "../contexts/InputContext.tsx";
+import { useColors } from "../contexts/ThemeContext.tsx";
+import { useTimeWindow } from "../contexts/TimeWindowContext.tsx";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type SortField = 'cost' | 'tokens' | 'sessions' | 'cache' | 'cpr' | 'activity';
+type SortField = "cost" | "tokens" | "sessions" | "cache" | "cpr" | "activity";
 
 interface ModelStats {
   modelId: string;
@@ -54,17 +55,17 @@ const OVERLAY_BG = RGBA.fromValues(0.0, 0.0, 0.0, 0.5);
 
 function padRight(str: string, len: number): string {
   if (str.length >= len) return str.slice(0, len);
-  return str + ' '.repeat(len - str.length);
+  return str + " ".repeat(len - str.length);
 }
 
 function padLeft(str: string, len: number): string {
   if (str.length >= len) return str.slice(0, len);
-  return ' '.repeat(len - str.length) + str;
+  return " ".repeat(len - str.length) + str;
 }
 
 function formatCost(num: number): string {
-  if (num === 0) return '$0';
-  if (num < 0.01) return '<$0.01';
+  if (num === 0) return "$0";
+  if (num < 0.01) return "<$0.01";
   if (num < 10) return `$${num.toFixed(2)}`;
   if (num < 100) return `$${num.toFixed(1)}`;
   if (num < 1000) return `$${Math.round(num)}`;
@@ -78,7 +79,7 @@ function formatTokensCompact(num: number): string {
 }
 
 function formatPercent(val: number): string {
-  if (val < 1 && val > 0) return '<1%';
+  if (val < 1 && val > 0) return "<1%";
   return `${Math.round(val)}%`;
 }
 
@@ -96,14 +97,23 @@ function formatRelativeTime(timestamp: number): string {
 
 function truncate(str: string, maxLen: number): string {
   if (str.length <= maxLen) return str;
-  return str.slice(0, maxLen - 1) + '\u2026';
+  return str.slice(0, maxLen - 1) + "\u2026";
 }
 
 // Sparkline characters for 5-char mini trend
-const SPARK_CHARS = ['\u2581', '\u2582', '\u2583', '\u2584', '\u2585', '\u2586', '\u2587', '\u2588'];
+const SPARK_CHARS = [
+  "\u2581",
+  "\u2582",
+  "\u2583",
+  "\u2584",
+  "\u2585",
+  "\u2586",
+  "\u2587",
+  "\u2588",
+];
 
 function miniSparkline(values: number[], width: number): string {
-  if (values.length === 0) return '\u00B7'.repeat(width);
+  if (values.length === 0) return "\u00B7".repeat(width);
   // Bucket into `width` slots
   const bucketSize = Math.max(1, Math.ceil(values.length / width));
   const buckets: number[] = [];
@@ -116,17 +126,17 @@ function miniSparkline(values: number[], width: number): string {
   const maxVal = Math.max(...buckets, 1);
   return buckets
     .map((v) => {
-      if (v === 0) return '\u00B7';
+      if (v === 0) return "\u00B7";
       const idx = Math.min(Math.floor((v / maxVal) * SPARK_CHARS.length), SPARK_CHARS.length - 1);
       return SPARK_CHARS[idx]!;
     })
-    .join('');
+    .join("");
 }
 
 function makeBar(percent: number, width: number): string {
   const clamped = Math.max(0, Math.min(100, percent));
   const filled = Math.round((clamped / 100) * width);
-  return '\u2588'.repeat(filled) + '\u00B7'.repeat(width - filled);
+  return "\u2588".repeat(filled) + "\u00B7".repeat(width - filled);
 }
 
 // ---------------------------------------------------------------------------
@@ -139,15 +149,14 @@ function aggregateProjects(
 ): ProjectStats[] {
   const statsMap = new Map<string, ProjectStats>();
 
-  const filtered = windowStart !== null
-    ? sessions.filter((s) => s.lastActivityAt >= windowStart)
-    : sessions;
+  const filtered =
+    windowStart !== null ? sessions.filter((s) => s.lastActivityAt >= windowStart) : sessions;
 
   for (const session of filtered) {
-    const path = session.projectPath || 'Unknown';
+    const path = session.projectPath || "Unknown";
     const name = session.projectPath
-      ? session.projectPath.split('/').pop() || session.projectPath
-      : 'Unknown';
+      ? session.projectPath.split("/").pop() || session.projectPath
+      : "Unknown";
 
     let project = statsMap.get(path);
     if (!project) {
@@ -172,7 +181,7 @@ function aggregateProjects(
     }
 
     project.sessionCount += 1;
-    if (session.status === 'active') project.activeSessions += 1;
+    if (session.status === "active") project.activeSessions += 1;
     project.inputTokens += session.totals.input;
     project.outputTokens += session.totals.output;
     project.cacheRead += session.totals.cacheRead ?? 0;
@@ -257,37 +266,43 @@ function aggregateProjects(
 // Sort fields cycle
 // ---------------------------------------------------------------------------
 
-const SORT_FIELDS: SortField[] = ['cost', 'tokens', 'sessions', 'cache', 'cpr', 'activity'];
+const SORT_FIELDS: SortField[] = ["cost", "tokens", "sessions", "cache", "cpr", "activity"];
 
 const SORT_LABELS: Record<SortField, string> = {
-  cost: 'COST',
-  tokens: 'TOKENS',
-  sessions: 'SESSIONS',
-  cache: 'CACHE',
-  cpr: '$/REQ',
-  activity: 'ACTIVITY',
+  cost: "COST",
+  tokens: "TOKENS",
+  sessions: "SESSIONS",
+  cache: "CACHE",
+  cpr: "$/REQ",
+  activity: "ACTIVITY",
 };
 
-function sortProjects(projects: ProjectStats[], field: SortField, _totalCost?: number): ProjectStats[] {
+function sortProjects(
+  projects: ProjectStats[],
+  field: SortField,
+  _totalCost?: number,
+): ProjectStats[] {
   return [...projects].sort((a, b) => {
     switch (field) {
-      case 'cost':
+      case "cost":
         return b.cost - a.cost;
-      case 'tokens':
+      case "tokens":
         return b.tokens - a.tokens;
-      case 'sessions':
+      case "sessions":
         return b.sessionCount - a.sessionCount;
-      case 'cache': {
-        const cacheA = (a.inputTokens + a.cacheRead) > 0 ? a.cacheRead / (a.inputTokens + a.cacheRead) : 0;
-        const cacheB = (b.inputTokens + b.cacheRead) > 0 ? b.cacheRead / (b.inputTokens + b.cacheRead) : 0;
+      case "cache": {
+        const cacheA =
+          a.inputTokens + a.cacheRead > 0 ? a.cacheRead / (a.inputTokens + a.cacheRead) : 0;
+        const cacheB =
+          b.inputTokens + b.cacheRead > 0 ? b.cacheRead / (b.inputTokens + b.cacheRead) : 0;
         return cacheB - cacheA;
       }
-      case 'cpr': {
+      case "cpr": {
         const cprA = a.requestCount > 0 ? a.cost / a.requestCount : 0;
         const cprB = b.requestCount > 0 ? b.cost / b.requestCount : 0;
         return cprB - cprA;
       }
-      case 'activity':
+      case "activity":
         return b.activeSessions - a.activeSessions;
       default:
         return 0;
@@ -307,27 +322,27 @@ interface ColumnSpec {
 }
 
 const COLUMNS: ColumnSpec[] = [
-  { key: 'project', label: 'PROJECT', width: 20, minTermWidth: 0 },
-  { key: 'cost', label: 'COST', width: 8, minTermWidth: 0 },
-  { key: 'share', label: 'SHARE', width: 6, minTermWidth: 80 },
-  { key: 'trend', label: 'TREND', width: 7, minTermWidth: 90 },
-  { key: 'sess', label: 'SESS', width: 7, minTermWidth: 0 },
-  { key: 'cache', label: 'CACHE', width: 7, minTermWidth: 100 },
-  { key: 'cpr', label: '$/REQ', width: 8, minTermWidth: 110 },
-  { key: 'topmodel', label: 'TOP MODEL', width: 18, minTermWidth: 120 },
-  { key: 'activity', label: 'ACTIVITY', width: 8, minTermWidth: 70 },
+  { key: "project", label: "PROJECT", width: 20, minTermWidth: 0 },
+  { key: "cost", label: "COST", width: 8, minTermWidth: 0 },
+  { key: "share", label: "SHARE", width: 6, minTermWidth: 80 },
+  { key: "trend", label: "TREND", width: 7, minTermWidth: 90 },
+  { key: "sess", label: "SESS", width: 7, minTermWidth: 0 },
+  { key: "cache", label: "CACHE", width: 7, minTermWidth: 100 },
+  { key: "cpr", label: "$/REQ", width: 8, minTermWidth: 110 },
+  { key: "topmodel", label: "TOP MODEL", width: 18, minTermWidth: 120 },
+  { key: "activity", label: "ACTIVITY", width: 8, minTermWidth: 70 },
 ];
 
 function getVisibleColumns(termWidth: number): ColumnSpec[] {
   return COLUMNS.filter((c) => termWidth >= c.minTermWidth).map((c) => {
-    if (c.key === 'project') {
+    if (c.key === "project") {
       let w = 20;
       if (termWidth >= 160) w = 40;
       else if (termWidth >= 120) w = 30;
       else if (termWidth >= 100) w = 25;
       return { ...c, width: w };
     }
-    if (c.key === 'topmodel' && termWidth >= 160) {
+    if (c.key === "topmodel" && termWidth >= 160) {
       return { ...c, width: 24 };
     }
     return c;
@@ -347,7 +362,14 @@ interface AggregateHeaderProps {
   sortField: SortField;
 }
 
-function AggregateHeader({ totalCost, globalCost, projectCount, sessionCount, windowLabel, sortField }: AggregateHeaderProps) {
+function AggregateHeader({
+  totalCost,
+  globalCost,
+  projectCount,
+  sessionCount,
+  windowLabel,
+  sortField,
+}: AggregateHeaderProps) {
   const colors = useColors();
   const avgPerProject = projectCount > 0 ? totalCost / projectCount : 0;
   const isFiltered = globalCost !== undefined && globalCost !== totalCost;
@@ -355,14 +377,18 @@ function AggregateHeader({ totalCost, globalCost, projectCount, sessionCount, wi
   return (
     <box flexDirection="row" height={1} justifyContent="space-between" paddingX={1}>
       <text height={1}>
-        <span fg={colors.success}><strong>{formatCost(totalCost)}</strong></span>
-        {isFiltered
-          ? <span fg={colors.textSubtle}> of {formatCost(globalCost)} </span>
-          : <span fg={colors.textMuted}> total  </span>}
+        <span fg={colors.success}>
+          <strong>{formatCost(totalCost)}</strong>
+        </span>
+        {isFiltered ? (
+          <span fg={colors.textSubtle}> of {formatCost(globalCost)} </span>
+        ) : (
+          <span fg={colors.textMuted}> total </span>
+        )}
         <span fg={colors.text}>{projectCount}</span>
-        <span fg={colors.textMuted}> projects  </span>
+        <span fg={colors.textMuted}> projects </span>
         <span fg={colors.text}>{sessionCount}</span>
-        <span fg={colors.textMuted}> sessions  Avg $/proj: </span>
+        <span fg={colors.textMuted}> sessions Avg $/proj: </span>
         <span fg={colors.text}>{formatCost(avgPerProject)}</span>
       </text>
       <text height={1} fg={colors.textMuted}>
@@ -384,23 +410,23 @@ function ProjectRow({ project, isSelected, totalCost, visibleColumns }: ProjectR
   const fg = isSelected ? colors.primary : colors.text;
   const mutedFg = isSelected ? colors.primary : colors.textMuted;
   const subtleFg = isSelected ? colors.primary : colors.textSubtle;
-  const railChar = isSelected ? '\u258C' : ' ';
+  const railChar = isSelected ? "\u258C" : " ";
 
   const share = totalCost > 0 ? (project.cost / totalCost) * 100 : 0;
   const cacheTotal = project.inputTokens + project.cacheRead;
   const cacheRate = cacheTotal > 0 ? (project.cacheRead / cacheTotal) * 100 : 0;
   const costPerReq = project.requestCount > 0 ? project.cost / project.requestCount : 0;
   const topModel = project.models[0];
-  const topModelName = topModel ? (topModel.modelId.split('/').pop() ?? topModel.modelId) : '-';
-  const topModelShare = topModel && project.cost > 0
-    ? Math.round((topModel.cost / project.cost) * 100)
-    : 0;
-  const activityDots = project.activeSessions > 0
-    ? '\u25CF'.repeat(Math.min(project.activeSessions, 5)) +
-      (project.activeSessions > 5 ? `+${project.activeSessions - 5}` : '')
-    : '\u25CB';
+  const topModelName = topModel ? (topModel.modelId.split("/").pop() ?? topModel.modelId) : "-";
+  const topModelShare =
+    topModel && project.cost > 0 ? Math.round((topModel.cost / project.cost) * 100) : 0;
+  const activityDots =
+    project.activeSessions > 0
+      ? "\u25CF".repeat(Math.min(project.activeSessions, 5)) +
+        (project.activeSessions > 5 ? `+${project.activeSessions - 5}` : "")
+      : "\u25CB";
 
-  const colRenderers: Record<string, (w: number) => React.ReactElement> = {
+  const colRenderers: Record<string, (w: number) => React.ReactNode> = {
     project: (w) => (
       <text width={w} height={1} fg={fg}>
         {padRight(truncate(project.name, w - 1), w)}
@@ -418,7 +444,8 @@ function ProjectRow({ project, isSelected, totalCost, visibleColumns }: ProjectR
     ),
     trend: (w) => (
       <text width={w} height={1} fg={subtleFg}>
-        {' '}{miniSparkline(project.trend, 5)}{' '}
+        {" "}
+        {miniSparkline(project.trend, 5)}{" "}
       </text>
     ),
     sess: (w) => (
@@ -427,41 +454,54 @@ function ProjectRow({ project, isSelected, totalCost, visibleColumns }: ProjectR
       </text>
     ),
     cache: (w) => (
-      <text width={w} height={1} fg={cacheRate >= 50 ? (isSelected ? colors.primary : colors.success) : mutedFg}>
-        {padLeft(cacheRate > 0 ? formatPercent(cacheRate) : '-', w)}
+      <text
+        width={w}
+        height={1}
+        fg={cacheRate >= 50 ? (isSelected ? colors.primary : colors.success) : mutedFg}
+      >
+        {padLeft(cacheRate > 0 ? formatPercent(cacheRate) : "-", w)}
       </text>
     ),
     cpr: (w) => (
       <text width={w} height={1} fg={mutedFg}>
-        {padLeft(costPerReq > 0 ? formatCost(costPerReq) : '-', w)}
+        {padLeft(costPerReq > 0 ? formatCost(costPerReq) : "-", w)}
       </text>
     ),
     topmodel: (w) => {
       const nameW = w - 5;
       return (
         <text width={w} height={1} fg={subtleFg}>
-          {padRight(
-            topModel
-              ? `${truncate(topModelName, nameW)} ${topModelShare}%`
-              : '-',
-            w,
-          )}
+          {padRight(topModel ? `${truncate(topModelName, nameW)} ${topModelShare}%` : "-", w)}
         </text>
       );
     },
     activity: (w) => (
-      <text width={w} height={1} fg={project.activeSessions > 0 ? (isSelected ? colors.primary : colors.success) : mutedFg}>
+      <text
+        width={w}
+        height={1}
+        fg={project.activeSessions > 0 ? (isSelected ? colors.primary : colors.success) : mutedFg}
+      >
         {padRight(activityDots, w)}
       </text>
     ),
   };
 
   return (
-    <box flexDirection="row" height={1} backgroundColor={isSelected ? colors.borderMuted : undefined}>
-      <text width={2} height={1} fg={isSelected ? colors.primary : colors.textSubtle}>{railChar} </text>
+    <box
+      flexDirection="row"
+      height={1}
+      {...(isSelected ? { backgroundColor: colors.borderMuted } : {})}
+    >
+      <text width={2} height={1} fg={isSelected ? colors.primary : colors.textSubtle}>
+        {railChar}{" "}
+      </text>
       {visibleColumns.map((col) => {
         const renderer = colRenderers[col.key];
-        return renderer ? <box key={col.key} marginRight={1}>{renderer(col.width)}</box> : null;
+        return renderer ? (
+          <box key={col.key} marginRight={1}>
+            {renderer(col.width)}
+          </box>
+        ) : null;
       })}
     </box>
   );
@@ -484,10 +524,10 @@ function SummaryFooter({ projects, visibleColumns }: SummaryFooterProps) {
   const cacheRate = cacheTotal > 0 ? (totalCacheRead / cacheTotal) * 100 : 0;
   const avgCpr = totalRequests > 0 ? totalCost / totalRequests : 0;
 
-  const colRenderers: Record<string, (w: number) => React.ReactElement> = {
+  const colRenderers: Record<string, (w: number) => React.ReactNode> = {
     project: (w) => (
       <text width={w} height={1} fg={colors.textMuted}>
-        {padRight('TOTAL', w)}
+        {padRight("TOTAL", w)}
       </text>
     ),
     cost: (w) => (
@@ -497,12 +537,12 @@ function SummaryFooter({ projects, visibleColumns }: SummaryFooterProps) {
     ),
     share: (w) => (
       <text width={w} height={1} fg={colors.textMuted}>
-        {padLeft('100%', w)}
+        {padLeft("100%", w)}
       </text>
     ),
     trend: (w) => (
       <text width={w} height={1} fg={colors.textSubtle}>
-        {' '.repeat(w)}
+        {" ".repeat(w)}
       </text>
     ),
     sess: (w) => (
@@ -522,22 +562,28 @@ function SummaryFooter({ projects, visibleColumns }: SummaryFooterProps) {
     ),
     topmodel: (w) => (
       <text width={w} height={1} fg={colors.textSubtle}>
-        {' '.repeat(w)}
+        {" ".repeat(w)}
       </text>
     ),
     activity: (w) => (
       <text width={w} height={1} fg={totalActive > 0 ? colors.success : colors.textMuted}>
-        {padRight(totalActive > 0 ? `${totalActive} live` : 'idle', w)}
+        {padRight(totalActive > 0 ? `${totalActive} live` : "idle", w)}
       </text>
     ),
   };
 
   return (
     <box flexDirection="row" height={1}>
-      <text width={2} height={1} fg={colors.border}>{'\u2500 '}</text>
+      <text width={2} height={1} fg={colors.border}>
+        {"\u2500 "}
+      </text>
       {visibleColumns.map((col) => {
         const renderer = colRenderers[col.key];
-        return renderer ? <box key={col.key} marginRight={1}>{renderer(col.width)}</box> : null;
+        return renderer ? (
+          <box key={col.key} marginRight={1}>
+            {renderer(col.width)}
+          </box>
+        ) : null;
       })}
     </box>
   );
@@ -560,7 +606,7 @@ function InsightsPanel({ projects, termWidth }: InsightsPanelProps) {
     const map = new Map<string, { name: string; cost: number }>();
     for (const p of projects) {
       for (const m of p.models) {
-        const name = m.modelId.split('/').pop() ?? m.modelId;
+        const name = m.modelId.split("/").pop() ?? m.modelId;
         const existing = map.get(name);
         if (existing) {
           existing.cost += m.cost;
@@ -597,9 +643,9 @@ function InsightsPanel({ projects, termWidth }: InsightsPanelProps) {
     if (projects.length === 0) return null;
     const bestCpr = [...projects]
       .filter((p) => p.requestCount > 0)
-      .sort((a, b) => (a.cost / a.requestCount) - (b.cost / b.requestCount))[0];
+      .sort((a, b) => a.cost / a.requestCount - b.cost / b.requestCount)[0];
     const bestCache = [...projects]
-      .filter((p) => (p.inputTokens + p.cacheRead) > 0)
+      .filter((p) => p.inputTokens + p.cacheRead > 0)
       .sort((a, b) => {
         const rateB = b.cacheRead / (b.inputTokens + b.cacheRead);
         const rateA = a.cacheRead / (a.inputTokens + a.cacheRead);
@@ -642,15 +688,23 @@ function InsightsPanel({ projects, termWidth }: InsightsPanelProps) {
       flexShrink={0}
     >
       <box flexDirection="row" paddingX={1} height={1}>
-        <text height={1} fg={colors.textMuted}><strong>CROSS-PROJECT INSIGHTS</strong></text>
-        <text flexGrow={1} height={1}>{' '}</text>
-        <text height={1} fg={colors.textSubtle}>[v] toggle</text>
+        <text height={1} fg={colors.textMuted}>
+          <strong>CROSS-PROJECT INSIGHTS</strong>
+        </text>
+        <text flexGrow={1} height={1}>
+          {" "}
+        </text>
+        <text height={1} fg={colors.textSubtle}>
+          [v] toggle
+        </text>
       </box>
 
       <box flexDirection="row" paddingX={1} gap={2} overflow="hidden">
         {/* COST BY MODEL */}
         <box flexDirection="column" flexGrow={1} overflow="hidden">
-          <text height={1} fg={colors.textMuted}><strong>COST BY MODEL</strong></text>
+          <text height={1} fg={colors.textMuted}>
+            <strong>COST BY MODEL</strong>
+          </text>
           {modelCosts.map((m: { name: string; cost: number }) => (
             <box key={m.name} flexDirection="row" height={1}>
               <text width={nameWidth} height={1} fg={colors.text}>
@@ -665,13 +719,17 @@ function InsightsPanel({ projects, termWidth }: InsightsPanelProps) {
             </box>
           ))}
           {modelCosts.length === 0 && (
-            <text height={1} fg={colors.textSubtle}>No model data</text>
+            <text height={1} fg={colors.textSubtle}>
+              No model data
+            </text>
           )}
         </box>
 
         {/* COST BY AGENT */}
         <box flexDirection="column" flexGrow={1} overflow="hidden">
-          <text height={1} fg={colors.textMuted}><strong>COST BY AGENT</strong></text>
+          <text height={1} fg={colors.textMuted}>
+            <strong>COST BY AGENT</strong>
+          </text>
           {agentCosts.map((a: { name: string; cost: number }) => (
             <box key={a.name} flexDirection="row" height={1}>
               <text width={nameWidth} height={1} fg={colors.text}>
@@ -686,38 +744,49 @@ function InsightsPanel({ projects, termWidth }: InsightsPanelProps) {
             </box>
           ))}
           {agentCosts.length === 0 && (
-            <text height={1} fg={colors.textSubtle}>No agent data</text>
+            <text height={1} fg={colors.textSubtle}>
+              No agent data
+            </text>
           )}
         </box>
 
         {/* EFFICIENCY + BIGGEST MOVER */}
         {isWide && rankings && (
           <box flexDirection="column" width={30} overflow="hidden">
-            <text height={1} fg={colors.textMuted}><strong>RANKINGS</strong></text>
+            <text height={1} fg={colors.textMuted}>
+              <strong>RANKINGS</strong>
+            </text>
             {rankings.bestCpr && (
               <text height={1} fg={colors.textSubtle}>
-                Best $/req: <span fg={colors.success}>{truncate(rankings.bestCpr.name, 10)}</span>
-                {' '}{formatCost(rankings.bestCpr.cost / rankings.bestCpr.requestCount)}
+                Best $/req: <span fg={colors.success}>{truncate(rankings.bestCpr.name, 10)}</span>{" "}
+                {formatCost(rankings.bestCpr.cost / rankings.bestCpr.requestCount)}
               </text>
             )}
             {rankings.bestCache && (
               <text height={1} fg={colors.textSubtle}>
-                Best cache: <span fg={colors.success}>{truncate(rankings.bestCache.name, 10)}</span>
-                {' '}{formatPercent(rankings.bestCache.cacheRead / (rankings.bestCache.inputTokens + rankings.bestCache.cacheRead) * 100)}
+                Best cache: <span fg={colors.success}>{truncate(rankings.bestCache.name, 10)}</span>{" "}
+                {formatPercent(
+                  (rankings.bestCache.cacheRead /
+                    (rankings.bestCache.inputTokens + rankings.bestCache.cacheRead)) *
+                    100,
+                )}
               </text>
             )}
             {rankings.mostActive && rankings.mostActive.activeSessions > 0 && (
               <text height={1} fg={colors.textSubtle}>
-                Most active: <span fg={colors.success}>{truncate(rankings.mostActive.name, 10)}</span>
-                {' '}{rankings.mostActive.activeSessions} live
+                Most active:{" "}
+                <span fg={colors.success}>{truncate(rankings.mostActive.name, 10)}</span>{" "}
+                {rankings.mostActive.activeSessions} live
               </text>
             )}
             {rankings.biggestMover && (
               <text height={1} fg={colors.textSubtle}>
-                Biggest mover: <span fg={rankings.biggestMoverDelta >= 0 ? colors.warning : colors.info}>
+                Biggest mover:{" "}
+                <span fg={rankings.biggestMoverDelta >= 0 ? colors.warning : colors.info}>
                   {truncate(rankings.biggestMover.name, 8)}
-                </span>
-                {' '}{rankings.biggestMoverDelta >= 0 ? '\u25B2' : '\u25BC'}{formatPercent(Math.min(Math.abs(rankings.biggestMoverDelta) * 100, 200))}
+                </span>{" "}
+                {rankings.biggestMoverDelta >= 0 ? "\u25B2" : "\u25BC"}
+                {formatPercent(Math.min(Math.abs(rankings.biggestMoverDelta) * 100, 200))}
               </text>
             )}
           </box>
@@ -749,12 +818,14 @@ function ProjectDetailDrawer({ project, totalCost, onClose: _onClose }: ProjectD
   const share = totalCost > 0 ? (project.cost / totalCost) * 100 : 0;
   const cacheTotal = project.inputTokens + project.cacheRead;
   const cacheRate = cacheTotal > 0 ? (project.cacheRead / cacheTotal) * 100 : 0;
-  const outputShare = (project.inputTokens + project.outputTokens) > 0
-    ? (project.outputTokens / (project.inputTokens + project.outputTokens)) * 100
-    : 0;
+  const outputShare =
+    project.inputTokens + project.outputTokens > 0
+      ? (project.outputTokens / (project.inputTokens + project.outputTokens)) * 100
+      : 0;
   const costPerReq = project.requestCount > 0 ? project.cost / project.requestCount : 0;
   const avgPerSession = project.sessionCount > 0 ? project.cost / project.sessionCount : 0;
-  const allTokens = project.inputTokens + project.outputTokens + project.cacheRead + project.cacheWrite;
+  const allTokens =
+    project.inputTokens + project.outputTokens + project.cacheRead + project.cacheWrite;
 
   // Token composition percentages
   const inputPct = allTokens > 0 ? (project.inputTokens / allTokens) * 100 : 0;
@@ -792,10 +863,14 @@ function ProjectDetailDrawer({ project, totalCost, onClose: _onClose }: ProjectD
         {/* Header */}
         <box flexDirection="row" justifyContent="space-between" height={1} marginBottom={1}>
           <text height={1}>
-            <span fg={colors.primary}><strong>PROJECT: {truncate(project.name, 30)}</strong></span>
+            <span fg={colors.primary}>
+              <strong>PROJECT: {truncate(project.name, 30)}</strong>
+            </span>
             <span fg={colors.textMuted}> ({formatPercent(share)} of total)</span>
           </text>
-          <text height={1} fg={colors.textMuted}>[Esc] Close</text>
+          <text height={1} fg={colors.textMuted}>
+            [Esc] Close
+          </text>
         </box>
 
         {/* Overview stats */}
@@ -811,13 +886,17 @@ function ProjectDetailDrawer({ project, totalCost, onClose: _onClose }: ProjectD
           <box flexDirection="row" height={1} justifyContent="space-between">
             <text height={1}>
               <span fg={colors.textMuted}>Cost: </span>
-              <span fg={colors.success}><strong>{formatCost(project.cost)}</strong></span>
+              <span fg={colors.success}>
+                <strong>{formatCost(project.cost)}</strong>
+              </span>
             </text>
             <text height={1}>
               <span fg={colors.textMuted}>Sessions: </span>
               <span fg={colors.text}>{project.sessionCount}</span>
               <span fg={colors.textMuted}> (</span>
-              <span fg={project.activeSessions > 0 ? colors.success : colors.textMuted}>{project.activeSessions} active</span>
+              <span fg={project.activeSessions > 0 ? colors.success : colors.textMuted}>
+                {project.activeSessions} active
+              </span>
               <span fg={colors.textMuted}>)</span>
             </text>
           </box>
@@ -825,7 +904,12 @@ function ProjectDetailDrawer({ project, totalCost, onClose: _onClose }: ProjectD
             <text height={1}>
               <span fg={colors.textMuted}>Tokens: </span>
               <span fg={colors.text}>{formatTokensCompact(allTokens)}</span>
-              <span fg={colors.textMuted}> (In: {formatTokensCompact(project.inputTokens)}{project.cacheRead > 0 ? ` + ${formatTokensCompact(project.cacheRead)} cached` : ''} / Out: {formatTokensCompact(project.outputTokens)})</span>
+              <span fg={colors.textMuted}>
+                {" "}
+                (In: {formatTokensCompact(project.inputTokens)}
+                {project.cacheRead > 0 ? ` + ${formatTokensCompact(project.cacheRead)} cached` : ""}{" "}
+                / Out: {formatTokensCompact(project.outputTokens)})
+              </span>
             </text>
             <text height={1}>
               <span fg={colors.textMuted}>Requests: </span>
@@ -836,10 +920,24 @@ function ProjectDetailDrawer({ project, totalCost, onClose: _onClose }: ProjectD
 
         {/* MODEL BREAKDOWN */}
         <box flexDirection="row" height={1} paddingX={1} marginTop={0}>
-          <text flexGrow={1} height={1} fg={colors.primary}><strong>MODEL</strong></text>
-          <box width={8} justifyContent="flex-end"><text fg={colors.primary}><strong>COST</strong></text></box>
-          <box width={6} justifyContent="flex-end"><text fg={colors.primary}><strong>SHARE</strong></text></box>
-          <box width={8} justifyContent="flex-end"><text fg={colors.primary}><strong>REQS</strong></text></box>
+          <text flexGrow={1} height={1} fg={colors.primary}>
+            <strong>MODEL</strong>
+          </text>
+          <box width={8} justifyContent="flex-end">
+            <text fg={colors.primary}>
+              <strong>COST</strong>
+            </text>
+          </box>
+          <box width={6} justifyContent="flex-end">
+            <text fg={colors.primary}>
+              <strong>SHARE</strong>
+            </text>
+          </box>
+          <box width={8} justifyContent="flex-end">
+            <text fg={colors.primary}>
+              <strong>REQS</strong>
+            </text>
+          </box>
         </box>
         <box
           flexDirection="column"
@@ -850,46 +948,73 @@ function ProjectDetailDrawer({ project, totalCost, onClose: _onClose }: ProjectD
           flexShrink={0}
         >
           <scrollbox>
-            {project.models.length > 0 ? project.models.slice(0, 8).map((m, idx) => {
-              const modelName = m.modelId.split('/').pop() ?? m.modelId;
-              const modelShare = project.cost > 0 ? (m.cost / project.cost) * 100 : 0;
-              return (
-                <box key={`${m.modelId}-${idx}`} flexDirection="row" height={1} paddingX={1}>
-                  <text flexGrow={1} height={1} fg={colors.text} overflow="hidden">
-                    {truncate(modelName, contentWidth - 28)}
-                  </text>
-                  <box width={8} height={1} justifyContent="flex-end">
-                    <text fg={colors.success}>{formatCost(m.cost)}</text>
+            {project.models.length > 0 ? (
+              project.models.slice(0, 8).map((m, idx) => {
+                const modelName = m.modelId.split("/").pop() ?? m.modelId;
+                const modelShare = project.cost > 0 ? (m.cost / project.cost) * 100 : 0;
+                return (
+                  <box key={`${m.modelId}-${idx}`} flexDirection="row" height={1} paddingX={1}>
+                    <text flexGrow={1} height={1} fg={colors.text} overflow="hidden">
+                      {truncate(modelName, contentWidth - 28)}
+                    </text>
+                    <box width={8} height={1} justifyContent="flex-end">
+                      <text fg={colors.success}>{formatCost(m.cost)}</text>
+                    </box>
+                    <box width={6} height={1} justifyContent="flex-end">
+                      <text fg={colors.textMuted}>{formatPercent(modelShare)}</text>
+                    </box>
+                    <box width={8} height={1} justifyContent="flex-end">
+                      <text fg={colors.textMuted}>{m.requests}</text>
+                    </box>
                   </box>
-                  <box width={6} height={1} justifyContent="flex-end">
-                    <text fg={colors.textMuted}>{formatPercent(modelShare)}</text>
-                  </box>
-                  <box width={8} height={1} justifyContent="flex-end">
-                    <text fg={colors.textMuted}>{m.requests}</text>
-                  </box>
-                </box>
-              );
-            }) : (
-              <text height={1} paddingX={1} fg={colors.textSubtle}>No model data</text>
+                );
+              })
+            ) : (
+              <text height={1} paddingX={1} fg={colors.textSubtle}>
+                No model data
+              </text>
             )}
           </scrollbox>
         </box>
 
         {/* SESSIONS */}
         <box flexDirection="row" height={1} paddingX={1} marginTop={0}>
-          <text flexGrow={1} height={1} fg={colors.primary}><strong>SESSIONS</strong></text>
-          <box width={8} justifyContent="flex-end"><text fg={colors.primary}><strong>COST</strong></text></box>
-          <box width={8} justifyContent="flex-end"><text fg={colors.primary}><strong>TOKENS</strong></text></box>
-          <box width={6} justifyContent="flex-end"><text fg={colors.primary}><strong>AGO</strong></text></box>
-          <box width={2} justifyContent="flex-end"><text fg={colors.primary}> </text></box>
+          <text flexGrow={1} height={1} fg={colors.primary}>
+            <strong>SESSIONS</strong>
+          </text>
+          <box width={8} justifyContent="flex-end">
+            <text fg={colors.primary}>
+              <strong>COST</strong>
+            </text>
+          </box>
+          <box width={8} justifyContent="flex-end">
+            <text fg={colors.primary}>
+              <strong>TOKENS</strong>
+            </text>
+          </box>
+          <box width={6} justifyContent="flex-end">
+            <text fg={colors.primary}>
+              <strong>AGO</strong>
+            </text>
+          </box>
+          <box width={2} justifyContent="flex-end">
+            <text fg={colors.primary}> </text>
+          </box>
         </box>
-        <box flexDirection="column" border borderColor={colors.border} overflow="hidden" flexGrow={1} minHeight={3}>
+        <box
+          flexDirection="column"
+          border
+          borderColor={colors.border}
+          overflow="hidden"
+          flexGrow={1}
+          minHeight={3}
+        >
           <scrollbox flexGrow={1}>
             {project.sessions
               .sort((a, b) => b.lastActivityAt - a.lastActivityAt)
               .slice(0, 15)
               .map((s) => {
-                const modelName = s.streams[0]?.modelId.split('/').pop() ?? 'unknown';
+                const modelName = s.streams[0]?.modelId.split("/").pop() ?? "unknown";
                 return (
                   <box key={s.sessionId} flexDirection="row" height={1} paddingX={1}>
                     <text width={10} height={1} fg={colors.textSubtle} overflow="hidden">
@@ -902,76 +1027,130 @@ function ProjectDetailDrawer({ project, totalCost, onClose: _onClose }: ProjectD
                       <text fg={colors.success}>{formatCost(s.totalCostUsd ?? 0)}</text>
                     </box>
                     <box width={8} height={1} justifyContent="flex-end">
-                      <text fg={colors.textMuted}>{formatTokensCompact(s.totals.input + s.totals.output)}</text>
+                      <text fg={colors.textMuted}>
+                        {formatTokensCompact(s.totals.input + s.totals.output)}
+                      </text>
                     </box>
                     <box width={6} height={1} justifyContent="flex-end">
                       <text fg={colors.textMuted}>{formatRelativeTime(s.lastActivityAt)}</text>
                     </box>
                     <box width={2} height={1} justifyContent="flex-end">
-                      <text fg={s.status === 'active' ? colors.success : colors.textMuted}>
-                        {s.status === 'active' ? '\u25CF' : '\u25CB'}
+                      <text fg={s.status === "active" ? colors.success : colors.textMuted}>
+                        {s.status === "active" ? "\u25CF" : "\u25CB"}
                       </text>
                     </box>
                   </box>
                 );
               })}
             {project.sessions.length === 0 && (
-              <text height={1} paddingX={1} fg={colors.textSubtle}>No sessions</text>
+              <text height={1} paddingX={1} fg={colors.textSubtle}>
+                No sessions
+              </text>
             )}
           </scrollbox>
         </box>
 
         {/* EFFICIENCY + TOKEN COMPOSITION */}
         {height >= 30 && (
-        <box flexDirection="row" gap={1} flexShrink={0} marginTop={0}>
-          {/* Efficiency */}
-          <box flexDirection="column" flexGrow={1} border borderColor={colors.border} paddingX={1} overflow="hidden">
-            <text height={1} fg={colors.primary}><strong>EFFICIENCY</strong></text>
-            <text height={1}>
-              <span fg={colors.textMuted}>Cache leverage: </span>
-              <span fg={cacheRate >= 50 ? colors.success : colors.warning}>{formatPercent(cacheRate)}</span>
-            </text>
-            <text height={1}>
-              <span fg={colors.textMuted}>Output share:   </span>
-              <span fg={outputShare > 65 ? colors.warning : colors.text}>{formatPercent(outputShare)}</span>
-            </text>
-            <text height={1}>
-              <span fg={colors.textMuted}>$/request:      </span>
-              <span fg={colors.text}>{formatCost(costPerReq)}</span>
-            </text>
-            <text height={1}>
-              <span fg={colors.textMuted}>Avg/session:    </span>
-              <span fg={colors.text}>{formatCost(avgPerSession)}</span>
-            </text>
-          </box>
+          <box flexDirection="row" gap={1} flexShrink={0} marginTop={0}>
+            {/* Efficiency */}
+            <box
+              flexDirection="column"
+              flexGrow={1}
+              border
+              borderColor={colors.border}
+              paddingX={1}
+              overflow="hidden"
+            >
+              <text height={1} fg={colors.primary}>
+                <strong>EFFICIENCY</strong>
+              </text>
+              <text height={1}>
+                <span fg={colors.textMuted}>Cache leverage: </span>
+                <span fg={cacheRate >= 50 ? colors.success : colors.warning}>
+                  {formatPercent(cacheRate)}
+                </span>
+              </text>
+              <text height={1}>
+                <span fg={colors.textMuted}>Output share: </span>
+                <span fg={outputShare > 65 ? colors.warning : colors.text}>
+                  {formatPercent(outputShare)}
+                </span>
+              </text>
+              <text height={1}>
+                <span fg={colors.textMuted}>$/request: </span>
+                <span fg={colors.text}>{formatCost(costPerReq)}</span>
+              </text>
+              <text height={1}>
+                <span fg={colors.textMuted}>Avg/session: </span>
+                <span fg={colors.text}>{formatCost(avgPerSession)}</span>
+              </text>
+            </box>
 
-          {/* Token composition */}
-          <box flexDirection="column" flexGrow={1} border borderColor={colors.border} paddingX={1} overflow="hidden">
-            <text height={1} fg={colors.primary}><strong>TOKEN COMPOSITION</strong></text>
-            <box flexDirection="row" height={1}>
-              <text width={12} height={1} fg={colors.textMuted}>{'Input     '}</text>
-              <text width={compBarW} height={1} fg={colors.info}>{makeBar(inputPct, compBarW)}</text>
-              <text height={1} fg={colors.text}> {formatPercent(inputPct)}</text>
-            </box>
-            <box flexDirection="row" height={1}>
-              <text width={12} height={1} fg={colors.textMuted}>{'Output    '}</text>
-              <text width={compBarW} height={1} fg={colors.warning}>{makeBar(outputPct, compBarW)}</text>
-              <text height={1} fg={colors.text}> {formatPercent(outputPct)}</text>
-            </box>
-            <box flexDirection="row" height={1}>
-              <text width={12} height={1} fg={colors.textMuted}>{'Cache read'}</text>
-              <text width={compBarW} height={1} fg={colors.success}>{makeBar(cacheReadPct, compBarW)}</text>
-              <text height={1} fg={colors.text}> {formatPercent(cacheReadPct)}</text>
-            </box>
-            {cacheWritePct > 0 && (
+            {/* Token composition */}
+            <box
+              flexDirection="column"
+              flexGrow={1}
+              border
+              borderColor={colors.border}
+              paddingX={1}
+              overflow="hidden"
+            >
+              <text height={1} fg={colors.primary}>
+                <strong>TOKEN COMPOSITION</strong>
+              </text>
               <box flexDirection="row" height={1}>
-                <text width={12} height={1} fg={colors.textMuted}>{'Cache writ'}</text>
-                <text width={compBarW} height={1} fg={colors.accent}>{makeBar(cacheWritePct, compBarW)}</text>
-                <text height={1} fg={colors.text}> {formatPercent(cacheWritePct)}</text>
+                <text width={12} height={1} fg={colors.textMuted}>
+                  {"Input     "}
+                </text>
+                <text width={compBarW} height={1} fg={colors.info}>
+                  {makeBar(inputPct, compBarW)}
+                </text>
+                <text height={1} fg={colors.text}>
+                  {" "}
+                  {formatPercent(inputPct)}
+                </text>
               </box>
-            )}
+              <box flexDirection="row" height={1}>
+                <text width={12} height={1} fg={colors.textMuted}>
+                  {"Output    "}
+                </text>
+                <text width={compBarW} height={1} fg={colors.warning}>
+                  {makeBar(outputPct, compBarW)}
+                </text>
+                <text height={1} fg={colors.text}>
+                  {" "}
+                  {formatPercent(outputPct)}
+                </text>
+              </box>
+              <box flexDirection="row" height={1}>
+                <text width={12} height={1} fg={colors.textMuted}>
+                  {"Cache read"}
+                </text>
+                <text width={compBarW} height={1} fg={colors.success}>
+                  {makeBar(cacheReadPct, compBarW)}
+                </text>
+                <text height={1} fg={colors.text}>
+                  {" "}
+                  {formatPercent(cacheReadPct)}
+                </text>
+              </box>
+              {cacheWritePct > 0 && (
+                <box flexDirection="row" height={1}>
+                  <text width={12} height={1} fg={colors.textMuted}>
+                    {"Cache writ"}
+                  </text>
+                  <text width={compBarW} height={1} fg={colors.accent}>
+                    {makeBar(cacheWritePct, compBarW)}
+                  </text>
+                  <text height={1} fg={colors.text}>
+                    {" "}
+                    {formatPercent(cacheWritePct)}
+                  </text>
+                </box>
+              )}
+            </box>
           </box>
-        </box>
         )}
       </box>
     </box>
@@ -1015,10 +1194,10 @@ export function ProjectsView() {
   const { setInputFocused } = useInputFocus();
 
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [sortField, setSortField] = useState<SortField>('cost');
+  const [sortField, setSortField] = useState<SortField>("cost");
   const [showInsights, setShowInsights] = useState(termHeight >= 35);
   const [drawerProject, setDrawerProject] = useState<ProjectStats | null>(null);
-  const [filterQuery, setFilterQuery] = useState('');
+  const [filterQuery, setFilterQuery] = useState("");
   const [isFiltering, setIsFiltering] = useState(false);
 
   // Aggregate projects
@@ -1041,22 +1220,23 @@ export function ProjectsView() {
     if (!filterQuery) return projectStats;
     const q = filterQuery.toLowerCase();
     return projectStats.filter(
-      (p: ProjectStats) =>
-        p.name.toLowerCase().includes(q) || p.path.toLowerCase().includes(q),
+      (p: ProjectStats) => p.name.toLowerCase().includes(q) || p.path.toLowerCase().includes(q),
     );
   }, [projectStats, filterQuery]);
 
   const visibleCost = useMemo(
-    () => filterQuery
-      ? filteredProjects.reduce((s: number, p: ProjectStats) => s + p.cost, 0)
-      : totalCost,
+    () =>
+      filterQuery
+        ? filteredProjects.reduce((s: number, p: ProjectStats) => s + p.cost, 0)
+        : totalCost,
     [filterQuery, filteredProjects, totalCost],
   );
 
   const visibleSessions = useMemo(
-    () => filterQuery
-      ? filteredProjects.reduce((s: number, p: ProjectStats) => s + p.sessionCount, 0)
-      : totalSessions,
+    () =>
+      filterQuery
+        ? filteredProjects.reduce((s: number, p: ProjectStats) => s + p.sessionCount, 0)
+        : totalSessions,
     [filterQuery, filteredProjects, totalSessions],
   );
 
@@ -1090,7 +1270,7 @@ export function ProjectsView() {
       (key: { name: string; shift?: boolean; ctrl?: boolean }) => {
         // Drawer open: only Esc closes
         if (drawerProject) {
-          if (key.name === 'escape') {
+          if (key.name === "escape") {
             setDrawerProject(null);
           }
           return;
@@ -1098,58 +1278,57 @@ export function ProjectsView() {
 
         // Filter mode
         if (isFiltering) {
-          if (key.name === 'escape') {
+          if (key.name === "escape") {
             setIsFiltering(false);
-            setFilterQuery('');
-          } else if (key.name === 'enter' || key.name === 'return') {
+            setFilterQuery("");
+          } else if (key.name === "enter" || key.name === "return") {
             setIsFiltering(false);
           }
           return;
         }
 
         // Navigation
-        if (key.name === 'down' || key.name === 'j') {
+        if (key.name === "down" || key.name === "j") {
           setSelectedIndex((prev: number) => Math.min(prev + 1, sortedProjects.length - 1));
-        } else if (key.name === 'up' || key.name === 'k') {
+        } else if (key.name === "up" || key.name === "k") {
           setSelectedIndex((prev: number) => Math.max(prev - 1, 0));
         }
         // Sort cycling
-        else if (key.name === 's') {
+        else if (key.name === "s") {
           setSortField((prev: SortField) => {
             const idx = SORT_FIELDS.indexOf(prev);
             return SORT_FIELDS[(idx + 1) % SORT_FIELDS.length]!;
           });
         }
         // Time window
-        else if (key.name === 't') {
+        else if (key.name === "t") {
           cycleWindow();
         }
         // Toggle insights panel
-        else if (key.name === 'v') {
+        else if (key.name === "v") {
           setShowInsights((prev: boolean) => !prev);
         }
         // Open detail drawer
-        else if (key.name === 'enter' || key.name === 'return') {
+        else if (key.name === "enter" || key.name === "return") {
           const project = sortedProjects[selectedIndex];
           if (project) {
             setDrawerProject(project);
           }
         }
         // Filter
-        else if (key.name === '/' || key.name === 'f') {
+        else if (key.name === "/" || key.name === "f") {
           setIsFiltering(true);
         }
         // Clear filter
-        else if (key.name === 'escape') {
+        else if (key.name === "escape") {
           if (filterQuery) {
-            setFilterQuery('');
+            setFilterQuery("");
           }
         }
         // Jump to top/bottom
-        else if (key.name === 'g') {
+        else if (key.name === "g") {
           setSelectedIndex(0);
-        }
-        else if (key.name === 'G' || (key.name === 'g' && key.shift)) {
+        } else if (key.name === "G" || (key.name === "g" && key.shift)) {
           setSelectedIndex(Math.max(0, sortedProjects.length - 1));
         }
       },
@@ -1173,7 +1352,9 @@ export function ProjectsView() {
         <EmptyState hasFilter={filterQuery.length > 0} />
         <box flexDirection="row" height={1} paddingLeft={1}>
           <text fg={colors.textSubtle}>
-            {filterQuery ? 'Esc clear filter  / edit filter  t time window' : 't time window  / filter'}
+            {filterQuery
+              ? "Esc clear filter  / edit filter  t time window"
+              : "t time window  / filter"}
           </text>
         </box>
       </box>
@@ -1203,7 +1384,9 @@ export function ProjectsView() {
 
       {/* Column headers */}
       <box flexDirection="row" height={1} marginTop={0}>
-        <text width={2} height={1} fg={colors.textMuted}>{' '}</text>
+        <text width={2} height={1} fg={colors.textMuted}>
+          {" "}
+        </text>
         {visibleColumns.map((col: ColumnSpec) => (
           <box key={col.key} marginRight={1}>
             <text width={col.width} height={1} fg={colors.textMuted}>
@@ -1226,7 +1409,7 @@ export function ProjectsView() {
             textColor={colors.text}
             cursorColor={colors.primary}
           />
-          <text fg={colors.textSubtle}> (esc clear  enter apply)</text>
+          <text fg={colors.textSubtle}> (esc clear enter apply)</text>
         </box>
       )}
 
@@ -1266,10 +1449,10 @@ export function ProjectsView() {
       <box flexDirection="row" height={1} paddingLeft={1} flexShrink={0}>
         <text fg={colors.textSubtle} height={1}>
           {isFiltering
-            ? 'Type to filter  Esc cancel  Enter apply'
+            ? "Type to filter  Esc cancel  Enter apply"
             : filterQuery
               ? `Filter: "${filterQuery}"  Esc clear  / edit`
-              : '\u2191\u2193 navigate  Enter details  s sort  t time  v insights  / filter'}
+              : "\u2191\u2193 navigate  Enter details  s sort  t time  v insights  / filter"}
         </text>
       </box>
     </box>

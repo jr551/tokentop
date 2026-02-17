@@ -1,13 +1,13 @@
 import type {
-  ProviderPlugin,
-  ProviderFetchContext,
-  ProviderUsageData,
-  Credentials,
   CredentialResult,
+  Credentials,
   OAuthCredentials,
   PluginContext,
   ProviderAuth,
-} from '../types/provider.ts';
+  ProviderFetchContext,
+  ProviderPlugin,
+  ProviderUsageData,
+} from "../types/provider.ts";
 
 interface CodexCliCredentials {
   access_token?: string;
@@ -57,21 +57,21 @@ interface CodexUsageResponse {
 
 export const codexPlugin: ProviderPlugin = {
   apiVersion: 2,
-  id: 'codex',
-  type: 'provider',
-  name: 'Codex',
-  version: '1.0.0',
+  id: "codex",
+  type: "provider",
+  name: "Codex",
+  version: "1.0.0",
 
   meta: {
-    description: 'OpenAI Codex subscription usage tracking (OAuth)',
-    homepage: 'https://openai.com/codex',
-    brandColor: '#10a37f',
+    description: "OpenAI Codex subscription usage tracking (OAuth)",
+    homepage: "https://openai.com/codex",
+    brandColor: "#10a37f",
   },
 
   permissions: {
     network: {
       enabled: true,
-      allowedDomains: ['chatgpt.com'],
+      allowedDomains: ["chatgpt.com"],
     },
     env: {
       read: false,
@@ -79,7 +79,7 @@ export const codexPlugin: ProviderPlugin = {
     },
     filesystem: {
       read: true,
-      paths: ['~/.codex'],
+      paths: ["~/.codex"],
     },
   },
 
@@ -91,12 +91,12 @@ export const codexPlugin: ProviderPlugin = {
   },
 
   pricing: {
-    modelsDevProviderId: 'openai',
+    modelsDevProviderId: "openai",
   },
 
   auth: {
     async discover(ctx: PluginContext): Promise<CredentialResult> {
-      const entry = await ctx.authSources.opencode.getProviderEntry('openai');
+      const entry = await ctx.authSources.opencode.getProviderEntry("openai");
       if (entry) {
         const accessToken = entry.accessToken || entry.access;
         const refreshToken = entry.refreshToken || entry.refresh;
@@ -111,7 +111,7 @@ export const codexPlugin: ProviderPlugin = {
                 expiresAt ?? undefined,
                 entry.accountId,
               ),
-              source: 'opencode',
+              source: "opencode",
             },
           };
         }
@@ -130,12 +130,12 @@ export const codexPlugin: ProviderPlugin = {
               data.expires_at,
               data.account_id,
             ),
-            source: 'external',
+            source: "external",
           },
         };
       }
 
-      return { ok: false, reason: 'missing', message: 'No Codex credentials found' };
+      return { ok: false, reason: "missing", message: "No Codex credentials found" };
     },
 
     isConfigured(credentials: Credentials): boolean {
@@ -149,42 +149,42 @@ export const codexPlugin: ProviderPlugin = {
     if (!credentials.oauth?.accessToken) {
       return {
         fetchedAt: Date.now(),
-        error: 'OAuth token required. Sign in via OpenCode with ChatGPT Pro account.',
+        error: "OAuth token required. Sign in via OpenCode with ChatGPT Pro account.",
       };
     }
 
     if (!credentials.oauth.accountId) {
       return {
         fetchedAt: Date.now(),
-        error: 'ChatGPT account ID required. Re-authenticate in OpenCode.',
+        error: "ChatGPT account ID required. Re-authenticate in OpenCode.",
       };
     }
 
     const headers: Record<string, string> = {
-      'Authorization': `Bearer ${credentials.oauth.accessToken}`,
-      'ChatGPT-Account-Id': credentials.oauth.accountId,
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-      'User-Agent': 'tokentop',
+      Authorization: `Bearer ${credentials.oauth.accessToken}`,
+      "ChatGPT-Account-Id": credentials.oauth.accountId,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "User-Agent": "tokentop",
     };
 
     try {
-      const response = await http.fetch('https://chatgpt.com/backend-api/wham/usage', {
-        method: 'GET',
+      const response = await http.fetch("https://chatgpt.com/backend-api/wham/usage", {
+        method: "GET",
         headers,
       });
 
       if (!response.ok) {
-        const bodyText = await response.text().catch(() => '');
-        log.warn('Failed to fetch ChatGPT usage', { status: response.status, body: bodyText });
-        
+        const bodyText = await response.text().catch(() => "");
+        log.warn("Failed to fetch ChatGPT usage", { status: response.status, body: bodyText });
+
         if (response.status === 401) {
           return {
             fetchedAt: Date.now(),
-            error: 'OAuth token expired. Re-authenticate in OpenCode.',
+            error: "OAuth token expired. Re-authenticate in OpenCode.",
           };
         }
-        
+
         return {
           fetchedAt: Date.now(),
           error: `API error: ${response.status} ${response.statusText}`,
@@ -194,12 +194,12 @@ export const codexPlugin: ProviderPlugin = {
       const data = (await response.json()) as CodexUsageResponse;
 
       const planTypeMap: Record<string, string> = {
-        'plus': 'ChatGPT Plus',
-        'pro': 'ChatGPT Pro',
-        'team': 'ChatGPT Team',
-        'enterprise': 'ChatGPT Enterprise',
+        plus: "ChatGPT Plus",
+        pro: "ChatGPT Pro",
+        team: "ChatGPT Team",
+        enterprise: "ChatGPT Enterprise",
       };
-      const planType = planTypeMap[data.plan_type] ?? data.plan_type ?? 'ChatGPT';
+      const planType = planTypeMap[data.plan_type] ?? data.plan_type ?? "ChatGPT";
 
       const result: ProviderUsageData = {
         planType,
@@ -215,7 +215,7 @@ export const codexPlugin: ProviderPlugin = {
           const pw = data.rate_limit.primary_window;
           result.limits.primary = {
             usedPercent: pw.used_percent,
-            label: '5-hour window',
+            label: "5-hour window",
             ...(pw.reset_at ? { resetsAt: pw.reset_at * 1000 } : {}),
           };
         }
@@ -224,7 +224,7 @@ export const codexPlugin: ProviderPlugin = {
           const sw = data.rate_limit.secondary_window;
           result.limits.secondary = {
             usedPercent: sw.used_percent,
-            label: '7-day window',
+            label: "7-day window",
             ...(sw.reset_at ? { resetsAt: sw.reset_at * 1000 } : {}),
           };
         }
@@ -240,10 +240,10 @@ export const codexPlugin: ProviderPlugin = {
 
       return result;
     } catch (err) {
-      log.error('Failed to fetch ChatGPT usage', { error: err });
+      log.error("Failed to fetch ChatGPT usage", { error: err });
       return {
         fetchedAt: Date.now(),
-        error: err instanceof Error ? err.message : 'Unknown error',
+        error: err instanceof Error ? err.message : "Unknown error",
       };
     }
   },

@@ -1,6 +1,6 @@
-import { z } from 'zod';
-import type { BasePlugin, PluginHttpClient, PluginLogger } from './base.ts';
-import type { Credentials, OAuthCredentials, PluginContext } from './provider.ts';
+import { z } from "zod";
+import type { BasePlugin, PluginHttpClient, PluginLogger } from "./base.ts";
+import type { Credentials, OAuthCredentials, PluginContext } from "./provider.ts";
 
 export const AgentCapabilitiesSchema = z.object({
   sessionParsing: z.boolean(),
@@ -38,7 +38,7 @@ export interface AgentProviderConfig {
 
 export interface SessionParseOptions {
   sessionId?: string;
-  timePeriod?: 'session' | 'daily' | 'weekly' | 'monthly';
+  timePeriod?: "session" | "daily" | "weekly" | "monthly";
   limit?: number;
   /** Epoch ms — only return sessions updated after this timestamp. */
   since?: number;
@@ -84,7 +84,7 @@ export interface ActivityUpdate {
 export type ActivityCallback = (update: ActivityUpdate) => void;
 
 export interface AgentPlugin extends BasePlugin {
-  readonly type: 'agent';
+  readonly type: "agent";
   readonly agent: AgentConfig;
   readonly capabilities: AgentCapabilities;
 

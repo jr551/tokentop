@@ -1,5 +1,5 @@
-import { $ } from 'bun';
-import { platform } from 'os';
+import { $ } from "bun";
+import { platform } from "os";
 
 /**
  * Custom clipboard implementation with platform-specific fallbacks.
@@ -23,10 +23,10 @@ import { platform } from 'os';
  */
 function writeOsc52(text: string): void {
   if (!process.stdout.isTTY) return;
-  const base64 = Buffer.from(text).toString('base64');
+  const base64 = Buffer.from(text).toString("base64");
   const osc52 = `\x1b]52;c;${base64}\x07`;
   // tmux and screen require DCS passthrough wrapping
-  const passthrough = process.env['TMUX'] || process.env['STY'];
+  const passthrough = process.env["TMUX"] || process.env["STY"];
   const sequence = passthrough ? `\x1bPtmux;\x1b${osc52}\x1b\\` : osc52;
   process.stdout.write(sequence);
 }
@@ -38,30 +38,30 @@ function getCopyMethod(): (text: string) => Promise<void> {
 
   const os = platform();
 
-  if (os === 'darwin' && Bun.which('osascript')) {
+  if (os === "darwin" && Bun.which("osascript")) {
     copyMethod = async (text: string) => {
-      const escaped = text.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+      const escaped = text.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
       await $`osascript -e 'set the clipboard to "${escaped}"'`.nothrow().quiet();
     };
     return copyMethod;
   }
 
-  if (os === 'linux') {
-    if (process.env['WAYLAND_DISPLAY'] && Bun.which('wl-copy')) {
+  if (os === "linux") {
+    if (process.env["WAYLAND_DISPLAY"] && Bun.which("wl-copy")) {
       copyMethod = async (text: string) => {
-        const proc = Bun.spawn(['wl-copy'], { stdin: 'pipe', stdout: 'ignore', stderr: 'ignore' });
+        const proc = Bun.spawn(["wl-copy"], { stdin: "pipe", stdout: "ignore", stderr: "ignore" });
         proc.stdin.write(text);
         proc.stdin.end();
         await proc.exited.catch(() => {});
       };
       return copyMethod;
     }
-    if (Bun.which('xclip')) {
+    if (Bun.which("xclip")) {
       copyMethod = async (text: string) => {
-        const proc = Bun.spawn(['xclip', '-selection', 'clipboard'], {
-          stdin: 'pipe',
-          stdout: 'ignore',
-          stderr: 'ignore',
+        const proc = Bun.spawn(["xclip", "-selection", "clipboard"], {
+          stdin: "pipe",
+          stdout: "ignore",
+          stderr: "ignore",
         });
         proc.stdin.write(text);
         proc.stdin.end();
@@ -69,12 +69,12 @@ function getCopyMethod(): (text: string) => Promise<void> {
       };
       return copyMethod;
     }
-    if (Bun.which('xsel')) {
+    if (Bun.which("xsel")) {
       copyMethod = async (text: string) => {
-        const proc = Bun.spawn(['xsel', '--clipboard', '--input'], {
-          stdin: 'pipe',
-          stdout: 'ignore',
-          stderr: 'ignore',
+        const proc = Bun.spawn(["xsel", "--clipboard", "--input"], {
+          stdin: "pipe",
+          stdout: "ignore",
+          stderr: "ignore",
         });
         proc.stdin.write(text);
         proc.stdin.end();
@@ -84,21 +84,21 @@ function getCopyMethod(): (text: string) => Promise<void> {
     }
   }
 
-  if (os === 'win32') {
+  if (os === "win32") {
     copyMethod = async (text: string) => {
       const proc = Bun.spawn(
         [
-          'powershell.exe',
-          '-NonInteractive',
-          '-NoProfile',
-          '-Command',
-          '[Console]::InputEncoding = [System.Text.Encoding]::UTF8; Set-Clipboard -Value ([Console]::In.ReadToEnd())',
+          "powershell.exe",
+          "-NonInteractive",
+          "-NoProfile",
+          "-Command",
+          "[Console]::InputEncoding = [System.Text.Encoding]::UTF8; Set-Clipboard -Value ([Console]::In.ReadToEnd())",
         ],
         {
-          stdin: 'pipe',
-          stdout: 'ignore',
-          stderr: 'ignore',
-        }
+          stdin: "pipe",
+          stdout: "ignore",
+          stderr: "ignore",
+        },
       );
       proc.stdin.write(text);
       proc.stdin.end();

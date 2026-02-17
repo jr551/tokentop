@@ -1,15 +1,15 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
-import { useKeyboard, useTerminalDimensions } from '@opentui/react';
-import type { ScrollBoxRenderable } from '@opentui/core';
-import { useColors } from '../contexts/ThemeContext.tsx';
-import { useLogs, type LogEntry, type LogLevel } from '../contexts/LogContext.tsx';
-import { useInputFocus } from '../contexts/InputContext.tsx';
-import { pluginRegistry } from '@/plugins/registry.ts';
-import { checkAllPluginUpdates, type PluginUpdateInfo } from '@/plugins/update-checker.ts';
-import { ModalBackdrop, Z_INDEX } from './ModalBackdrop.tsx';
+import type { ScrollBoxRenderable } from "@opentui/core";
+import { useKeyboard, useTerminalDimensions } from "@opentui/react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { pluginRegistry } from "@/plugins/registry.ts";
+import { checkAllPluginUpdates, type PluginUpdateInfo } from "@/plugins/update-checker.ts";
+import { useInputFocus } from "../contexts/InputContext.tsx";
+import { type LogEntry, type LogLevel, useLogs } from "../contexts/LogContext.tsx";
+import { useColors } from "../contexts/ThemeContext.tsx";
+import { ModalBackdrop, Z_INDEX } from "./ModalBackdrop.tsx";
 
-type DebugTab = 'logs' | 'inspector' | 'plugins';
-type PluginSort = 'name' | 'type' | 'official';
+type DebugTab = "logs" | "inspector" | "plugins";
+type PluginSort = "name" | "type" | "official";
 
 interface DebugInspectorData {
   sessions: Array<{
@@ -41,21 +41,21 @@ interface DebugPanelProps {
 }
 
 function padRight(str: string, len: number): string {
-  return str.length >= len ? str.slice(0, len) : str + ' '.repeat(len - str.length);
+  return str.length >= len ? str.slice(0, len) : str + " ".repeat(len - str.length);
 }
 
-const LOG_LEVELS: LogLevel[] = ['debug', 'info', 'warn', 'error'];
+const LOG_LEVELS: LogLevel[] = ["debug", "info", "warn", "error"];
 const LOG_LEVEL_RANK: Record<LogLevel, number> = { debug: 0, info: 1, warn: 2, error: 3 };
 
 function filterByLevel(logs: LogEntry[], minLevel: LogLevel): LogEntry[] {
   const minRank = LOG_LEVEL_RANK[minLevel];
   if (minRank === 0) return logs;
-  return logs.filter(e => LOG_LEVEL_RANK[e.level] >= minRank);
+  return logs.filter((e) => LOG_LEVEL_RANK[e.level] >= minRank);
 }
 
 function nextLevel(current: LogLevel): LogLevel {
   const idx = LOG_LEVELS.indexOf(current);
-  return LOG_LEVELS[(idx + 1) % LOG_LEVELS.length] ?? 'debug';
+  return LOG_LEVELS[(idx + 1) % LOG_LEVELS.length] ?? "debug";
 }
 
 export function DebugPanel({ onClose, inspectorData }: DebugPanelProps) {
@@ -63,10 +63,10 @@ export function DebugPanel({ onClose, inspectorData }: DebugPanelProps) {
   const { width: termWidth, height: termHeight } = useTerminalDimensions();
   const { logs, clearLogs } = useLogs();
   const { setInputFocused } = useInputFocus();
-  const [activeTab, setActiveTab] = useState<DebugTab>('logs');
+  const [activeTab, setActiveTab] = useState<DebugTab>("logs");
   const [follow, setFollow] = useState(true);
-  const [minLevel, setMinLevel] = useState<LogLevel>('info');
-  const [pluginSort, setPluginSort] = useState<PluginSort>('type');
+  const [minLevel, setMinLevel] = useState<LogLevel>("info");
+  const [pluginSort, setPluginSort] = useState<PluginSort>("type");
   const scrollboxRef = useRef<ScrollBoxRenderable>(null);
   const inspectorScrollboxRef = useRef<ScrollBoxRenderable>(null);
   const pluginsScrollboxRef = useRef<ScrollBoxRenderable>(null);
@@ -82,7 +82,7 @@ export function DebugPanel({ onClose, inspectorData }: DebugPanelProps) {
   }, [setInputFocused]);
 
   useEffect(() => {
-    if (follow && activeTab === 'logs') {
+    if (follow && activeTab === "logs") {
       const scrollbox = scrollboxRef.current;
       if (scrollbox) {
         scrollbox.scrollTo(scrollbox.scrollHeight);
@@ -91,136 +91,136 @@ export function DebugPanel({ onClose, inspectorData }: DebugPanelProps) {
   }, [logs.length, follow, activeTab]);
 
   useKeyboard((key) => {
-    if (key.name === 'escape') {
+    if (key.name === "escape") {
       onClose();
       return;
     }
 
-    const tabs: DebugTab[] = ['logs', 'inspector', 'plugins'];
-    if (key.name === 'tab' || key.sequence === '[' || key.sequence === ']') {
-      setActiveTab(prev => tabs[(tabs.indexOf(prev) + 1) % tabs.length] ?? 'logs');
+    const tabs: DebugTab[] = ["logs", "inspector", "plugins"];
+    if (key.name === "tab" || key.sequence === "[" || key.sequence === "]") {
+      setActiveTab((prev) => tabs[(tabs.indexOf(prev) + 1) % tabs.length] ?? "logs");
       lastKeyRef.current = null;
       return;
     }
-    if (key.name === '1') {
-      setActiveTab('logs');
+    if (key.name === "1") {
+      setActiveTab("logs");
       lastKeyRef.current = null;
       return;
     }
-    if (key.name === '2') {
-      setActiveTab('inspector');
+    if (key.name === "2") {
+      setActiveTab("inspector");
       lastKeyRef.current = null;
       return;
     }
-    if (key.name === '3') {
-      setActiveTab('plugins');
+    if (key.name === "3") {
+      setActiveTab("plugins");
       lastKeyRef.current = null;
       return;
     }
 
-    if (activeTab === 'logs') {
-      if (key.name === 'f') {
-        setFollow(prev => !prev);
+    if (activeTab === "logs") {
+      if (key.name === "f") {
+        setFollow((prev) => !prev);
         return;
       }
-      if (key.name === 'l') {
-        setMinLevel(prev => nextLevel(prev));
+      if (key.name === "l") {
+        setMinLevel((prev) => nextLevel(prev));
         return;
       }
-      if (key.name === 'c') {
+      if (key.name === "c") {
         clearLogs();
         return;
       }
-      if (key.name === 'down' || key.name === 'j') {
+      if (key.name === "down" || key.name === "j") {
         const box = scrollboxRef.current;
         if (box) box.scrollTo(Math.min(box.scrollTop + SCROLL_STEP, box.scrollHeight));
         setFollow(false);
         lastKeyRef.current = null;
         return;
       }
-      if (key.name === 'up' || key.name === 'k') {
+      if (key.name === "up" || key.name === "k") {
         const box = scrollboxRef.current;
         if (box) box.scrollTo(Math.max(box.scrollTop - SCROLL_STEP, 0));
         setFollow(false);
         lastKeyRef.current = null;
         return;
       }
-      if (key.shift && key.name === 'g') {
+      if (key.shift && key.name === "g") {
         scrollboxRef.current?.scrollTo(scrollboxRef.current.scrollHeight);
         lastKeyRef.current = null;
         return;
       }
-      if (key.name === 'g') {
-        if (lastKeyRef.current === 'g') {
+      if (key.name === "g") {
+        if (lastKeyRef.current === "g") {
           scrollboxRef.current?.scrollTo(0);
           lastKeyRef.current = null;
         } else {
-          lastKeyRef.current = 'g';
+          lastKeyRef.current = "g";
         }
         return;
       }
     }
 
-    if (activeTab === 'inspector') {
-      if (key.name === 'down' || key.name === 'j') {
+    if (activeTab === "inspector") {
+      if (key.name === "down" || key.name === "j") {
         const box = inspectorScrollboxRef.current;
         if (box) box.scrollTo(Math.min(box.scrollTop + SCROLL_STEP, box.scrollHeight));
         lastKeyRef.current = null;
         return;
       }
-      if (key.name === 'up' || key.name === 'k') {
+      if (key.name === "up" || key.name === "k") {
         const box = inspectorScrollboxRef.current;
         if (box) box.scrollTo(Math.max(box.scrollTop - SCROLL_STEP, 0));
         lastKeyRef.current = null;
         return;
       }
-      if (key.shift && key.name === 'g') {
+      if (key.shift && key.name === "g") {
         inspectorScrollboxRef.current?.scrollTo(inspectorScrollboxRef.current.scrollHeight);
         lastKeyRef.current = null;
         return;
       }
-      if (key.name === 'g') {
-        if (lastKeyRef.current === 'g') {
+      if (key.name === "g") {
+        if (lastKeyRef.current === "g") {
           inspectorScrollboxRef.current?.scrollTo(0);
           lastKeyRef.current = null;
         } else {
-          lastKeyRef.current = 'g';
+          lastKeyRef.current = "g";
         }
         return;
       }
     }
 
-    if (activeTab === 'plugins') {
-      if (key.name === 's') {
-        setPluginSort(prev => {
-          const order: PluginSort[] = ['name', 'type', 'official'];
-          return order[(order.indexOf(prev) + 1) % order.length] ?? 'name';
+    if (activeTab === "plugins") {
+      if (key.name === "s") {
+        setPluginSort((prev) => {
+          const order: PluginSort[] = ["name", "type", "official"];
+          return order[(order.indexOf(prev) + 1) % order.length] ?? "name";
         });
         return;
       }
-      if (key.name === 'down' || key.name === 'j') {
+      if (key.name === "down" || key.name === "j") {
         const box = pluginsScrollboxRef.current;
         if (box) box.scrollTo(Math.min(box.scrollTop + SCROLL_STEP, box.scrollHeight));
         lastKeyRef.current = null;
         return;
       }
-      if (key.name === 'up' || key.name === 'k') {
+      if (key.name === "up" || key.name === "k") {
         const box = pluginsScrollboxRef.current;
         if (box) box.scrollTo(Math.max(box.scrollTop - SCROLL_STEP, 0));
         lastKeyRef.current = null;
         return;
       }
-      if (key.shift && key.name === 'g') {
+      if (key.shift && key.name === "g") {
         pluginsScrollboxRef.current?.scrollTo(pluginsScrollboxRef.current.scrollHeight);
         lastKeyRef.current = null;
         return;
       }
-      if (key.name === 'g') {
-        if (lastKeyRef.current === 'g') {
+      if (key.name === "g") {
+        if (lastKeyRef.current === "g") {
           pluginsScrollboxRef.current?.scrollTo(0);
           lastKeyRef.current = null;
         } else {
-          lastKeyRef.current = 'g';
+          lastKeyRef.current = "g";
         }
         return;
       }
@@ -237,10 +237,10 @@ export function DebugPanel({ onClose, inspectorData }: DebugPanelProps) {
   };
 
   const levelLabels: Record<LogLevel, string> = {
-    debug: 'DBG',
-    info: 'INF',
-    warn: 'WRN',
-    error: 'ERR',
+    debug: "DBG",
+    info: "INF",
+    warn: "WRN",
+    error: "ERR",
   };
 
   return (
@@ -255,38 +255,38 @@ export function DebugPanel({ onClose, inspectorData }: DebugPanelProps) {
         backgroundColor={colors.background}
         overflow="hidden"
       >
-         <box
-           flexDirection="row"
-           justifyContent="space-between"
-           paddingX={1}
-           backgroundColor={colors.foreground}
-           height={1}
-           flexShrink={0}
-         >
+        <box
+          flexDirection="row"
+          justifyContent="space-between"
+          paddingX={1}
+          backgroundColor={colors.foreground}
+          height={1}
+          flexShrink={0}
+        >
           <box flexDirection="row" gap={2}>
             <text
-              fg={activeTab === 'logs' ? colors.background : colors.textMuted}
-              {...(activeTab === 'logs' ? { bg: colors.primary } : {})}
+              fg={activeTab === "logs" ? colors.background : colors.textMuted}
+              {...(activeTab === "logs" ? { bg: colors.primary } : {})}
             >
-              {' LOGS '}
+              {" LOGS "}
             </text>
             <text
-              fg={activeTab === 'inspector' ? colors.background : colors.textMuted}
-              {...(activeTab === 'inspector' ? { bg: colors.primary } : {})}
+              fg={activeTab === "inspector" ? colors.background : colors.textMuted}
+              {...(activeTab === "inspector" ? { bg: colors.primary } : {})}
             >
-              {' INSPECTOR '}
+              {" INSPECTOR "}
             </text>
             <text
-              fg={activeTab === 'plugins' ? colors.background : colors.textMuted}
-              {...(activeTab === 'plugins' ? { bg: colors.primary } : {})}
+              fg={activeTab === "plugins" ? colors.background : colors.textMuted}
+              {...(activeTab === "plugins" ? { bg: colors.primary } : {})}
             >
-              {' PLUGINS '}
+              {" PLUGINS "}
             </text>
           </box>
-          <text fg={colors.textSubtle}>1/2/3:switch  Esc:close</text>
+          <text fg={colors.textSubtle}>1/2/3:switch Esc:close</text>
         </box>
 
-        {activeTab === 'logs' && (
+        {activeTab === "logs" && (
           <LogsTab
             logs={filterByLevel(logs, minLevel)}
             follow={follow}
@@ -297,35 +297,32 @@ export function DebugPanel({ onClose, inspectorData }: DebugPanelProps) {
           />
         )}
 
-        {activeTab === 'inspector' && (
+        {activeTab === "inspector" && (
           <InspectorTab data={inspectorData} colors={colors} scrollboxRef={inspectorScrollboxRef} />
         )}
 
-        {activeTab === 'plugins' && (
+        {activeTab === "plugins" && (
           <PluginsTab colors={colors} scrollboxRef={pluginsScrollboxRef} sortBy={pluginSort} />
         )}
 
-         <box
-           flexDirection="row"
-           paddingX={1}
-           backgroundColor={colors.foreground}
-           height={1}
-           flexShrink={0}
-         >
-          {activeTab === 'logs' && (
+        <box
+          flexDirection="row"
+          paddingX={1}
+          backgroundColor={colors.foreground}
+          height={1}
+          flexShrink={0}
+        >
+          {activeTab === "logs" && (
             <text fg={colors.textSubtle}>
-              j/k:scroll  f:follow{follow ? '(on)' : '(off)'}  l:{minLevel.toUpperCase()}  c:clear  gg:top  G:bottom
+              j/k:scroll f:follow{follow ? "(on)" : "(off)"} l:{minLevel.toUpperCase()} c:clear
+              gg:top G:bottom
             </text>
           )}
-          {activeTab === 'inspector' && (
-            <text fg={colors.textSubtle}>
-              j/k:scroll  gg:top  G:bottom
-            </text>
+          {activeTab === "inspector" && (
+            <text fg={colors.textSubtle}>j/k:scroll gg:top G:bottom</text>
           )}
-          {activeTab === 'plugins' && (
-            <text fg={colors.textSubtle}>
-              j/k:scroll  s:sort({pluginSort})  gg:top  G:bottom
-            </text>
+          {activeTab === "plugins" && (
+            <text fg={colors.textSubtle}>j/k:scroll s:sort({pluginSort}) gg:top G:bottom</text>
           )}
         </box>
       </box>
@@ -355,13 +352,16 @@ function LogsTab({ logs, follow, scrollboxRef, levelColors, levelLabels, colors 
   }
 
   const visibleLogs = frozenLogsRef.current ?? logs.slice(-200);
-  const pendingCount = frozenLogsRef.current ? Math.max(0, logs.length - frozenAtCountRef.current) : 0;
+  const pendingCount = frozenLogsRef.current
+    ? Math.max(0, logs.length - frozenAtCountRef.current)
+    : 0;
 
   return (
     <box flexDirection="column" flexGrow={1} overflow="hidden">
       <box paddingLeft={1} height={1} flexShrink={0}>
         <text fg={colors.textMuted}>
-          {logs.length} entries{follow ? ' [FOLLOW]' : ` [PAUSED${pendingCount > 0 ? ` +${pendingCount} new` : ''}]`}
+          {logs.length} entries
+          {follow ? " [FOLLOW]" : ` [PAUSED${pendingCount > 0 ? ` +${pendingCount} new` : ""}]`}
         </text>
       </box>
       <scrollbox
@@ -407,24 +407,21 @@ interface LogLineProps {
 }
 
 function LogLine({ entry, levelColors, levelLabels, colors }: LogLineProps) {
-  const time = new Date(entry.timestamp).toLocaleTimeString('en-US', {
+  const time = new Date(entry.timestamp).toLocaleTimeString("en-US", {
     hour12: false,
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
   });
 
   const levelColor = levelColors[entry.level];
   const levelLabel = levelLabels[entry.level];
-  const source = entry.source ? `[${entry.source}]` : '';
-  const dataStr = entry.data ? ` ${JSON.stringify(entry.data)}` : '';
+  const source = entry.source ? `[${entry.source}]` : "";
+  const dataStr = entry.data ? ` ${JSON.stringify(entry.data)}` : "";
 
   return (
     <text height={1}>
-      <span fg={colors.textSubtle}>{time}</span>
-      {' '}
-      <span fg={levelColor}>{levelLabel}</span>
-      {' '}
+      <span fg={colors.textSubtle}>{time}</span> <span fg={levelColor}>{levelLabel}</span>{" "}
       {source && <span fg={colors.textMuted}>{source} </span>}
       <span fg={colors.text}>{entry.message}</span>
       {dataStr && <span fg={colors.textSubtle}>{dataStr}</span>}
@@ -452,31 +449,49 @@ function InspectorTab({ data, colors, scrollboxRef }: InspectorTabProps) {
 
   const { sessions, debugData, activity, sparkData } = data;
   const totalTokens = sessions.reduce((sum, s) => sum + s.totals.input + s.totals.output, 0);
-  const activeSessions = sessions.filter(s => s.status === 'active');
+  const activeSessions = sessions.filter((s) => s.status === "active");
   const now = Date.now();
 
   if (isCompact) {
     return (
-       <box flexDirection="column" flexGrow={1} paddingX={1} overflow="hidden">
+      <box flexDirection="column" flexGrow={1} paddingX={1} overflow="hidden">
         <box flexDirection="row" height={1} gap={2} flexShrink={0}>
           <text fg={colors.textMuted}>rate:{(activity.instantRate || 0).toFixed(0)}/s</text>
           <text fg={colors.textMuted}>avg:{(activity.avgRate || 0).toFixed(0)}/s</text>
           <text fg={colors.textMuted}>tokens:{totalTokens.toLocaleString()}</text>
-          <text fg={activity.isSpike ? colors.warning : colors.textMuted}>{activity.isSpike ? 'SPIKE' : ''}</text>
+          <text fg={activity.isSpike ? colors.warning : colors.textMuted}>
+            {activity.isSpike ? "SPIKE" : ""}
+          </text>
         </box>
         <box flexDirection="row" marginTop={1} height={1}>
-          <text width={18} fg={colors.textSubtle}>{padRight('SESSION', 18)}</text>
-          <text width={10} fg={colors.textSubtle}>{padRight('AGENT', 10)}</text>
-          <text width={8} fg={colors.textSubtle}>{padRight('STATUS', 8)}</text>
-          <text width={10} fg={colors.textSubtle}>{padRight('TOKENS', 10)}</text>
+          <text width={18} fg={colors.textSubtle}>
+            {padRight("SESSION", 18)}
+          </text>
+          <text width={10} fg={colors.textSubtle}>
+            {padRight("AGENT", 10)}
+          </text>
+          <text width={8} fg={colors.textSubtle}>
+            {padRight("STATUS", 8)}
+          </text>
+          <text width={10} fg={colors.textSubtle}>
+            {padRight("TOKENS", 10)}
+          </text>
         </box>
         <scrollbox ref={scrollboxRef} flexGrow={1}>
-          {sessions.slice(0, 15).map(s => (
+          {sessions.slice(0, 15).map((s) => (
             <box key={s.sessionId} flexDirection="row" height={1}>
-              <text width={18} fg={colors.text}>{padRight(s.sessionId.slice(0, 17), 18)}</text>
-              <text width={10} fg={colors.text}>{padRight(s.agentName.slice(0, 9), 10)}</text>
-              <text width={8} fg={s.status === 'active' ? colors.success : colors.textMuted}>{padRight(s.status.slice(0, 7), 8)}</text>
-              <text width={10} fg={colors.text}>{padRight((s.totals.input + s.totals.output).toLocaleString(), 10)}</text>
+              <text width={18} fg={colors.text}>
+                {padRight(s.sessionId.slice(0, 17), 18)}
+              </text>
+              <text width={10} fg={colors.text}>
+                {padRight(s.agentName.slice(0, 9), 10)}
+              </text>
+              <text width={8} fg={s.status === "active" ? colors.success : colors.textMuted}>
+                {padRight(s.status.slice(0, 7), 8)}
+              </text>
+              <text width={10} fg={colors.text}>
+                {padRight((s.totals.input + s.totals.output).toLocaleString(), 10)}
+              </text>
             </box>
           ))}
         </scrollbox>
@@ -487,53 +502,143 @@ function InspectorTab({ data, colors, scrollboxRef }: InspectorTabProps) {
   return (
     <box flexDirection="column" flexGrow={1} padding={1} overflow="hidden">
       <box flexDirection="row" gap={2} height={8} flexShrink={0}>
-        <box flexDirection="column" flexGrow={1} border borderColor={colors.border} padding={1} overflow="hidden">
-          <text height={1} fg={colors.primary}>{padRight('Bucket Data', 30)}</text>
-          <text height={1} fg={colors.textMuted}>{padRight('deltaTokens: ' + debugData.lastDeltaTokens.toLocaleString(), 30)}</text>
-          <text height={1} fg={colors.textMuted}>{padRight('dt:          ' + debugData.lastDt.toFixed(3) + 's', 30)}</text>
-          <text height={1} fg={colors.textMuted}>{padRight('shifted:     ' + debugData.bucketsShifted, 30)}</text>
-          <text height={1} fg={colors.textMuted}>{padRight('currBucket:  ' + debugData.currentBucketValue.toFixed(1), 30)}</text>
-          <text height={1} fg={colors.textMuted}>{padRight('buckets[5]:  [' + sparkData.slice(-5).map(v => v.toFixed(0)).join(',') + ']', 30)}</text>
+        <box
+          flexDirection="column"
+          flexGrow={1}
+          border
+          borderColor={colors.border}
+          padding={1}
+          overflow="hidden"
+        >
+          <text height={1} fg={colors.primary}>
+            {padRight("Bucket Data", 30)}
+          </text>
+          <text height={1} fg={colors.textMuted}>
+            {padRight("deltaTokens: " + debugData.lastDeltaTokens.toLocaleString(), 30)}
+          </text>
+          <text height={1} fg={colors.textMuted}>
+            {padRight("dt:          " + debugData.lastDt.toFixed(3) + "s", 30)}
+          </text>
+          <text height={1} fg={colors.textMuted}>
+            {padRight("shifted:     " + debugData.bucketsShifted, 30)}
+          </text>
+          <text height={1} fg={colors.textMuted}>
+            {padRight("currBucket:  " + debugData.currentBucketValue.toFixed(1), 30)}
+          </text>
+          <text height={1} fg={colors.textMuted}>
+            {padRight(
+              "buckets[5]:  [" +
+                sparkData
+                  .slice(-5)
+                  .map((v) => v.toFixed(0))
+                  .join(",") +
+                "]",
+              30,
+            )}
+          </text>
         </box>
 
-        <box flexDirection="column" flexGrow={1} border borderColor={colors.border} padding={1} overflow="hidden">
-          <text height={1} fg={colors.primary}>{padRight('Activity State', 30)}</text>
-          <text height={1} fg={colors.textMuted}>{padRight('instantRate: ' + (activity.instantRate || 0).toFixed(1) + '/s', 30)}</text>
-          <text height={1} fg={colors.textMuted}>{padRight('avgRate:     ' + (activity.avgRate || 0).toFixed(1) + '/s', 30)}</text>
-          <text height={1} fg={colors.textMuted}>{padRight('isSpike:     ' + (activity.isSpike ? 'YES' : 'no'), 30)}</text>
+        <box
+          flexDirection="column"
+          flexGrow={1}
+          border
+          borderColor={colors.border}
+          padding={1}
+          overflow="hidden"
+        >
+          <text height={1} fg={colors.primary}>
+            {padRight("Activity State", 30)}
+          </text>
+          <text height={1} fg={colors.textMuted}>
+            {padRight("instantRate: " + (activity.instantRate || 0).toFixed(1) + "/s", 30)}
+          </text>
+          <text height={1} fg={colors.textMuted}>
+            {padRight("avgRate:     " + (activity.avgRate || 0).toFixed(1) + "/s", 30)}
+          </text>
+          <text height={1} fg={colors.textMuted}>
+            {padRight("isSpike:     " + (activity.isSpike ? "YES" : "no"), 30)}
+          </text>
         </box>
 
-        <box flexDirection="column" flexGrow={1} border borderColor={colors.border} padding={1} overflow="hidden">
-          <text height={1} fg={colors.primary}>{padRight('Refresh Stats', 30)}</text>
-          <text height={1} fg={colors.textMuted}>{padRight('count:  ' + String(debugData.refreshCount), 30)}</text>
-          <text height={1} fg={colors.textMuted}>{padRight('last:   ' + new Date(debugData.lastRefreshTime).toLocaleTimeString(), 30)}</text>
-          <text height={1} fg={colors.textMuted}>{padRight('age:    ' + ((now - debugData.lastRefreshTime) / 1000).toFixed(1) + 's', 30)}</text>
-          <text height={1} fg={colors.textMuted}>{padRight('tokens: ' + totalTokens.toLocaleString(), 30)}</text>
+        <box
+          flexDirection="column"
+          flexGrow={1}
+          border
+          borderColor={colors.border}
+          padding={1}
+          overflow="hidden"
+        >
+          <text height={1} fg={colors.primary}>
+            {padRight("Refresh Stats", 30)}
+          </text>
+          <text height={1} fg={colors.textMuted}>
+            {padRight("count:  " + String(debugData.refreshCount), 30)}
+          </text>
+          <text height={1} fg={colors.textMuted}>
+            {padRight("last:   " + new Date(debugData.lastRefreshTime).toLocaleTimeString(), 30)}
+          </text>
+          <text height={1} fg={colors.textMuted}>
+            {padRight("age:    " + ((now - debugData.lastRefreshTime) / 1000).toFixed(1) + "s", 30)}
+          </text>
+          <text height={1} fg={colors.textMuted}>
+            {padRight("tokens: " + totalTokens.toLocaleString(), 30)}
+          </text>
         </box>
       </box>
 
-      <box flexDirection="column" flexGrow={1} marginTop={1} border borderColor={colors.border} padding={1} overflow="hidden">
+      <box
+        flexDirection="column"
+        flexGrow={1}
+        marginTop={1}
+        border
+        borderColor={colors.border}
+        padding={1}
+        overflow="hidden"
+      >
         <text height={1} fg={colors.primary}>
-          <strong>Sessions ({sessions.length} total, {activeSessions.length} active)</strong>
+          <strong>
+            Sessions ({sessions.length} total, {activeSessions.length} active)
+          </strong>
         </text>
         <box flexDirection="row" marginTop={1} height={1}>
-          <text width={22} fg={colors.textSubtle}>{padRight('SESSION ID', 22)}</text>
-          <text width={12} fg={colors.textSubtle}>{padRight('AGENT', 12)}</text>
-          <text width={10} fg={colors.textSubtle}>{padRight('STATUS', 10)}</text>
-          <text width={12} fg={colors.textSubtle}>{padRight('TOKENS', 12)}</text>
-          <text width={10} fg={colors.textSubtle}>{padRight('AGE', 10)}</text>
+          <text width={22} fg={colors.textSubtle}>
+            {padRight("SESSION ID", 22)}
+          </text>
+          <text width={12} fg={colors.textSubtle}>
+            {padRight("AGENT", 12)}
+          </text>
+          <text width={10} fg={colors.textSubtle}>
+            {padRight("STATUS", 10)}
+          </text>
+          <text width={12} fg={colors.textSubtle}>
+            {padRight("TOKENS", 12)}
+          </text>
+          <text width={10} fg={colors.textSubtle}>
+            {padRight("AGE", 10)}
+          </text>
         </box>
         <scrollbox ref={scrollboxRef} flexGrow={1}>
-          {sessions.slice(0, 15).map(s => {
+          {sessions.slice(0, 15).map((s) => {
             const age = now - s.lastActivityAt;
-            const ageStr = age < 60000 ? `${(age / 1000).toFixed(0)}s` : `${(age / 60000).toFixed(1)}m`;
+            const ageStr =
+              age < 60000 ? `${(age / 1000).toFixed(0)}s` : `${(age / 60000).toFixed(1)}m`;
             return (
               <box key={s.sessionId} flexDirection="row" height={1}>
-                <text width={22} fg={colors.text}>{padRight(s.sessionId.slice(0, 21), 22)}</text>
-                <text width={12} fg={colors.text}>{padRight(s.agentName, 12)}</text>
-                <text width={10} fg={s.status === 'active' ? colors.success : colors.textMuted}>{padRight(s.status, 10)}</text>
-                <text width={12} fg={colors.text}>{padRight((s.totals.input + s.totals.output).toLocaleString(), 12)}</text>
-                <text width={10} fg={age < 120000 ? colors.success : colors.textMuted}>{padRight(ageStr, 10)}</text>
+                <text width={22} fg={colors.text}>
+                  {padRight(s.sessionId.slice(0, 21), 22)}
+                </text>
+                <text width={12} fg={colors.text}>
+                  {padRight(s.agentName, 12)}
+                </text>
+                <text width={10} fg={s.status === "active" ? colors.success : colors.textMuted}>
+                  {padRight(s.status, 10)}
+                </text>
+                <text width={12} fg={colors.text}>
+                  {padRight((s.totals.input + s.totals.output).toLocaleString(), 12)}
+                </text>
+                <text width={10} fg={age < 120000 ? colors.success : colors.textMuted}>
+                  {padRight(ageStr, 10)}
+                </text>
               </box>
             );
           })}
@@ -552,18 +657,21 @@ interface PluginsTabProps {
 const TYPE_ORDER: Record<string, number> = { provider: 0, agent: 1, theme: 2, notification: 3 };
 
 function isOfficialPlugin(pluginId: string, pluginType: string): boolean {
-  const source = pluginRegistry.getSource(pluginType as 'provider' | 'agent' | 'theme' | 'notification', pluginId);
-  return source === 'builtin';
+  const source = pluginRegistry.getSource(
+    pluginType as "provider" | "agent" | "theme" | "notification",
+    pluginId,
+  );
+  return source === "builtin";
 }
 
 function PluginsTab({ colors, scrollboxRef, sortBy }: PluginsTabProps) {
   const allPlugins = useMemo(() => {
     const plugins = pluginRegistry.getAllPlugins();
     return [...plugins].sort((a, b) => {
-      if (sortBy === 'name') {
+      if (sortBy === "name") {
         return a.name.localeCompare(b.name);
       }
-      if (sortBy === 'official') {
+      if (sortBy === "official") {
         const aOfficial = isOfficialPlugin(a.id, a.type) ? 0 : 1;
         const bOfficial = isOfficialPlugin(b.id, b.type) ? 0 : 1;
         if (aOfficial !== bOfficial) return aOfficial - bOfficial;
@@ -579,9 +687,7 @@ function PluginsTab({ colors, scrollboxRef, sortBy }: PluginsTabProps) {
   const [updates, setUpdates] = useState<Map<string, PluginUpdateInfo>>(new Map());
 
   useEffect(() => {
-    const npmPlugins = allPlugins.filter(
-      (p) => pluginRegistry.getSource(p.type, p.id) === 'npm',
-    );
+    const npmPlugins = allPlugins.filter((p) => pluginRegistry.getSource(p.type, p.id) === "npm");
     if (npmPlugins.length === 0) return;
 
     checkAllPluginUpdates(
@@ -605,8 +711,8 @@ function PluginsTab({ colors, scrollboxRef, sortBy }: PluginsTabProps) {
   };
 
   const summary = Object.entries(typeCounts)
-    .map(([type, count]) => `${count} ${type}${count !== 1 ? 's' : ''}`)
-    .join(', ');
+    .map(([type, count]) => `${count} ${type}${count !== 1 ? "s" : ""}`)
+    .join(", ");
 
   const updatesAvailable = [...updates.values()].filter((u) => u.hasUpdate).length;
 
@@ -615,13 +721,21 @@ function PluginsTab({ colors, scrollboxRef, sortBy }: PluginsTabProps) {
       <box paddingLeft={1} height={1} flexShrink={0}>
         <text fg={colors.textMuted}>
           {allPlugins.length} plugins ({summary})
-          {updatesAvailable > 0 ? ` · ${updatesAvailable} update${updatesAvailable !== 1 ? 's' : ''} available` : ''}
+          {updatesAvailable > 0
+            ? ` · ${updatesAvailable} update${updatesAvailable !== 1 ? "s" : ""} available`
+            : ""}
         </text>
       </box>
       <box flexDirection="row" paddingX={1} height={1} flexShrink={0}>
-        <text width={22} fg={colors.textSubtle}>{padRight('PLUGIN', 22)}</text>
-        <text width={14} fg={colors.textSubtle}>{padRight('TYPE', 14)}</text>
-        <text width={14} fg={colors.textSubtle}>{padRight('VERSION', 14)}</text>
+        <text width={22} fg={colors.textSubtle}>
+          {padRight("PLUGIN", 22)}
+        </text>
+        <text width={14} fg={colors.textSubtle}>
+          {padRight("TYPE", 14)}
+        </text>
+        <text width={14} fg={colors.textSubtle}>
+          {padRight("VERSION", 14)}
+        </text>
         <text fg={colors.textSubtle}>DESCRIPTION</text>
       </box>
       <scrollbox ref={scrollboxRef} flexGrow={1}>
@@ -631,13 +745,13 @@ function PluginsTab({ colors, scrollboxRef, sortBy }: PluginsTabProps) {
             const updateInfo = updates.get(key);
             const official = isOfficialPlugin(plugin.id, plugin.type);
 
-            let versionSuffix = '';
+            let versionSuffix = "";
             let versionColor = colors.textMuted;
             if (updateInfo?.hasUpdate && updateInfo.latestVersion) {
-              versionSuffix = ' ↑';
+              versionSuffix = " ↑";
               versionColor = colors.warning;
             } else if (updateInfo && !updateInfo.hasUpdate && updateInfo.latestVersion) {
-              versionSuffix = ' ✓';
+              versionSuffix = " ✓";
               versionColor = colors.success;
             }
 
@@ -647,9 +761,13 @@ function PluginsTab({ colors, scrollboxRef, sortBy }: PluginsTabProps) {
                   {official && <span fg={colors.success}>❖ </span>}
                   <span fg={colors.text}>{padRight(plugin.name, official ? 20 : 22)}</span>
                 </text>
-                <text width={14} fg={typeColors[plugin.type] ?? colors.textMuted}>{padRight(plugin.type, 14)}</text>
-                <text width={14} fg={versionColor}>{padRight(plugin.version + versionSuffix, 14)}</text>
-                <text fg={colors.textSubtle}>{plugin.meta?.description ?? ''}</text>
+                <text width={14} fg={typeColors[plugin.type] ?? colors.textMuted}>
+                  {padRight(plugin.type, 14)}
+                </text>
+                <text width={14} fg={versionColor}>
+                  {padRight(plugin.version + versionSuffix, 14)}
+                </text>
+                <text fg={colors.textSubtle}>{plugin.meta?.description ?? ""}</text>
               </box>
             );
           })}

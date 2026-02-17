@@ -1,4 +1,4 @@
-import type { ModelPricing, CostBreakdown } from '@/plugins/types/provider.ts';
+import type { CostBreakdown, ModelPricing } from "@/plugins/types/provider.ts";
 
 export interface TokenUsage {
   input: number;
@@ -7,10 +7,7 @@ export interface TokenUsage {
   cacheWrite?: number;
 }
 
-export function estimateCost(
-  usage: TokenUsage,
-  pricing: ModelPricing
-): CostBreakdown {
+export function estimateCost(usage: TokenUsage, pricing: ModelPricing): CostBreakdown {
   const inputCost = (usage.input / 1_000_000) * pricing.input;
   const outputCost = (usage.output / 1_000_000) * pricing.output;
 
@@ -30,7 +27,7 @@ export function estimateCost(
     total: roundCost(total),
     input: roundCost(inputCost),
     output: roundCost(outputCost),
-    currency: 'USD',
+    currency: "USD",
   };
 
   if (cacheReadCost > 0) breakdown.cacheRead = roundCost(cacheReadCost);
@@ -39,10 +36,7 @@ export function estimateCost(
   return breakdown;
 }
 
-export function estimateSessionCost(
-  sessions: TokenUsage[],
-  pricing: ModelPricing
-): CostBreakdown {
+export function estimateSessionCost(sessions: TokenUsage[], pricing: ModelPricing): CostBreakdown {
   const totals = sessions.reduce<TokenUsage>(
     (acc, session) => ({
       input: acc.input + session.input,
@@ -50,14 +44,14 @@ export function estimateSessionCost(
       cacheRead: (acc.cacheRead ?? 0) + (session.cacheRead ?? 0),
       cacheWrite: (acc.cacheWrite ?? 0) + (session.cacheWrite ?? 0),
     }),
-    { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }
+    { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
   );
 
   return estimateCost(totals, pricing);
 }
 
-export function formatCost(cost: number, currency = 'USD'): string {
-  if (currency === 'USD') {
+export function formatCost(cost: number, currency = "USD"): string {
+  if (currency === "USD") {
     if (cost < 0.01) {
       return `$${cost.toFixed(4)}`;
     }

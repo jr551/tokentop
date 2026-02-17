@@ -23,15 +23,14 @@ export interface DiffOptions {
 export function diffFrames(
   expected: string,
   actual: string,
-  options: DiffOptions = {}
+  options: DiffOptions = {},
 ): DiffResult {
   const { ignoreWhitespace = false, contextLines = 2 } = options;
 
-  const normalize = (s: string) =>
-    ignoreWhitespace ? s.replace(/\s+/g, ' ').trim() : s;
+  const normalize = (s: string) => (ignoreWhitespace ? s.replace(/\s+/g, " ").trim() : s);
 
-  const expectedLines = expected.split('\n');
-  const actualLines = actual.split('\n');
+  const expectedLines = expected.split("\n");
+  const actualLines = actual.split("\n");
 
   const additions: LineChange[] = [];
   const deletions: LineChange[] = [];
@@ -42,8 +41,8 @@ export function diffFrames(
   const changedLineNumbers = new Set<number>();
 
   for (let i = 0; i < maxLines; i++) {
-    const expLine = expectedLines[i] ?? '';
-    const actLine = actualLines[i] ?? '';
+    const expLine = expectedLines[i] ?? "";
+    const actLine = actualLines[i] ?? "";
     const expNorm = normalize(expLine);
     const actNorm = normalize(actLine);
 
@@ -65,11 +64,11 @@ export function diffFrames(
   }
 
   for (let i = 0; i < maxLines; i++) {
-    const expLine = expectedLines[i] ?? '';
-    const actLine = actualLines[i] ?? '';
+    const expLine = expectedLines[i] ?? "";
+    const actLine = actualLines[i] ?? "";
 
     const isInContext = Array.from(changedLineNumbers).some(
-      (changed) => Math.abs(changed - i) <= contextLines
+      (changed) => Math.abs(changed - i) <= contextLines,
     );
 
     if (changedLineNumbers.has(i)) {
@@ -89,8 +88,7 @@ export function diffFrames(
   const identical = changedLineNumbers.size === 0;
   const changedLines = changedLineNumbers.size;
   const totalLines = maxLines;
-  const changePercentage =
-    totalLines > 0 ? (changedLines / totalLines) * 100 : 0;
+  const changePercentage = totalLines > 0 ? (changedLines / totalLines) * 100 : 0;
 
   return {
     identical,
@@ -100,57 +98,53 @@ export function diffFrames(
     additions,
     deletions,
     modifications,
-    visualDiff: diffLines.join('\n'),
+    visualDiff: diffLines.join("\n"),
   };
 }
 
-export function highlightDiff(
-  expected: string,
-  actual: string,
-  options: DiffOptions = {}
-): string {
+export function highlightDiff(expected: string, actual: string, options: DiffOptions = {}): string {
   const result = diffFrames(expected, actual, options);
 
   if (result.identical) {
-    return '✓ Frames are identical';
+    return "✓ Frames are identical";
   }
 
   const lines: string[] = [
     `╔══════════════════════════════════════════════════════════════════╗`,
     `║ FRAME DIFF                                                       ║`,
-    `║ Changed: ${result.changedLines}/${result.totalLines} lines (${result.changePercentage.toFixed(1)}%)${' '.repeat(Math.max(0, 24 - result.changePercentage.toFixed(1).length))}║`,
+    `║ Changed: ${result.changedLines}/${result.totalLines} lines (${result.changePercentage.toFixed(1)}%)${" ".repeat(Math.max(0, 24 - result.changePercentage.toFixed(1).length))}║`,
     `╠══════════════════════════════════════════════════════════════════╣`,
     `║ - = removed   + = added                                          ║`,
     `╚══════════════════════════════════════════════════════════════════╝`,
-    '',
+    "",
     result.visualDiff,
   ];
 
-  return lines.join('\n');
+  return lines.join("\n");
 }
 
 export function createCharDiff(expected: string, actual: string): string {
-  const expectedLines = expected.split('\n');
-  const actualLines = actual.split('\n');
+  const expectedLines = expected.split("\n");
+  const actualLines = actual.split("\n");
   const maxLines = Math.max(expectedLines.length, actualLines.length);
 
   const diffLines: string[] = [];
 
   for (let i = 0; i < maxLines; i++) {
-    const expLine = expectedLines[i] ?? '';
-    const actLine = actualLines[i] ?? '';
+    const expLine = expectedLines[i] ?? "";
+    const actLine = actualLines[i] ?? "";
 
     if (expLine === actLine) {
       continue;
     }
 
     const maxLen = Math.max(expLine.length, actLine.length);
-    let markers = '';
+    let markers = "";
 
     for (let j = 0; j < maxLen; j++) {
-      const expChar = expLine[j] ?? ' ';
-      const actChar = actLine[j] ?? ' ';
-      markers += expChar === actChar ? ' ' : '^';
+      const expChar = expLine[j] ?? " ";
+      const actChar = actLine[j] ?? " ";
+      markers += expChar === actChar ? " " : "^";
     }
 
     if (markers.trim()) {
@@ -158,9 +152,9 @@ export function createCharDiff(expected: string, actual: string): string {
       diffLines.push(`  exp: ${expLine}`);
       diffLines.push(`  act: ${actLine}`);
       diffLines.push(`       ${markers}`);
-      diffLines.push('');
+      diffLines.push("");
     }
   }
 
-  return diffLines.join('\n');
+  return diffLines.join("\n");
 }

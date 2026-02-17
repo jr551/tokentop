@@ -9,7 +9,7 @@
  * skipped because they have no registry entry to compare against.
  */
 
-import type { PluginType } from './types/base.ts';
+import type { PluginType } from "./types/base.ts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -33,7 +33,7 @@ export interface PluginUpdateInfo {
 // ---------------------------------------------------------------------------
 
 function parseVersion(v: string): [number, number, number] | null {
-  const clean = v.replace(/^v/, '');
+  const clean = v.replace(/^v/, "");
   const match = clean.match(/^(\d+)\.(\d+)\.(\d+)/);
   if (!match) return null;
   return [Number(match[1]), Number(match[2]), Number(match[3])];
@@ -60,9 +60,9 @@ function isNewer(current: string, latest: string): boolean {
  * Uses the abbreviated metadata endpoint for minimal payload.
  */
 async function fetchLatestVersion(packageName: string): Promise<string> {
-  const url = `https://registry.npmjs.org/${encodeURIComponent(packageName).replace('%40', '@')}`;
+  const url = `https://registry.npmjs.org/${encodeURIComponent(packageName).replace("%40", "@")}`;
   const res = await fetch(url, {
-    headers: { Accept: 'application/vnd.npm.install-v1+json' },
+    headers: { Accept: "application/vnd.npm.install-v1+json" },
     signal: AbortSignal.timeout(8_000),
   });
 
@@ -70,8 +70,8 @@ async function fetchLatestVersion(packageName: string): Promise<string> {
     throw new Error(`npm registry returned ${res.status} for ${packageName}`);
   }
 
-  const data = (await res.json()) as { 'dist-tags'?: { latest?: string } };
-  const latest = data?.['dist-tags']?.latest;
+  const data = (await res.json()) as { "dist-tags"?: { latest?: string } };
+  const latest = data?.["dist-tags"]?.latest;
   if (!latest) {
     throw new Error(`No dist-tags.latest found for ${packageName}`);
   }

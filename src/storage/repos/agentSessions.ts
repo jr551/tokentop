@@ -1,10 +1,10 @@
-import { getDatabase } from '../db.ts';
+import { getDatabase } from "../db.ts";
 import type {
   AgentSessionDim,
-  AgentSessionUpsert,
   AgentSessionSnapshotInsert,
   AgentSessionStreamSnapshotRow,
-} from '../types.ts';
+  AgentSessionUpsert,
+} from "../types.ts";
 
 const UPSERT_SESSION_SQL = `
   INSERT INTO agent_sessions (agent_id, session_id, project_path, started_at, first_seen_at, last_seen_at)
@@ -36,21 +36,23 @@ export function upsertAgentSession(session: AgentSessionUpsert): number {
   const db = getDatabase();
   const now = Date.now();
 
-  const row = db.prepare(UPSERT_SESSION_SQL).get(
-    session.agentId,
-    session.sessionId,
-    session.projectPath ?? null,
-    session.startedAt ?? null,
-    session.firstSeenAt ?? now,
-    session.lastSeenAt
-  ) as { id: number };
+  const row = db
+    .prepare(UPSERT_SESSION_SQL)
+    .get(
+      session.agentId,
+      session.sessionId,
+      session.projectPath ?? null,
+      session.startedAt ?? null,
+      session.firstSeenAt ?? now,
+      session.lastSeenAt,
+    ) as { id: number };
 
   return row.id;
 }
 
 export function insertAgentSessionSnapshot(
   snapshot: AgentSessionSnapshotInsert,
-  streams: Omit<AgentSessionStreamSnapshotRow, 'agentSessionSnapshotId'>[]
+  streams: Omit<AgentSessionStreamSnapshotRow, "agentSessionSnapshotId">[],
 ): number {
   const db = getDatabase();
 
@@ -70,7 +72,7 @@ export function insertAgentSessionSnapshot(
       snapshot.totalCacheReadTokens,
       snapshot.totalCacheWriteTokens,
       snapshot.totalCostUsd,
-      snapshot.requestCount
+      snapshot.requestCount,
     );
 
     snapshotId = Number(result.lastInsertRowid);
@@ -86,7 +88,7 @@ export function insertAgentSessionSnapshot(
         stream.cacheWriteTokens,
         stream.costUsd,
         stream.requestCount,
-        stream.pricingSource ?? null
+        stream.pricingSource ?? null,
       );
     }
   })();
@@ -97,9 +99,11 @@ export function insertAgentSessionSnapshot(
 export function getAgentSession(agentId: string, sessionId: string): AgentSessionDim | null {
   const db = getDatabase();
 
-  const row = db.prepare(`
+  const row = db
+    .prepare(`
     SELECT * FROM agent_sessions WHERE agent_id = ? AND session_id = ?
-  `).get(agentId, sessionId) as DbSessionRow | null;
+  `)
+    .get(agentId, sessionId) as DbSessionRow | null;
 
   return row ? mapSessionRow(row) : null;
 }
@@ -107,11 +111,13 @@ export function getAgentSession(agentId: string, sessionId: string): AgentSessio
 export function getRecentSessions(limit = 50): AgentSessionDim[] {
   const db = getDatabase();
 
-  const rows = db.prepare(`
+  const rows = db
+    .prepare(`
     SELECT * FROM agent_sessions
     ORDER BY last_seen_at DESC
     LIMIT ?
-  `).all(limit) as DbSessionRow[];
+  `)
+    .all(limit) as DbSessionRow[];
 
   return rows.map(mapSessionRow);
 }
@@ -119,12 +125,14 @@ export function getRecentSessions(limit = 50): AgentSessionDim[] {
 export function getSessionsByProject(projectPath: string, limit = 50): AgentSessionDim[] {
   const db = getDatabase();
 
-  const rows = db.prepare(`
+  const rows = db
+    .prepare(`
     SELECT * FROM agent_sessions
     WHERE project_path = ?
     ORDER BY last_seen_at DESC
     LIMIT ?
-  `).all(projectPath, limit) as DbSessionRow[];
+  `)
+    .all(projectPath, limit) as DbSessionRow[];
 
   return rows.map(mapSessionRow);
 }
@@ -167,7 +175,8 @@ export interface LatestStreamTotals {
 export function getLatestStreamTotalsForAllSessions(): LatestStreamTotals[] {
   const db = getDatabase();
 
-  const rows = db.prepare(`
+  const rows = db
+    .prepare(`
     SELECT
       s.agent_id, s.session_id,
       ss.provider, ss.model,
@@ -182,7 +191,8 @@ export function getLatestStreamTotalsForAllSessions(): LatestStreamTotals[] {
       FROM agent_session_snapshots snap2
       GROUP BY snap2.agent_session_id
     )
-  `).all() as Array<{
+  `)
+    .all() as Array<{
     agent_id: string;
     session_id: string;
     provider: string;
@@ -195,7 +205,7 @@ export function getLatestStreamTotalsForAllSessions(): LatestStreamTotals[] {
     request_count: number;
   }>;
 
-  return rows.map(r => ({
+  return rows.map((r) => ({
     agentId: r.agent_id,
     sessionId: r.session_id,
     provider: r.provider,

@@ -1,13 +1,13 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from "react";
 
 export type EasingFunction = (t: number) => number;
 
 export const easings = {
   linear: (t: number) => t,
   easeOutQuad: (t: number) => 1 - (1 - t) * (1 - t),
-  easeOutCubic: (t: number) => 1 - Math.pow(1 - t, 3),
-  easeOutExpo: (t: number) => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t)),
-  easeInOutQuad: (t: number) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2,
+  easeOutCubic: (t: number) => 1 - (1 - t) ** 3,
+  easeOutExpo: (t: number) => (t === 1 ? 1 : 1 - 2 ** (-10 * t)),
+  easeInOutQuad: (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2),
 } as const;
 
 export interface UseAnimatedValueOptions {
@@ -19,14 +19,9 @@ export interface UseAnimatedValueOptions {
 
 export function useAnimatedValue(
   targetValue: number,
-  options: UseAnimatedValueOptions = {}
+  options: UseAnimatedValueOptions = {},
 ): number {
-  const { 
-    durationMs = 300, 
-    easing = 'easeOutQuad',
-    precision = 2,
-    frameRate = 60,
-  } = options;
+  const { durationMs = 300, easing = "easeOutQuad", precision = 2, frameRate = 60 } = options;
 
   const [displayValue, setDisplayValue] = useState(targetValue);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -34,7 +29,7 @@ export function useAnimatedValue(
   const startTimeRef = useRef<number>(Date.now());
   const targetRef = useRef(targetValue);
 
-  const easingFn = typeof easing === 'function' ? easing : easings[easing];
+  const easingFn = typeof easing === "function" ? easing : easings[easing];
   const frameInterval = Math.round(1000 / frameRate);
 
   useEffect(() => {
@@ -54,11 +49,11 @@ export function useAnimatedValue(
       const elapsed = Date.now() - startTimeRef.current;
       const progress = Math.min(elapsed / durationMs, 1);
       const easedProgress = easingFn(progress);
-      
+
       const startVal = startValueRef.current;
       const currentValue = startVal + (targetRef.current - startVal) * easedProgress;
       const roundedValue = Number(currentValue.toFixed(precision));
-      
+
       setDisplayValue(roundedValue);
 
       if (progress >= 1) {
@@ -83,7 +78,7 @@ export function useAnimatedValue(
 
 export function useAnimatedCurrency(
   targetValue: number,
-  options: Omit<UseAnimatedValueOptions, 'precision'> = {}
+  options: Omit<UseAnimatedValueOptions, "precision"> = {},
 ): string {
   const animatedValue = useAnimatedValue(targetValue, { ...options, precision: 2 });
   return `$${animatedValue.toFixed(2)}`;
@@ -91,10 +86,10 @@ export function useAnimatedCurrency(
 
 export function useAnimatedTokens(
   targetValue: number,
-  options: Omit<UseAnimatedValueOptions, 'precision'> = {}
+  options: Omit<UseAnimatedValueOptions, "precision"> = {},
 ): string {
   const animatedValue = useAnimatedValue(targetValue, { ...options, precision: 0 });
-  
+
   if (animatedValue >= 1_000_000) {
     return `${(animatedValue / 1_000_000).toFixed(1)}M`;
   }
@@ -106,7 +101,7 @@ export function useAnimatedTokens(
 
 export function useAnimatedCount(
   targetValue: number,
-  options: Omit<UseAnimatedValueOptions, 'precision'> = {}
+  options: Omit<UseAnimatedValueOptions, "precision"> = {},
 ): string {
   const animatedValue = useAnimatedValue(targetValue, { ...options, precision: 0 });
   return Math.round(animatedValue).toLocaleString();

@@ -1,17 +1,22 @@
+import type { PluginsConfig } from "@/config/schema.ts";
+import {
+  discoverLocalPlugins,
+  loadLocalPlugin,
+  loadNpmPlugin,
+  resolvePluginPath,
+} from "./loader.ts";
+import { installAllNpmPlugins, resolveNpmPluginPath } from "./npm-installer.ts";
 import type {
-  AnyPlugin,
-  PluginType,
-  PluginByType,
-  ProviderPlugin,
   AgentPlugin,
-  ThemePlugin,
+  AnyPlugin,
   NotificationPlugin,
-} from './types/index.ts';
-import { loadLocalPlugin, loadNpmPlugin, discoverLocalPlugins, resolvePluginPath } from './loader.ts';
-import { installAllNpmPlugins, resolveNpmPluginPath } from './npm-installer.ts';
-import type { PluginsConfig } from '@/config/schema.ts';
+  PluginByType,
+  PluginType,
+  ProviderPlugin,
+  ThemePlugin,
+} from "./types/index.ts";
 
-export type PluginSource = 'builtin' | 'local' | 'npm';
+export type PluginSource = "builtin" | "local" | "npm";
 
 type PluginStore = {
   provider: Map<string, ProviderPlugin>;
@@ -35,35 +40,35 @@ class PluginRegistryImpl {
     return `${type}-${id}`;
   }
 
-  register(plugin: AnyPlugin, source: PluginSource = 'builtin'): void {
+  register(plugin: AnyPlugin, source: PluginSource = "builtin"): void {
     const key = this.sourceKey(plugin.type, plugin.id);
     const existingSource = this.sources.get(key);
 
-    if (existingSource === 'builtin' && source !== 'builtin') {
+    if (existingSource === "builtin" && source !== "builtin") {
       return;
     }
 
     this.sources.set(key, source);
     switch (plugin.type) {
-      case 'provider':
+      case "provider":
         if (this.plugins.provider.has(plugin.id)) {
           console.warn(`Plugin "${plugin.id}" already registered, overwriting`);
         }
         this.plugins.provider.set(plugin.id, plugin);
         break;
-      case 'agent':
+      case "agent":
         if (this.plugins.agent.has(plugin.id)) {
           console.warn(`Plugin "${plugin.id}" already registered, overwriting`);
         }
         this.plugins.agent.set(plugin.id, plugin);
         break;
-      case 'theme':
+      case "theme":
         if (this.plugins.theme.has(plugin.id)) {
           console.warn(`Plugin "${plugin.id}" already registered, overwriting`);
         }
         this.plugins.theme.set(plugin.id, plugin);
         break;
-      case 'notification':
+      case "notification":
         if (this.plugins.notification.has(plugin.id)) {
           console.warn(`Plugin "${plugin.id}" already registered, overwriting`);
         }
@@ -115,38 +120,38 @@ class PluginRegistryImpl {
 
   async loadBuiltinPlugins(): Promise<void> {
     const [providers, agents, themes, notifications] = await Promise.all([
-      import('./providers/index.ts'),
-      import('./agents/index.ts'),
-      import('./themes/index.ts'),
-      import('./notifications/index.ts'),
+      import("./providers/index.ts"),
+      import("./agents/index.ts"),
+      import("./themes/index.ts"),
+      import("./notifications/index.ts"),
     ]);
 
     for (const plugin of Object.values(providers)) {
-      if (isProviderPlugin(plugin)) this.register(plugin, 'builtin');
+      if (isProviderPlugin(plugin)) this.register(plugin, "builtin");
     }
 
     for (const plugin of Object.values(agents)) {
-      if (isAgentPlugin(plugin)) this.register(plugin, 'builtin');
+      if (isAgentPlugin(plugin)) this.register(plugin, "builtin");
     }
 
     for (const plugin of Object.values(themes)) {
-      if (isThemePlugin(plugin)) this.register(plugin, 'builtin');
+      if (isThemePlugin(plugin)) this.register(plugin, "builtin");
     }
 
     for (const plugin of Object.values(notifications)) {
-      if (isNotificationPlugin(plugin)) this.register(plugin, 'builtin');
+      if (isNotificationPlugin(plugin)) this.register(plugin, "builtin");
     }
   }
 
   async loadLocalPlugins(extraPaths: string[] = []): Promise<void> {
     const discoveredPaths = await discoverLocalPlugins();
-    const resolvedExtraPaths = extraPaths.map(p => resolvePluginPath(p));
+    const resolvedExtraPaths = extraPaths.map((p) => resolvePluginPath(p));
     const allPaths = [...discoveredPaths, ...resolvedExtraPaths];
 
     for (const pluginPath of allPaths) {
       const result = await loadLocalPlugin(pluginPath);
       if (result.success && result.plugin) {
-        this.register(result.plugin, 'local');
+        this.register(result.plugin, "local");
         console.info(`Loaded local plugin: ${result.plugin.name} (${result.plugin.id})`);
       } else {
         console.warn(`Failed to load plugin from ${pluginPath}: ${result.error}`);
@@ -170,7 +175,7 @@ class PluginRegistryImpl {
       const resolvedPath = resolveNpmPluginPath(packageName);
       const result = await loadNpmPlugin(packageName, resolvedPath);
       if (result.success && result.plugin) {
-        this.register(result.plugin, 'npm');
+        this.register(result.plugin, "npm");
         console.info(`Loaded npm plugin: ${result.plugin.name} (${packageName})`);
       } else {
         console.warn(`Failed to load npm plugin ${packageName}: ${result.error}`);
@@ -190,10 +195,7 @@ class PluginRegistryImpl {
 
     await this.loadBuiltinPlugins();
 
-    const localPaths = [
-      ...(config?.plugins?.local ?? []),
-      ...(config?.cliPlugins ?? []),
-    ];
+    const localPaths = [...(config?.plugins?.local ?? []), ...(config?.cliPlugins ?? [])];
     await this.loadLocalPlugins(localPaths);
 
     const npmPackages = config?.plugins?.npm ?? [];
@@ -203,7 +205,7 @@ class PluginRegistryImpl {
 
     const disabled = config?.plugins?.disabled ?? [];
     for (const pluginId of disabled) {
-      for (const type of ['provider', 'agent', 'theme', 'notification'] as PluginType[]) {
+      for (const type of ["provider", "agent", "theme", "notification"] as PluginType[]) {
         if (this.has(type, pluginId)) {
           this.disablePlugin(type, pluginId);
           console.info(`Disabled plugin: ${pluginId}`);
@@ -213,38 +215,40 @@ class PluginRegistryImpl {
 
     this.initialized = true;
     console.info(
-      `Plugin registry initialized: ${this.count('provider')} providers, ` +
-        `${this.count('agent')} agents, ${this.count('theme')} themes, ` +
-        `${this.count('notification')} notifications`
+      `Plugin registry initialized: ${this.count("provider")} providers, ` +
+        `${this.count("agent")} agents, ${this.count("theme")} themes, ` +
+        `${this.count("notification")} notifications`,
     );
   }
 }
 
-function hasPluginShape(obj: unknown): obj is { id: string; type: string; name: string; version: string } {
+function hasPluginShape(
+  obj: unknown,
+): obj is { id: string; type: string; name: string; version: string } {
   return (
     obj !== null &&
-    typeof obj === 'object' &&
-    'id' in obj &&
-    'type' in obj &&
-    'name' in obj &&
-    'version' in obj
+    typeof obj === "object" &&
+    "id" in obj &&
+    "type" in obj &&
+    "name" in obj &&
+    "version" in obj
   );
 }
 
 function isProviderPlugin(obj: unknown): obj is ProviderPlugin {
-  return hasPluginShape(obj) && obj.type === 'provider';
+  return hasPluginShape(obj) && obj.type === "provider";
 }
 
 function isAgentPlugin(obj: unknown): obj is AgentPlugin {
-  return hasPluginShape(obj) && obj.type === 'agent';
+  return hasPluginShape(obj) && obj.type === "agent";
 }
 
 function isThemePlugin(obj: unknown): obj is ThemePlugin {
-  return hasPluginShape(obj) && obj.type === 'theme';
+  return hasPluginShape(obj) && obj.type === "theme";
 }
 
 function isNotificationPlugin(obj: unknown): obj is NotificationPlugin {
-  return hasPluginShape(obj) && obj.type === 'notification';
+  return hasPluginShape(obj) && obj.type === "notification";
 }
 
 export const pluginRegistry = new PluginRegistryImpl();

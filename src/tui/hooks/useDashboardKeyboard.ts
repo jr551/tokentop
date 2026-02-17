@@ -1,23 +1,24 @@
-import { useRef, useEffect } from 'react';
-import { useKeyboard } from '@opentui/react';
-import { useInputFocus } from '../contexts/InputContext.tsx';
-import { useTimeWindow } from '../contexts/TimeWindowContext.tsx';
-import { useToastContext } from '../contexts/ToastContext.tsx';
-import { useAgentSessions } from '../contexts/AgentSessionContext.tsx';
-import { copyToClipboard } from '@/utils/clipboard.ts';
-import type { AgentSessionAggregate } from '../../agents/types.ts';
-import type { DriverDimension, SidebarMode } from '../components/SmartSidebar.tsx';
+import { useKeyboard } from "@opentui/react";
+import { useEffect, useRef } from "react";
+import { copyToClipboard } from "@/utils/clipboard.ts";
+import type { AgentSessionAggregate } from "../../agents/types.ts";
+import type { DriverDimension, SidebarMode } from "../components/SmartSidebar.tsx";
+import { useAgentSessions } from "../contexts/AgentSessionContext.tsx";
+import { useInputFocus } from "../contexts/InputContext.tsx";
+import { useTimeWindow } from "../contexts/TimeWindowContext.tsx";
+import { useToastContext } from "../contexts/ToastContext.tsx";
 
 function formatSessionSummary(session: AgentSessionAggregate): string {
   const effectiveTokens = session.totals.input + session.totals.output;
-  const cost = session.totalCostUsd?.toFixed(4) ?? '0.00';
-  const primaryModel = session.streams[0]?.modelId ?? 'unknown';
+  const cost = session.totalCostUsd?.toFixed(4) ?? "0.00";
+  const primaryModel = session.streams[0]?.modelId ?? "unknown";
   const duration = Math.round((session.lastActivityAt - session.startedAt) / 1000);
-  const durationStr = duration > 3600
-    ? `${Math.floor(duration / 3600)}h ${Math.floor((duration % 3600) / 60)}m`
-    : duration > 60
-      ? `${Math.floor(duration / 60)}m ${duration % 60}s`
-      : `${duration}s`;
+  const durationStr =
+    duration > 3600
+      ? `${Math.floor(duration / 3600)}h ${Math.floor((duration % 3600) / 60)}m`
+      : duration > 60
+        ? `${Math.floor(duration / 60)}m ${duration % 60}s`
+        : `${duration}s`;
 
   const cacheRead = session.totals.cacheRead ?? 0;
   const cacheWrite = session.totals.cacheWrite ?? 0;
@@ -36,22 +37,24 @@ function formatSessionSummary(session: AgentSessionAggregate): string {
   if (cacheRead > 0 || cacheWrite > 0) {
     const totalInput = session.totals.input + cacheRead + cacheWrite;
     const hitRate = totalInput > 0 ? Math.round((cacheRead / totalInput) * 100) : 0;
-    lines.push(`Cache: ${hitRate}% hit (read: ${cacheRead.toLocaleString()}, write: ${cacheWrite.toLocaleString()})`);
+    lines.push(
+      `Cache: ${hitRate}% hit (read: ${cacheRead.toLocaleString()}, write: ${cacheWrite.toLocaleString()})`,
+    );
   }
 
   if (session.projectPath) lines.push(`Project: ${session.projectPath}`);
-  return lines.join('\n');
+  return lines.join("\n");
 }
 
 interface DashboardKeyboardState {
   showHelp: boolean;
   showSessionDrawer: boolean;
   selectedRow: number;
-  focusedPanel: 'sessions' | 'sidebar' | 'limits';
+  focusedPanel: "sessions" | "sidebar" | "limits";
   sidebarCollapsed: boolean;
   filterQuery: string;
   isFiltering: boolean;
-  sortField: 'cost' | 'tokens' | 'time';
+  sortField: "cost" | "tokens" | "time";
   pendingG: boolean;
   scrollOffset: number;
   limitSelectedIndex: number;
@@ -67,11 +70,13 @@ interface DashboardKeyboardActions {
   openSessionDrawer: () => void;
   closeSessionDrawer: () => void;
   setSelectedRow: (fn: (prev: number) => number) => void;
-  setFocusedPanel: (fn: (prev: 'sessions' | 'sidebar' | 'limits') => 'sessions' | 'sidebar' | 'limits') => void;
+  setFocusedPanel: (
+    fn: (prev: "sessions" | "sidebar" | "limits") => "sessions" | "sidebar" | "limits",
+  ) => void;
   setSidebarCollapsed: (fn: (prev: boolean) => boolean) => void;
   setFilterQuery: (fn: (prev: string) => string) => void;
   setIsFiltering: (val: boolean) => void;
-  setSortField: (fn: (prev: 'cost' | 'tokens' | 'time') => 'cost' | 'tokens' | 'time') => void;
+  setSortField: (fn: (prev: "cost" | "tokens" | "time") => "cost" | "tokens" | "time") => void;
   setPendingG: (val: boolean) => void;
   setScrollOffset: (val: number) => void;
   setLimitSelectedIndex: (fn: (prev: number) => number) => void;
@@ -120,7 +125,20 @@ export function useDashboardKeyboard({
     selectedDriverIndexRef.current = state.selectedDriverIndex;
     activeDriverFilterRef.current = state.activeDriverFilter;
     sidebarModeRef.current = state.sidebarMode;
-  }, [state.isFiltering, state.showHelp, state.showSessionDrawer, state.pendingG, processedSessions, state.focusedPanel, state.providerCount, state.filterQuery, state.driverDimension, state.selectedDriverIndex, state.activeDriverFilter, state.sidebarMode]);
+  }, [
+    state.isFiltering,
+    state.showHelp,
+    state.showSessionDrawer,
+    state.pendingG,
+    processedSessions,
+    state.focusedPanel,
+    state.providerCount,
+    state.filterQuery,
+    state.driverDimension,
+    state.selectedDriverIndex,
+    state.activeDriverFilter,
+    state.sidebarMode,
+  ]);
 
   const { isInputFocused } = useInputFocus();
 
@@ -129,19 +147,19 @@ export function useDashboardKeyboard({
     if (key.ctrl) {
       return;
     }
-    
+
     // Allow filter mode to handle its own input (no <input> element in RealTimeDashboard)
     if (isInputFocused && !isFilteringRef.current) {
       return;
     }
 
-    if (key.sequence === '?' || (key.shift && key.name === '/')) {
-      actions.setShowHelp(prev => !prev);
+    if (key.sequence === "?" || (key.shift && key.name === "/")) {
+      actions.setShowHelp((prev) => !prev);
       return;
     }
 
     if (modalOpenRef.current) {
-      if (key.name === 'escape' || key.name === 'q' || key.sequence === '?') {
+      if (key.name === "escape" || key.name === "q" || key.sequence === "?") {
         actions.setShowHelp(() => false);
         actions.closeSessionDrawer();
         return;
@@ -149,17 +167,19 @@ export function useDashboardKeyboard({
 
       const selectedSession = processedSessions[state.selectedRow];
       if (state.showSessionDrawer && selectedSession) {
-        if (key.name === 'c') {
+        if (key.name === "c") {
           const summary = formatSessionSummary(selectedSession);
-          copyToClipboard(summary).then(() => {
-            showToast('Copied to clipboard');
-          }).catch(() => {
-            showToast('Copy failed', 'error');
-          });
+          copyToClipboard(summary)
+            .then(() => {
+              showToast("Copied to clipboard");
+            })
+            .catch(() => {
+              showToast("Copy failed", "error");
+            });
           return;
         }
-        if (key.name === 'x') {
-          showToast('Export not yet implemented', 'info');
+        if (key.name === "x") {
+          showToast("Export not yet implemented", "info");
           return;
         }
       }
@@ -167,99 +187,99 @@ export function useDashboardKeyboard({
     }
 
     if (isFilteringRef.current) {
-      if (key.name === 'enter' || key.name === 'return') {
+      if (key.name === "enter" || key.name === "return") {
         actions.setIsFiltering(false);
         setInputFocused(false);
         return;
       }
-      if (key.name === 'escape') {
-        actions.setFilterQuery(() => '');
+      if (key.name === "escape") {
+        actions.setFilterQuery(() => "");
         actions.setIsFiltering(false);
         setInputFocused(false);
         return;
       }
-      if (key.name === 'backspace') {
-        actions.setFilterQuery(q => q.slice(0, -1));
+      if (key.name === "backspace") {
+        actions.setFilterQuery((q) => q.slice(0, -1));
         return;
       }
       if (key.sequence && key.sequence.length === 1 && /^[a-zA-Z0-9\-_./]$/.test(key.sequence)) {
-        actions.setFilterQuery(q => q + key.sequence);
+        actions.setFilterQuery((q) => q + key.sequence);
         return;
       }
       return;
     }
 
-    if (key.name === 'tab' && !key.shift) {
-      actions.setFocusedPanel(curr => {
-        if (curr === 'sessions') return 'limits';
-        if (curr === 'limits') return 'sidebar';
-        return 'sessions';
+    if (key.name === "tab" && !key.shift) {
+      actions.setFocusedPanel((curr) => {
+        if (curr === "sessions") return "limits";
+        if (curr === "limits") return "sidebar";
+        return "sessions";
       });
       return;
     }
-    if (key.name === 'tab' && key.shift) {
-      actions.setFocusedPanel(curr => {
-        if (curr === 'sessions') return 'sidebar';
-        if (curr === 'sidebar') return 'limits';
-        return 'sessions';
+    if (key.name === "tab" && key.shift) {
+      actions.setFocusedPanel((curr) => {
+        if (curr === "sessions") return "sidebar";
+        if (curr === "sidebar") return "limits";
+        return "sessions";
       });
       return;
     }
 
-    if (key.name === 'l' && focusedPanelRef.current !== 'limits') {
-      actions.setFocusedPanel(() => 'limits');
+    if (key.name === "l" && focusedPanelRef.current !== "limits") {
+      actions.setFocusedPanel(() => "limits");
       return;
     }
 
-    if (key.name === 'i') {
-      actions.setSidebarCollapsed(curr => !curr);
+    if (key.name === "i") {
+      actions.setSidebarCollapsed((curr) => !curr);
       return;
     }
 
-    if (key.name === '/' || key.sequence === '/') {
+    if (key.name === "/" || key.sequence === "/") {
       actions.setIsFiltering(true);
       setInputFocused(true);
       return;
     }
 
-    if (key.name === 's') {
-      actions.setSortField(curr => curr === 'cost' ? 'tokens' : 'cost');
+    if (key.name === "s") {
+      actions.setSortField((curr) => (curr === "cost" ? "tokens" : "cost"));
       return;
     }
 
     // Clear applied filter with Escape (when not in typing mode)
-    if (key.name === 'escape' && filterQueryRef.current) {
-      actions.setFilterQuery(() => '');
+    if (key.name === "escape" && filterQueryRef.current) {
+      actions.setFilterQuery(() => "");
       return;
     }
 
-    if (key.name === 't' && key.shift) {
+    if (key.name === "t" && key.shift) {
       cycleWindowBack();
       return;
     }
 
-    if (key.name === 't') {
+    if (key.name === "t") {
       cycleWindow();
       return;
     }
 
-    if (key.name === 'r') {
+    if (key.name === "r") {
       refreshSessions();
       return;
     }
 
-    if (focusedPanelRef.current === 'sessions') {
+    if (focusedPanelRef.current === "sessions") {
       const sessions = sessionsRef.current;
-      if (key.name === 'down' || key.name === 'j') {
+      if (key.name === "down" || key.name === "j") {
         actions.setPendingG(false);
-        actions.setSelectedRow(curr => Math.min(curr + 1, sessions.length - 1));
-      } else if (key.name === 'up' || key.name === 'k') {
+        actions.setSelectedRow((curr) => Math.min(curr + 1, sessions.length - 1));
+      } else if (key.name === "up" || key.name === "k") {
         actions.setPendingG(false);
-        actions.setSelectedRow(curr => Math.max(curr - 1, 0));
-      } else if (key.shift && key.name === 'g') {
+        actions.setSelectedRow((curr) => Math.max(curr - 1, 0));
+      } else if (key.shift && key.name === "g") {
         actions.setPendingG(false);
         actions.setSelectedRow(() => sessions.length - 1);
-      } else if (key.name === 'g') {
+      } else if (key.name === "g") {
         if (pendingGRef.current) {
           actions.setSelectedRow(() => 0);
           actions.setScrollOffset(0);
@@ -268,7 +288,7 @@ export function useDashboardKeyboard({
           actions.setPendingG(true);
           setTimeout(() => actions.setPendingG(false), 500);
         }
-      } else if (key.name === 'return' && sessions.length > 0) {
+      } else if (key.name === "return" && sessions.length > 0) {
         actions.setPendingG(false);
         actions.openSessionDrawer();
       } else {
@@ -276,63 +296,63 @@ export function useDashboardKeyboard({
       }
     }
 
-    if (focusedPanelRef.current === 'limits') {
+    if (focusedPanelRef.current === "limits") {
       const maxIndex = Math.max(0, providerCountRef.current - 1);
-      if (key.name === 'left' || key.name === 'h') {
-        actions.setLimitSelectedIndex(curr => Math.max(curr - 1, 0));
+      if (key.name === "left" || key.name === "h") {
+        actions.setLimitSelectedIndex((curr) => Math.max(curr - 1, 0));
         return;
-      } else if (key.name === 'right' || key.name === 'l') {
-        actions.setLimitSelectedIndex(curr => Math.min(curr + 1, maxIndex));
+      } else if (key.name === "right" || key.name === "l") {
+        actions.setLimitSelectedIndex((curr) => Math.min(curr + 1, maxIndex));
         return;
-      } else if (key.name === 'escape') {
-        actions.setFocusedPanel(() => 'sessions');
+      } else if (key.name === "escape") {
+        actions.setFocusedPanel(() => "sessions");
         actions.setLimitSelectedIndex(() => 0);
         return;
       }
     }
 
-    if (focusedPanelRef.current === 'sidebar') {
-      if (key.name === 'down' || key.name === 'j') {
-        actions.setSelectedDriverIndex(curr => curr + 1);
+    if (focusedPanelRef.current === "sidebar") {
+      if (key.name === "down" || key.name === "j") {
+        actions.setSelectedDriverIndex((curr) => curr + 1);
         return;
-      } else if (key.name === 'up' || key.name === 'k') {
-        actions.setSelectedDriverIndex(curr => Math.max(curr - 1, 0));
+      } else if (key.name === "up" || key.name === "k") {
+        actions.setSelectedDriverIndex((curr) => Math.max(curr - 1, 0));
         return;
       }
-      
-      if (key.name === 'return') {
+
+      if (key.name === "return") {
         if (activeDriverFilterRef.current !== null) {
           actions.setActiveDriverFilter(null);
         } else {
-          actions.setActiveDriverFilter('__TOGGLE_SELECTED__');
+          actions.setActiveDriverFilter("__TOGGLE_SELECTED__");
         }
         return;
       }
-      
-      if (key.name === 'm') {
-        actions.setDriverDimension(() => 'model');
+
+      if (key.name === "m") {
+        actions.setDriverDimension(() => "model");
         actions.setSelectedDriverIndex(() => 0);
         return;
-      } else if (key.name === 'p') {
-        actions.setDriverDimension(() => 'project');
+      } else if (key.name === "p") {
+        actions.setDriverDimension(() => "project");
         actions.setSelectedDriverIndex(() => 0);
         return;
-      } else if (key.name === 'a') {
-        actions.setDriverDimension(() => 'agent');
+      } else if (key.name === "a") {
+        actions.setDriverDimension(() => "agent");
         actions.setSelectedDriverIndex(() => 0);
         return;
       }
-      
-      if (key.name === 'b') {
+
+      if (key.name === "b") {
         cycleBudgetLock();
         return;
       }
-      
-      if (key.name === 'escape') {
+
+      if (key.name === "escape") {
         if (activeDriverFilterRef.current !== null) {
           actions.setActiveDriverFilter(null);
         } else {
-          actions.setFocusedPanel(() => 'sessions');
+          actions.setFocusedPanel(() => "sessions");
         }
         return;
       }

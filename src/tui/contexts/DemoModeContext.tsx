@@ -1,5 +1,5 @@
-import { createContext, useContext, useMemo, type ReactNode } from 'react';
-import { DemoSimulator, type DemoPreset, type DemoSimulatorOptions } from '@/demo/simulator.ts';
+import { createContext, type ReactNode, useContext, useMemo } from "react";
+import { type DemoPreset, DemoSimulator, type DemoSimulatorOptions } from "@/demo/simulator.ts";
 
 interface DemoModeContextValue {
   demoMode: boolean;
@@ -22,7 +22,10 @@ interface DemoModeProviderProps {
   children: ReactNode;
 }
 
-function buildSimulatorOptions(seed: number | undefined, preset: DemoPreset | undefined): DemoSimulatorOptions {
+function buildSimulatorOptions(
+  seed: number | undefined,
+  preset: DemoPreset | undefined,
+): DemoSimulatorOptions {
   if (seed !== undefined && preset !== undefined) {
     return { seed, preset };
   }
@@ -35,24 +38,28 @@ function buildSimulatorOptions(seed: number | undefined, preset: DemoPreset | un
   return {};
 }
 
-export function DemoModeProvider({ demoMode, demoSeed, demoPreset, children }: DemoModeProviderProps) {
+export function DemoModeProvider({
+  demoMode,
+  demoSeed,
+  demoPreset,
+  children,
+}: DemoModeProviderProps) {
   const simulator = useMemo(() => {
     if (!demoMode) return null;
     return new DemoSimulator(buildSimulatorOptions(demoSeed, demoPreset));
   }, [demoMode, demoSeed, demoPreset]);
 
-  const value = useMemo<DemoModeContextValue>(() => ({
-    demoMode,
-    simulator,
-    seed: simulator?.getSeed() ?? null,
-    preset: simulator?.getPreset() ?? null,
-  }), [demoMode, simulator]);
-
-  return (
-    <DemoModeContext.Provider value={value}>
-      {children}
-    </DemoModeContext.Provider>
+  const value = useMemo<DemoModeContextValue>(
+    () => ({
+      demoMode,
+      simulator,
+      seed: simulator?.getSeed() ?? null,
+      preset: simulator?.getPreset() ?? null,
+    }),
+    [demoMode, simulator],
   );
+
+  return <DemoModeContext.Provider value={value}>{children}</DemoModeContext.Provider>;
 }
 
 export function useDemoMode(): DemoModeContextValue {

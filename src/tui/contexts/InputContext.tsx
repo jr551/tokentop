@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, type ReactNode, useCallback, useContext, useState } from "react";
 
 interface InputContextType {
   isInputFocused: boolean;
@@ -24,7 +24,7 @@ export function InputProvider({ children }: { children: ReactNode }) {
 export function useInputFocus() {
   const context = useContext(InputContext);
   if (context === undefined) {
-    throw new Error('useInputFocus must be used within an InputProvider');
+    throw new Error("useInputFocus must be used within an InputProvider");
   }
   return context;
 }
