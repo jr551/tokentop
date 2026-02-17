@@ -32,6 +32,14 @@ case "$ARCH" in
     ;;
 esac
 
+# --- Validate platform support ---
+if [ "$OS" = "darwin" ] && [ "$ARCH" = "x64" ]; then
+  echo "Error: macOS Intel (x64) binaries are not available."
+  echo "tokentop requires Apple Silicon (M1 or later)."
+  echo "Alternatively, install via npm: bunx tokentop"
+  exit 1
+fi
+
 ARTIFACT="${BINARY_NAME}-${OS}-${ARCH}"
 
 # --- Resolve latest version ---

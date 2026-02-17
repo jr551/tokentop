@@ -89,7 +89,6 @@ Download the latest binary for your platform from [GitHub Releases](https://gith
 | Platform | Binary |
 |----------|--------|
 | macOS (Apple Silicon) | `ttop-darwin-arm64` |
-| macOS (Intel) | `ttop-darwin-x64` |
 | Linux (x64) | `ttop-linux-x64` |
 | Linux (ARM64) | `ttop-linux-arm64` |
 | Windows (x64) | `ttop-windows-x64.exe` |
