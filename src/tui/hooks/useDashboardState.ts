@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { totalTokenCount } from '../../agents/types.ts';
 import type { AgentSessionAggregate, AgentSessionStream } from '../../agents/types.ts';
 
 export interface DashboardDeltas {
@@ -45,7 +46,7 @@ export function useDashboardState(sessions: AgentSessionAggregate[]): UseDashboa
   const [deltas, setDeltas] = useState<DashboardDeltas>({ cost: 0, tokens: 0 });
 
   const totalCost = sessions.reduce((acc, s) => acc + (s.totalCostUsd ?? 0), 0);
-  const totalTokens = sessions.reduce((acc, s) => acc + s.totals.input + s.totals.output, 0);
+  const totalTokens = sessions.reduce((acc, s) => acc + totalTokenCount(s.totals), 0);
   const totalRequests = sessions.reduce((acc, s) => acc + s.requestCount, 0);
   const activeCount = sessions.filter(s => s.status === 'active').length;
 
