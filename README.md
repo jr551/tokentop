@@ -98,9 +98,9 @@ Download the latest binary for your platform from [GitHub Releases](https://gith
 Requires [Bun](https://bun.sh) runtime. If Bun is installed, this works out of the box. If not, it will tell you how to get it.
 
 ```bash
-bunx tokentop
+bunx @tokentop/ttop
 # or install globally
-bun install -g tokentop
+bun install -g @tokentop/ttop
 ```
 
 ### From source

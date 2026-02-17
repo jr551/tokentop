@@ -1,5 +1,5 @@
 {
-  "name": "tokentop",
+  "name": "@tokentop/ttop",
   "version": "0.2.1",
   "description": "Real-time AI token usage monitor - htop for your API costs",
   "author": "Nigel Bazzeghin <nbazzeghin@gmail.com>",
