@@ -11,8 +11,6 @@ Real-time terminal monitoring of LLM token usage and spending across providers a
 
 ![Tokentop Dashboard](assets/Screenshot.png)
 
-<video src="https://github.com/tokentopapp/tokentop/raw/main/assets/ttop.mp4" autoplay loop muted playsinline width="100%"></video>
-
 [![CI](https://img.shields.io/github/actions/workflow/status/tokentopapp/tokentop/ci.yml?style=flat-square&label=CI)](https://github.com/tokentopapp/tokentop/actions)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 [![GitHub release](https://img.shields.io/github/v/release/tokentopapp/tokentop?style=flat-square)](https://github.com/tokentopapp/tokentop/releases)
@@ -40,7 +38,7 @@ That's tokentop.
 
 ## Demo
 
-> See tokentop in action in the video above, or try it yourself with `ttop demo`.
+https://github.com/user-attachments/assets/0b0225c7-a137-454b-9b29-c858cdcbd86c
 
 ## Features
 
