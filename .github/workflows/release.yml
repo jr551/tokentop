@@ -42,7 +42,7 @@ jobs:
           - os: ubuntu-latest
             target: bun-linux-x64
             name: ttop-linux-x64
-          - os: ubuntu-latest
+          - os: ubuntu-24.04-arm
             target: bun-linux-arm64
             name: ttop-linux-arm64
           - os: windows-latest
