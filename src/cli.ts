@@ -2,6 +2,7 @@
 import * as path from 'path';
 import { startTui, type TuiOptions } from './tui/index.tsx';
 import type { DemoPreset } from './demo/simulator.ts';
+import { VERSION } from './version.ts';
 
 const DEMO_PRESETS: DemoPreset[] = ['light', 'normal', 'heavy'];
 
@@ -51,7 +52,7 @@ Examples:
 }
 
 function printVersion() {
-  console.log('tokentop v0.1.0');
+  console.log(`tokentop v${VERSION}`);
 }
 
 async function main() {

@@ -1,5 +1,6 @@
 import { useTerminalDimensions } from '@opentui/react';
 import { useColors, useTheme } from '../contexts/ThemeContext.tsx';
+import { VERSION } from '../../version.ts';
 
 interface HeaderProps {
   title?: string;
@@ -117,7 +118,7 @@ export function Header({ title = 'tokentop', subtitle, activeView, demoMode = fa
             </text>
           </box>
         )}
-        <text height={1} fg={colors.textMuted}>v1.0.0</text>
+        <text height={1} fg={colors.textMuted}>v{VERSION}</text>
       </box>
     </box>
   );

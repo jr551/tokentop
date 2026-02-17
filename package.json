@@ -6,7 +6,17 @@
   "license": "MIT",
   "type": "module",
   "bin": {
-    "ttop": "./src/cli.ts"
+    "ttop": "./bin/ttop.js"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "package.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "dev": "bun --hot src/cli.ts",

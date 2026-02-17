@@ -56,7 +56,7 @@ import { createDriver } from '../driver/driver.ts';
 function createMockHeaderProps() {
   return {
     title: 'tokentop',
-    subtitle: 'v1.0.0',
+    subtitle: 'v0.1.0',
     activeView: 'dashboard' as const,
   };
 }

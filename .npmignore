@@ -1,0 +1,32 @@
+# Development
+.github/
+.worktrees/
+scripts/
+docs/
+assets/
+golden/
+recordings/
+snapshots/
+
+# Test & debug
+src/tui/debug/
+src/tui/driver/
+*.test.ts
+*.spec.ts
+
+# Config
+.eslintrc*
+.prettierrc*
+tsconfig.json
+bunfig.toml
+bun-env.d.ts
+
+# Git
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store

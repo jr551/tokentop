@@ -1,0 +1,245 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+env:
+  BUN_VERSION: '1.2'
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: bun-darwin-arm64
+            name: ttop-darwin-arm64
+          - os: macos-13
+            target: bun-darwin-x64
+            name: ttop-darwin-x64
+          - os: ubuntu-latest
+            target: bun-linux-x64
+            name: ttop-linux-x64
+          - os: ubuntu-latest
+            target: bun-linux-arm64
+            name: ttop-linux-arm64
+          - os: windows-latest
+            target: bun-windows-x64
+            name: ttop-windows-x64.exe
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build binary
+        run: bun build ./src/cli.ts --compile --target=${{ matrix.target }} --outfile=${{ matrix.name }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: ${{ matrix.name }}
+          if-no-files-found: error
+
+  upload-assets:
+    name: Upload Release Assets
+    needs: build
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      sha_darwin_arm64: ${{ steps.checksums.outputs.sha_darwin_arm64 }}
+      sha_darwin_x64: ${{ steps.checksums.outputs.sha_darwin_x64 }}
+      sha_linux_arm64: ${{ steps.checksums.outputs.sha_linux_arm64 }}
+      sha_linux_x64: ${{ steps.checksums.outputs.sha_linux_x64 }}
+      sha_windows_x64: ${{ steps.checksums.outputs.sha_windows_x64 }}
+    steps:
+      - name: Get version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release
+          for dir in artifacts/*/; do
+            name=$(basename "$dir")
+            cp "$dir/$name" "release/$name"
+          done
+          ls -la release/
+
+      - name: Generate checksums
+        id: checksums
+        working-directory: release
+        run: |
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
+          echo "sha_darwin_arm64=$(sha256sum ttop-darwin-arm64 | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "sha_darwin_x64=$(sha256sum ttop-darwin-x64 | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "sha_linux_arm64=$(sha256sum ttop-linux-arm64 | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "sha_linux_x64=$(sha256sum ttop-linux-x64 | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "sha_windows_x64=$(sha256sum ttop-windows-x64.exe | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload assets to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: release/*
+
+  publish-npm:
+    name: Publish to npm
+    needs: upload-assets
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.release.tag_name, '-')"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Publish
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  update-homebrew:
+    name: Update Homebrew Tap
+    needs: upload-assets
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.release.tag_name, '-')"
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: tokentopapp/homebrew-tap
+          token: ${{ secrets.TAP_GITHUB_TOKEN }}
+
+      - name: Update formula
+        env:
+          VERSION: ${{ needs.upload-assets.outputs.version }}
+          SHA_DARWIN_ARM64: ${{ needs.upload-assets.outputs.sha_darwin_arm64 }}
+          SHA_DARWIN_X64: ${{ needs.upload-assets.outputs.sha_darwin_x64 }}
+          SHA_LINUX_ARM64: ${{ needs.upload-assets.outputs.sha_linux_arm64 }}
+          SHA_LINUX_X64: ${{ needs.upload-assets.outputs.sha_linux_x64 }}
+        run: |
+          cat > Formula/tokentop.rb << EOF
+          class Tokentop < Formula
+            desc "htop for your AI costs - real-time terminal monitoring of LLM token usage"
+            homepage "https://github.com/tokentopapp/tokentop"
+            license "MIT"
+            version "${VERSION}"
+
+            on_macos do
+              if Hardware::CPU.arm?
+                url "https://github.com/tokentopapp/tokentop/releases/download/v${VERSION}/ttop-darwin-arm64"
+                sha256 "${SHA_DARWIN_ARM64}"
+              else
+                url "https://github.com/tokentopapp/tokentop/releases/download/v${VERSION}/ttop-darwin-x64"
+                sha256 "${SHA_DARWIN_X64}"
+              end
+            end
+
+            on_linux do
+              if Hardware::CPU.arm?
+                url "https://github.com/tokentopapp/tokentop/releases/download/v${VERSION}/ttop-linux-arm64"
+                sha256 "${SHA_LINUX_ARM64}"
+              else
+                url "https://github.com/tokentopapp/tokentop/releases/download/v${VERSION}/ttop-linux-x64"
+                sha256 "${SHA_LINUX_X64}"
+              end
+            end
+
+            def install
+              bin.install Dir["ttop-*"].first => "ttop"
+            end
+
+            test do
+              assert_match "tokentop", shell_output("#{bin}/ttop --version")
+            end
+          end
+          EOF
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/tokentop.rb
+          git diff --staged --quiet || git commit -m "tokentop ${VERSION}"
+          git push
+        env:
+          VERSION: ${{ needs.upload-assets.outputs.version }}
+
+  update-scoop:
+    name: Update Scoop Bucket
+    needs: upload-assets
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.release.tag_name, '-')"
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: tokentopapp/scoop-tokentop
+          token: ${{ secrets.TAP_GITHUB_TOKEN }}
+
+      - name: Update manifest
+        env:
+          VERSION: ${{ needs.upload-assets.outputs.version }}
+          SHA_WINDOWS_X64: ${{ needs.upload-assets.outputs.sha_windows_x64 }}
+        run: |
+          cat > tokentop.json << EOF
+          {
+            "version": "${VERSION}",
+            "description": "htop for your AI costs - real-time terminal monitoring of LLM token usage",
+            "homepage": "https://github.com/tokentopapp/tokentop",
+            "license": "MIT",
+            "architecture": {
+              "64bit": {
+                "url": "https://github.com/tokentopapp/tokentop/releases/download/v${VERSION}/ttop-windows-x64.exe",
+                "hash": "${SHA_WINDOWS_X64}"
+              }
+            },
+            "bin": [["ttop-windows-x64.exe", "ttop"]],
+            "checkver": {
+              "github": "https://github.com/tokentopapp/tokentop"
+            },
+            "autoupdate": {
+              "architecture": {
+                "64bit": {
+                  "url": "https://github.com/tokentopapp/tokentop/releases/download/v\$version/ttop-windows-x64.exe"
+                }
+              }
+            }
+          }
+          EOF
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add tokentop.json
+          git diff --staged --quiet || git commit -m "tokentop ${VERSION}"
+          git push
+        env:
+          VERSION: ${{ needs.upload-assets.outputs.version }}
