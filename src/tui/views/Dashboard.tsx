@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useKeyboard } from '@opentui/react';
+import { useKeyboard, useTerminalDimensions } from '@opentui/react';
 import type { ScrollBoxRenderable, BoxRenderable, InputRenderable } from '@opentui/core';
 import { useColors } from '../contexts/ThemeContext.tsx';
 import { usePlugins, type ProviderState } from '../contexts/PluginContext.tsx';
@@ -8,13 +8,12 @@ import { ProviderCard } from '../components/ProviderCard.tsx';
 import { GhostProviderCard } from '../components/GhostProviderCard.tsx';
 import { ProvidersList } from '../components/ProvidersList.tsx';
 import { ProviderAggregateStrip } from '../components/ProviderAggregateStrip.tsx';
-import { ProviderDetailPanel } from '../components/ProviderDetailPanel.tsx';
-
 type SortMode = 'name' | 'usage' | 'status';
 type ViewMode = 'cards' | 'list';
 
 export function Dashboard() {
   const colors = useColors();
+  const { width: termWidth } = useTerminalDimensions();
   const { providers, isInitialized, refreshAllProviders, refreshProvider } = usePlugins();
   const { setInputFocused } = useInputFocus();
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
@@ -208,13 +207,10 @@ export function Dashboard() {
 
   const totalConfigured = configured.length;
   const totalUnconfigured = unconfigured.length;
-  const selectedProvider = focusedIndex !== null && focusedIndex < configured.length
-    ? configured[focusedIndex]
-    : null;
 
   return (
     <box flexDirection="column" flexGrow={1} padding={1} gap={0}>
-      <ProviderAggregateStrip providers={providerList.filter(p => p.configured)} />
+      <ProviderAggregateStrip providers={atRiskFocus ? configured : providerList.filter(p => p.configured)} />
 
       <box flexDirection="row" gap={2} alignItems="center" height={1} justifyContent="space-between" paddingX={1}>
         <box flexDirection="row" gap={2} alignItems="center">
@@ -274,9 +270,6 @@ export function Dashboard() {
             onSelect={setFocusedIndex}
             expandedIndex={expandedIndex}
           />
-          {expandedIndex !== null && selectedProvider && (
-            <ProviderDetailPanel provider={selectedProvider} />
-          )}
         </box>
       ) : (
         <>
@@ -335,8 +328,11 @@ export function Dashboard() {
 
       <box flexDirection="row" paddingLeft={1} height={1}>
         <text fg={colors.textSubtle} height={1}>
-          {isFiltering ? 'Type to filter  Esc cancel  Enter apply' :
-           '↑↓ navigate  Enter detail  / filter  s sort  v view  u unconfigured  x at-risk  R refresh all'}
+          {isFiltering
+            ? 'Type to filter  Esc cancel  Enter apply'
+            : termWidth < 90
+              ? '↑↓ nav  Enter detail  / filter  s sort  v view  u unconf  x risk'
+              : '↑↓ navigate  Enter detail  / filter  s sort  v view  u unconfigured  x at-risk  R refresh'}
         </text>
       </box>
     </box>

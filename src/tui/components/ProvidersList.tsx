@@ -4,6 +4,7 @@ import { useColors } from '../contexts/ThemeContext.tsx';
 import type { ProviderState } from '../contexts/PluginContext.tsx';
 import { InlineGauge } from './InlineGauge.tsx';
 import { InlineSparkline } from './InlineSparkline.tsx';
+import { ProviderDetailPanel } from './ProviderDetailPanel.tsx';
 
 type FieldState = 'actual' | 'estimated' | 'unavailable';
 
@@ -124,6 +125,56 @@ function getTotalTokens(state: ProviderState): FieldValue {
   return formatTokens(total);
 }
 
+/** Responsive layout tiers based on terminal width */
+interface LayoutTier {
+  nameWidth: number;
+  planWidth: number;
+  gaugeWidth: number;
+  showPlan: boolean;
+  showToday: boolean;
+  showMtd: boolean;
+  showTokens: boolean;
+  showReset: boolean;
+  showTrend: boolean;
+  sparkWidth: number;
+}
+
+function getLayoutTier(termWidth: number): LayoutTier {
+  if (termWidth >= 140) {
+    return {
+      nameWidth: 20, planWidth: 18, gaugeWidth: 28,
+      showPlan: true, showToday: true, showMtd: true,
+      showTokens: true, showReset: true, showTrend: true, sparkWidth: 12,
+    };
+  }
+  if (termWidth >= 120) {
+    return {
+      nameWidth: 18, planWidth: 16, gaugeWidth: 24,
+      showPlan: true, showToday: true, showMtd: true,
+      showTokens: true, showReset: true, showTrend: true, sparkWidth: 10,
+    };
+  }
+  if (termWidth >= 100) {
+    return {
+      nameWidth: 16, planWidth: 12, gaugeWidth: 20,
+      showPlan: true, showToday: true, showMtd: true,
+      showTokens: true, showReset: true, showTrend: true, sparkWidth: 8,
+    };
+  }
+  if (termWidth >= 80) {
+    return {
+      nameWidth: 14, planWidth: 10, gaugeWidth: 18,
+      showPlan: true, showToday: true, showMtd: false,
+      showTokens: false, showReset: true, showTrend: false, sparkWidth: 0,
+    };
+  }
+  return {
+    nameWidth: 12, planWidth: 0, gaugeWidth: 14,
+    showPlan: false, showToday: true, showMtd: false,
+    showTokens: false, showReset: false, showTrend: false, sparkWidth: 0,
+  };
+}
+
 interface GroupedProvider {
   state: ProviderState;
   status: ReturnType<typeof getStatusInfo>;
@@ -137,19 +188,15 @@ export interface ProvidersListProps {
   expandedIndex: number | null;
 }
 
-export function ProvidersList({ providers, selectedIndex, onSelect, expandedIndex: _expandedIndex }: ProvidersListProps) {
+export function ProvidersList({ providers, selectedIndex, onSelect, expandedIndex }: ProvidersListProps) {
   const colors = useColors();
   const { width: termWidth } = useTerminalDimensions();
 
-  const isNarrow = termWidth < 80;
-
-  const gaugeWidth = isNarrow ? 12 : 20;
-  const sparkWidth = isNarrow ? 5 : 8;
-  const nameWidth = isNarrow ? 12 : 16;
-
-  const showMtd = !isNarrow;
-  const showPlan = !isNarrow;
-  const showTrend = !isNarrow;
+  const layout = getLayoutTier(termWidth);
+  const {
+    nameWidth, planWidth, gaugeWidth, sparkWidth,
+    showPlan, showToday, showMtd, showTokens, showReset, showTrend,
+  } = layout;
 
   const grouped = useMemo(() => {
     const groups: Record<StatusGroup, GroupedProvider[]> = { error: [], warn: [], ok: [] };
@@ -164,12 +211,13 @@ export function ProvidersList({ providers, selectedIndex, onSelect, expandedInde
 
   const groupOrder: StatusGroup[] = ['error', 'warn', 'ok'];
 
-  const fieldColor = (fv: FieldValue, isSelected: boolean): string => {
-    if (isSelected) return colors.background;
+  const fieldColor = (fv: FieldValue): string => {
     if (fv.state === 'estimated') return colors.textMuted;
     if (fv.state === 'unavailable') return colors.textSubtle;
     return colors.text;
   };
+
+  const selBg = colors.selection;
 
   const renderRow = (item: GroupedProvider) => {
     const { state, status, originalIndex } = item;
@@ -182,30 +230,37 @@ export function ProvidersList({ providers, selectedIndex, onSelect, expandedInde
     const plan = state.usage?.planType ?? '—';
     const reset = getNextReset(state);
 
+    const rowBg = isSelected ? selBg : undefined;
+    const bgProp = rowBg ? { bg: rowBg } : {};
+    const railChar = isSelected ? '▌' : ' ';
+
     return (
       <box
         key={state.plugin.id}
         flexDirection="row"
-        paddingX={1}
         height={1}
+        flexGrow={1}
         focusable
         onMouseDown={() => onSelect(originalIndex)}
-        {...(isSelected ? { backgroundColor: colors.primary } : {})}
+        {...(rowBg ? { backgroundColor: rowBg } : {})}
       >
-        <text width={3} fg={isSelected ? colors.background : status.color} height={1}>
+        <text width={2} fg={isSelected ? colors.primary : colors.textSubtle} height={1} {...bgProp}>
+          {railChar + ' '}
+        </text>
+        <text width={3} fg={status.color} height={1} {...bgProp}>
           {pad(`${status.icon} `, 3)}
         </text>
-        <text width={nameWidth} fg={isSelected ? colors.background : providerColor} height={1}>
+        <text width={nameWidth} fg={providerColor} height={1} {...bgProp}>
           {pad(state.plugin.name, nameWidth)}
         </text>
         {showPlan && (
-          <text width={8} fg={isSelected ? colors.background : colors.textMuted} height={1}>
-            {pad(plan, 8)}
+          <text width={planWidth} fg={colors.textMuted} height={1} {...bgProp}>
+            {pad(plan, planWidth)}
           </text>
         )}
         <box width={gaugeWidth + 5} flexDirection="row" height={1}>
           {isSelected ? (
-            <text width={gaugeWidth + 5} fg={colors.background} height={1}>
+            <text width={gaugeWidth + 5} fg={colors.text} height={1} {...bgProp}>
               {pad(
                 '█'.repeat(Math.round((maxUsage / 100) * gaugeWidth)) +
                 '·'.repeat(gaugeWidth - Math.round((maxUsage / 100) * gaugeWidth)) +
@@ -222,28 +277,37 @@ export function ProvidersList({ providers, selectedIndex, onSelect, expandedInde
             </>
           )}
         </box>
-        <text width={9} fg={fieldColor(costToday, isSelected)} height={1}>
-          {padStart(costToday.text, 9)}
-        </text>
+        {showToday && (
+          <text width={9} fg={fieldColor(costToday)} height={1} {...bgProp}>
+            {padStart(costToday.text, 9)}
+          </text>
+        )}
         {showMtd && (
-          <text width={9} fg={fieldColor(costMtd, isSelected)} height={1}>
+          <text width={9} fg={fieldColor(costMtd)} height={1} {...bgProp}>
             {padStart(costMtd.text, 9)}
           </text>
         )}
-        <text width={8} fg={fieldColor(tokens, isSelected)} height={1}>
-          {padStart(tokens.text, 8)}
-        </text>
-        <text width={9} fg={isSelected ? colors.background : colors.textMuted} height={1}>
-          {padStart(reset, 9)}
-        </text>
+        {showTokens && (
+          <text width={8} fg={fieldColor(tokens)} height={1} {...bgProp}>
+            {padStart(tokens.text, 8)}
+          </text>
+        )}
+        {showReset && (
+          <text width={9} fg={colors.textMuted} height={1} {...bgProp}>
+            {padStart(reset, 9)}
+          </text>
+        )}
         {showTrend && (
-          <box width={sparkWidth} height={1}>
+          <box width={sparkWidth + 1} height={1} overflow="hidden">
             {isSelected ? (
-              <text width={sparkWidth} fg={colors.background} height={1}>
-                {'⣀'.repeat(sparkWidth)}
+              <text width={sparkWidth + 1} fg={colors.textMuted} height={1} {...bgProp}>
+                {' ' + '⣀'.repeat(sparkWidth)}
               </text>
             ) : (
-              <InlineSparkline history={state.history} width={sparkWidth} />
+              <>
+                <text width={1} height={1}>{' '}</text>
+                <InlineSparkline history={state.history} width={sparkWidth} />
+              </>
             )}
           </box>
         )}
@@ -260,16 +324,17 @@ export function ProvidersList({ providers, selectedIndex, onSelect, expandedInde
   );
 
   const renderHeader = () => (
-    <box flexDirection="row" paddingX={1} height={1}>
+    <box flexDirection="row" height={1}>
+      <text width={2} fg={colors.textMuted} height={1}>{pad('', 2)}</text>
       <text width={3} fg={colors.textMuted} height={1}>{pad('', 3)}</text>
       <text width={nameWidth} fg={colors.textMuted} height={1}>{pad('PROVIDER', nameWidth)}</text>
-      {showPlan && <text width={8} fg={colors.textMuted} height={1}>{pad('PLAN', 8)}</text>}
+      {showPlan && <text width={planWidth} fg={colors.textMuted} height={1}>{pad('PLAN', planWidth)}</text>}
       <text width={gaugeWidth + 5} fg={colors.textMuted} height={1}>{pad('HEADROOM', gaugeWidth + 5)}</text>
-      <text width={9} fg={colors.textMuted} height={1}>{padStart('$TODAY', 9)}</text>
+      {showToday && <text width={9} fg={colors.textMuted} height={1}>{padStart('$TODAY', 9)}</text>}
       {showMtd && <text width={9} fg={colors.textMuted} height={1}>{padStart('$MTD', 9)}</text>}
-      <text width={8} fg={colors.textMuted} height={1}>{padStart('TOKENS', 8)}</text>
-      <text width={9} fg={colors.textMuted} height={1}>{padStart('RESET', 9)}</text>
-      {showTrend && <text width={sparkWidth} fg={colors.textMuted} height={1}>{pad('TREND', sparkWidth)}</text>}
+      {showTokens && <text width={8} fg={colors.textMuted} height={1}>{padStart('TOKENS', 8)}</text>}
+      {showReset && <text width={9} fg={colors.textMuted} height={1}>{padStart('RESET', 9)}</text>}
+      {showTrend && <text width={sparkWidth + 1} fg={colors.textMuted} height={1}>{' ' + pad('TREND', sparkWidth)}</text>}
     </box>
   );
 
@@ -290,6 +355,13 @@ export function ProvidersList({ providers, selectedIndex, onSelect, expandedInde
 
     for (const item of items) {
       rows.push(renderRow(item));
+      if (expandedIndex !== null && item.originalIndex === expandedIndex) {
+        rows.push(
+          <box key={`detail-${item.state.plugin.id}`} paddingX={1}>
+            <ProviderDetailPanel provider={item.state} />
+          </box>
+        );
+      }
     }
 
     isFirst = false;

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, forwardRef } from 'react';
 import type { BoxRenderable } from '@opentui/core';
+import { useTerminalDimensions } from '@opentui/react';
 import { useColors } from '../contexts/ThemeContext.tsx';
 import { UsageGauge } from './UsageGauge.tsx';
 import { useSpinner } from './Spinner.tsx';
@@ -65,6 +66,7 @@ export const ProviderCard = forwardRef<BoxRenderable, ProviderCardProps>(({
   onFocus,
 }, ref) => {
   const colors = useColors();
+  const { width: termWidth } = useTerminalDimensions();
   const providerColor = color ?? colors.primary;
   const spinnerFrame = useSpinner();
 
@@ -77,7 +79,10 @@ export const ProviderCard = forwardRef<BoxRenderable, ProviderCardProps>(({
     ? [...rawItems].sort((a, b) => (b.usedPercent ?? 0) - (a.usedPercent ?? 0))
     : [];
   
-  const useCompactMode = sortedItems.length > 3;
+  const maxVisibleGauges = 3;
+  const hiddenGaugeCount = sortedItems.length > maxVisibleGauges ? sortedItems.length - maxVisibleGauges : 0;
+  const visibleItems = sortedItems.length > maxVisibleGauges ? sortedItems.slice(0, maxVisibleGauges) : sortedItems;
+  const useCompactMode = visibleItems.length > 3;
 
   useEffect(() => {
     if (!usage?.limitReached) {
@@ -127,6 +132,11 @@ export const ProviderCard = forwardRef<BoxRenderable, ProviderCardProps>(({
     ? getWarningBorderColor(pulseStep, baseBorderColor)
     : baseBorderColor;
 
+  const numColumns = termWidth >= 160 ? 3 : termWidth >= 100 ? 2 : 1;
+  const cardPadding = 4;
+  const gaps = numColumns - 1;
+  const cardWidth = Math.max(40, Math.min(60, Math.floor((termWidth - cardPadding - gaps) / numColumns)));
+
   return (
     <box
       ref={ref}
@@ -136,7 +146,7 @@ export const ProviderCard = forwardRef<BoxRenderable, ProviderCardProps>(({
       padding={1}
       flexDirection="column"
       gap={1}
-      width={44}
+      width={cardWidth}
       focusable
       onMouseDown={handleClick}
     >
@@ -173,7 +183,7 @@ export const ProviderCard = forwardRef<BoxRenderable, ProviderCardProps>(({
             {hasItems ? (
               <>
                 {useCompactMode ? (
-                  sortedItems.map((limit, idx) => (
+                  visibleItems.map((limit, idx) => (
                     <CompactGauge
                       key={idx}
                       label={limit.label ?? 'Usage'}
@@ -184,7 +194,7 @@ export const ProviderCard = forwardRef<BoxRenderable, ProviderCardProps>(({
                     />
                   ))
                 ) : (
-                  sortedItems.map((limit, idx) => {
+                  visibleItems.map((limit, idx) => {
                     const labelText = limit.label ?? 'Usage';
                     const labelHasWindow = labelText.toLowerCase().includes('window') || 
                                            labelText.toLowerCase().includes('hour') ||
@@ -200,6 +210,9 @@ export const ProviderCard = forwardRef<BoxRenderable, ProviderCardProps>(({
                       />
                     );
                   })
+                )}
+                {hiddenGaugeCount > 0 && (
+                  <text fg={colors.textSubtle}>+{hiddenGaugeCount} more limit{hiddenGaugeCount > 1 ? 's' : ''}</text>
                 )}
               </>
             ) : (
