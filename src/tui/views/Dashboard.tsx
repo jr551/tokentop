@@ -7,28 +7,33 @@ import { useInputFocus } from '../contexts/InputContext.tsx';
 import { ProviderCard } from '../components/ProviderCard.tsx';
 import { GhostProviderCard } from '../components/GhostProviderCard.tsx';
 import { ProvidersList } from '../components/ProvidersList.tsx';
+import { ProviderAggregateStrip } from '../components/ProviderAggregateStrip.tsx';
+import { ProviderDetailPanel } from '../components/ProviderDetailPanel.tsx';
 
 type SortMode = 'name' | 'usage' | 'status';
 type ViewMode = 'cards' | 'list';
 
 export function Dashboard() {
   const colors = useColors();
-  const { providers, isInitialized, refreshAllProviders } = usePlugins();
+  const { providers, isInitialized, refreshAllProviders, refreshProvider } = usePlugins();
   const { setInputFocused } = useInputFocus();
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   
   const [filterQuery, setFilterQuery] = useState('');
   const [isFiltering, setIsFiltering] = useState(false);
   const [sortMode, setSortMode] = useState<SortMode>('status');
-  const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [showUnconfigured, setShowUnconfigured] = useState(true);
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  const [atRiskFocus, setAtRiskFocus] = useState(false);
 
-  // Refs to avoid stale closures in useKeyboard
   const isFilteringRef = useRef(isFiltering);
+  const expandedIndexRef = useRef(expandedIndex);
+  const focusedIndexRef = useRef(focusedIndex);
   
-  useEffect(() => {
-    isFilteringRef.current = isFiltering;
-  }, [isFiltering]);
+  useEffect(() => { isFilteringRef.current = isFiltering; }, [isFiltering]);
+  useEffect(() => { expandedIndexRef.current = expandedIndex; }, [expandedIndex]);
+  useEffect(() => { focusedIndexRef.current = focusedIndex; }, [focusedIndex]);
 
   useEffect(() => {
     setInputFocused(isFiltering);
@@ -65,6 +70,15 @@ export function Dashboard() {
   const filteredAndSortedProviders = useMemo(() => {
     let result = providerList.filter((p) => p.configured);
 
+    if (atRiskFocus) {
+      result = result.filter(p => {
+        if (p.usage?.error) return true;
+        if (p.usage?.limitReached) return true;
+        const maxUsage = getMaxUsage(p);
+        return maxUsage >= 80;
+      });
+    }
+
     if (filterQuery) {
       const query = filterQuery.toLowerCase();
       result = result.filter(p => p.plugin.name.toLowerCase().includes(query));
@@ -93,7 +107,7 @@ export function Dashboard() {
     });
 
     return result;
-  }, [providerList, filterQuery, sortMode, getMaxUsage]);
+  }, [providerList, filterQuery, sortMode, getMaxUsage, atRiskFocus]);
 
   const configured = filteredAndSortedProviders;
   const unconfigured = useMemo(() => 
@@ -115,6 +129,21 @@ export function Dashboard() {
       return next;
     });
   }, [configured.length, unconfigured.length, showUnconfigured]);
+
+  const toggleExpanded = useCallback(() => {
+    const current = focusedIndexRef.current;
+    if (current === null) return;
+    setExpandedIndex(prev => prev === current ? null : current);
+  }, []);
+
+  const refreshSelected = useCallback(() => {
+    const idx = focusedIndexRef.current;
+    if (idx === null || idx >= configured.length) return;
+    const provider = configured[idx];
+    if (provider) {
+      refreshProvider(provider.plugin.id);
+    }
+  }, [configured, refreshProvider]);
 
   useKeyboard((key) => {
     if (isFilteringRef.current) {
@@ -139,11 +168,15 @@ export function Dashboard() {
     } else if (key.name === 'tab' && key.shift) {
       cycleFocus(-1);
     } else if (key.name === 'escape') {
-      if (focusedIndex !== null) {
+      if (expandedIndexRef.current !== null) {
+        setExpandedIndex(null);
+      } else if (focusedIndex !== null) {
         setFocusedIndex(null);
       } else if (filterQuery) {
         setFilterQuery('');
       }
+    } else if (key.name === 'enter' || key.name === 'return') {
+      toggleExpanded();
     } else if (key.name === '/' || key.name === 'f') {
       setIsFiltering(true);
     } else if (key.name === 's') {
@@ -156,6 +189,12 @@ export function Dashboard() {
       setViewMode(current => current === 'cards' ? 'list' : 'cards');
     } else if (key.name === 'u') {
       setShowUnconfigured(current => !current);
+    } else if (key.name === 'x') {
+      setAtRiskFocus(current => !current);
+    } else if (key.sequence === 'R') {
+      refreshAllProviders();
+    } else if (key.sequence === 'r' && focusedIndex !== null) {
+      refreshSelected();
     }
   });
 
@@ -169,10 +208,15 @@ export function Dashboard() {
 
   const totalConfigured = configured.length;
   const totalUnconfigured = unconfigured.length;
+  const selectedProvider = focusedIndex !== null && focusedIndex < configured.length
+    ? configured[focusedIndex]
+    : null;
 
   return (
-    <box flexDirection="column" flexGrow={1} padding={1} gap={1}>
-      <box flexDirection="row" gap={2} alignItems="center" height={1} justifyContent="space-between">
+    <box flexDirection="column" flexGrow={1} padding={1} gap={0}>
+      <ProviderAggregateStrip providers={providerList.filter(p => p.configured)} />
+
+      <box flexDirection="row" gap={2} alignItems="center" height={1} justifyContent="space-between" paddingX={1}>
         <box flexDirection="row" gap={2} alignItems="center">
           {isFiltering ? (
             <box flexDirection="row" gap={1} alignItems="center">
@@ -206,8 +250,15 @@ export function Dashboard() {
 
           <text>
             <span fg={colors.textSubtle}>View: </span>
-            <span fg={colors.primary}>{viewMode === 'cards' ? 'Cards' : 'List'}</span>
+            <span fg={colors.primary}>{viewMode === 'cards' ? 'Cards' : 'Console'}</span>
           </text>
+
+          {atRiskFocus && (
+            <>
+              <text fg={colors.textSubtle}>|</text>
+              <text fg={colors.warning}>AT-RISK</text>
+            </>
+          )}
         </box>
 
         <text fg={colors.textMuted}>
@@ -216,11 +267,17 @@ export function Dashboard() {
       </box>
 
       {viewMode === 'list' ? (
-        <ProvidersList
-          providers={configured}
-          selectedIndex={focusedIndex}
-          onSelect={setFocusedIndex}
-        />
+        <box flexDirection="column" flexGrow={1}>
+          <ProvidersList
+            providers={configured}
+            selectedIndex={focusedIndex}
+            onSelect={setFocusedIndex}
+            expandedIndex={expandedIndex}
+          />
+          {expandedIndex !== null && selectedProvider && (
+            <ProviderDetailPanel provider={selectedProvider} />
+          )}
+        </box>
       ) : (
         <>
           {configured.length > 0 ? (
@@ -276,10 +333,10 @@ export function Dashboard() {
         </>
       )}
 
-      <box flexDirection="row" paddingLeft={1}>
-        <text fg={colors.textSubtle}>
+      <box flexDirection="row" paddingLeft={1} height={1}>
+        <text fg={colors.textSubtle} height={1}>
           {isFiltering ? 'Type to filter  Esc cancel  Enter apply' :
-           '↑↓ navigate  / filter  s sort  v toggle view  u toggle unconfigured'}
+           '↑↓ navigate  Enter detail  / filter  s sort  v view  u unconfigured  x at-risk  R refresh all'}
         </text>
       </box>
     </box>

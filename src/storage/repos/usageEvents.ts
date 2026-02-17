@@ -179,6 +179,52 @@ export interface SessionActivityPoint {
   tokens: number;
 }
 
+export interface ProviderDailyCost {
+  provider: string;
+  bucketStart: number;
+  costUsd: number;
+  tokens: number;
+  requestCount: number;
+}
+
+export function queryProviderDailyCosts(
+  startMs: number,
+  endMs: number,
+  bucketMs: number
+): ProviderDailyCost[] {
+  const db = getDatabase();
+
+  const sql = `
+    SELECT
+      provider,
+      (timestamp / ${bucketMs} * ${bucketMs}) AS bucket_start,
+      COALESCE(SUM(cost_usd), 0) AS cost_usd,
+      COALESCE(SUM(input_tokens + output_tokens), 0) AS tokens,
+      COALESCE(SUM(request_count), 0) AS request_count
+    FROM usage_events
+    WHERE timestamp >= ? AND timestamp <= ?
+      AND provider IS NOT NULL
+    GROUP BY provider, bucket_start
+    ORDER BY provider, bucket_start ASC
+  `;
+
+  const rows = db.prepare(sql).all(startMs, endMs) as Array<{
+    provider: string;
+    bucket_start: number;
+    cost_usd: number;
+    tokens: number;
+    request_count: number;
+  }>;
+
+  return rows.map(r => ({
+    provider: r.provider,
+    bucketStart: r.bucket_start,
+    costUsd: r.cost_usd,
+    tokens: r.tokens,
+    requestCount: r.request_count,
+  }));
+}
+
 export function getSessionActivityTimeline(sessionId: string): SessionActivityPoint[] {
   const db = getDatabase();
 

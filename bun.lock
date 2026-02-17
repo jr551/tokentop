@@ -7,8 +7,9 @@
       "dependencies": {
         "@opentui/core": "0.1.79",
         "@opentui/react": "0.1.79",
+        "@tokentop/agent-claude-code": "^1.1.0",
         "@tokentop/agent-opencode": "^1.0.0",
-        "@tokentop/plugin-sdk": "^1.0.2",
+        "@tokentop/plugin-sdk": "^1.1.0",
         "react": "^19.0.0",
         "react-devtools-core": "^7.0.1",
         "zod": "^3.24.0",
@@ -96,9 +97,11 @@
 
     "@tokenizer/token": ["@tokenizer/token@0.3.0", "", {}, "sha512-OvjF+z51L3ov0OyAU0duzsYuvO01PH7x4t6DJx+guahgTnBHkhJdG7soQeTSFLWN3efnHyibZ4Z8l2EuWwJN3A=="],
 
+    "@tokentop/agent-claude-code": ["@tokentop/agent-claude-code@1.1.0", "", { "peerDependencies": { "@tokentop/plugin-sdk": "^1.0.0" } }, "sha512-mzR9NUAgd9p88zUxZtnhYgxqUGEfr8N3A25D2wGfojkPVAda0DTwTHeUXTLyXMabTSyWz+7vuqLoyXYA4Qpusw=="],
+
     "@tokentop/agent-opencode": ["@tokentop/agent-opencode@1.0.0", "", { "peerDependencies": { "@tokentop/plugin-sdk": "^1.0.0" } }, "sha512-2Y/1sBULn+VHnQDdVqaWLOTiTCEN5OGPWkZ3C+njmdJVfgAEZ6tL6rV8iFxZvWITV5gr845WV+3m1jZEy/dffw=="],
 
-    "@tokentop/plugin-sdk": ["@tokentop/plugin-sdk@1.0.2", "", {}, "sha512-ojcqs+Fl3E/aExPnVZaRu1rZyxhQCFDDKvMx0kn0RIzE2CqsgPvTuavJtJl9u9HW5YJ1/mCu+Ju2I6qMvORyVw=="],
+    "@tokentop/plugin-sdk": ["@tokentop/plugin-sdk@1.1.0", "", {}, "sha512-v+fVir+JPycBbEgRySvwDR3nvGgCtO3fJL4AzNCjsU7gTYL4y9zAGyhhcaOzzVp8Hd7J05BFj4x++x0xo8Z+0g=="],
 
     "@types/bun": ["@types/bun@1.3.6", "", { "dependencies": { "bun-types": "1.3.6" } }, "sha512-uWCv6FO/8LcpREhenN1d1b6fcspAB+cefwD7uti8C8VffIv0Um08TKMn98FynpTiU38+y2dUO55T11NgDt8VAA=="],
 

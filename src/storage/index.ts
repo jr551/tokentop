@@ -19,12 +19,13 @@ export {
   insertUsageEvent,
   insertUsageEventBatch,
   queryUsageTimeSeries,
+  queryProviderDailyCosts,
   calculateBurnRate,
   getTotalUsageInWindow,
   getSessionActivityTimeline,
 } from './repos/usageEvents.ts';
 
-export type { SessionActivityPoint } from './repos/usageEvents.ts';
+export type { SessionActivityPoint, ProviderDailyCost } from './repos/usageEvents.ts';
 
 export {
   upsertAgentSession,

@@ -596,6 +596,46 @@ export class DemoSimulator {
     return [...this.fixedProviderIds, ...this.fixedExtraProviders.map(p => p.id)];
   }
 
+  generateHistoricalCostDataByProvider(daysBack: number): Array<{ date: number; provider: string; cost: number; tokens: number; requests: number }> {
+    const totalDaily = this.generateHistoricalCostData(daysBack);
+    const result: Array<{ date: number; provider: string; cost: number; tokens: number; requests: number }> = [];
+
+    const providerShares = [
+      { id: 'anthropic', share: 0.50 },
+      { id: 'openai', share: 0.25 },
+      { id: 'google-gemini', share: 0.15 },
+    ];
+
+    const providerRng = this.rng.fork(88888);
+
+    for (let i = 0; i < totalDaily.length; i++) {
+      const day = totalDaily[i]!;
+      const dayRng = providerRng.fork(i);
+
+      let remainingCost = day.cost;
+
+      for (const provider of providerShares) {
+        const variance = dayRng.range(0.8, 1.2);
+        const cost = Math.round(day.cost * provider.share * variance * 100) / 100;
+        const actualCost = Math.min(Math.max(cost, 0), remainingCost);
+        remainingCost -= actualCost;
+
+        const tokensPerDollar = dayRng.range(15000, 25000);
+        const requestsPerDollar = dayRng.range(8, 15);
+
+        result.push({
+          date: day.date,
+          provider: provider.id,
+          cost: actualCost,
+          tokens: Math.floor(actualCost * tokensPerDollar),
+          requests: Math.floor(actualCost * requestsPerDollar),
+        });
+      }
+    }
+
+    return result;
+  }
+
   generateHistoricalCostData(daysBack: number): Array<{ date: number; cost: number }> {
     const historyRng = this.rng.fork(99999);
     const now = Date.now();
