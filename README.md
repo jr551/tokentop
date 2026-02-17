@@ -9,10 +9,9 @@
 
 Real-time terminal monitoring of LLM token usage and spending across providers and coding agents.
 
-![Tokentop Dashboard](assets/Screenshot.png)
+<video src="https://github.com/tokentopapp/tokentop/raw/main/assets/ttop.mp4" autoplay loop muted playsinline width="100%"></video>
 
-<!-- TODO: uncomment CI badge when GitHub Actions workflow is set up -->
-<!-- [![CI](https://img.shields.io/github/actions/workflow/status/tokentopapp/tokentop/ci.yml?style=flat-square&label=CI)](https://github.com/tokentopapp/tokentop/actions) -->
+[![CI](https://img.shields.io/github/actions/workflow/status/tokentopapp/tokentop/ci.yml?style=flat-square&label=CI)](https://github.com/tokentopapp/tokentop/actions)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 [![GitHub release](https://img.shields.io/github/v/release/tokentopapp/tokentop?style=flat-square)](https://github.com/tokentopapp/tokentop/releases)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -37,11 +36,9 @@ That's tokentop.
 - Set **budget alerts** so you don't wake up to a surprise bill
 - Runs **100% locally** — your usage data never leaves your machine
 
-<!-- TODO: Replace with VHS recording
 ## Demo
 
-> _Coming soon: VHS terminal recording_
--->
+> See tokentop in action in the video above, or try it yourself with `ttop demo`.
 
 ## Features
 
