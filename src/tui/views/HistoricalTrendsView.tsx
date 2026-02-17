@@ -3,7 +3,7 @@ import { useKeyboard, useTerminalDimensions } from '@opentui/react';
 import { useColors } from '../contexts/ThemeContext.tsx';
 import { useStorageReady } from '../contexts/StorageContext.tsx';
 import { useDemoMode } from '../contexts/DemoModeContext.tsx';
-import { queryUsageTimeSeries, queryProviderDailyCosts, isDatabaseInitialized } from '@/storage/index.ts';
+import { queryUsageTimeSeries, queryProviderDailyCosts, queryModelDailyCosts, queryProjectDailyCosts, isDatabaseInitialized } from '@/storage/index.ts';
 
 // ============================================================================
 // Types
@@ -98,7 +98,10 @@ function fmtYAxisLabel(val: number, metric: MetricType): string {
   }
 }
 
-function fmtDeltaPct(current: number, previous: number): { text: string; positive: boolean } {
+function fmtDeltaPct(current: number, previous: number, hasPreviousData = true): { text: string; positive: boolean } {
+  if (!hasPreviousData) {
+    return { text: '—', positive: true };
+  }
   if (previous === 0) {
     return current > 0 ? { text: '▲ new', positive: false } : { text: '── 0%', positive: true };
   }
@@ -160,7 +163,8 @@ function computeSummary(points: ChartPoint[], metric: MetricType): PeriodSummary
   const totalCost = points.reduce((sum, p) => sum + p.costUsd, 0);
   const totalTokens = points.reduce((sum, p) => sum + p.tokens, 0);
   const totalRequests = points.reduce((sum, p) => sum + p.requestCount, 0);
-  const avgPerDay = points.length > 0 ? totalCost / points.length : 0;
+  const metricTotal = metric === 'tokens' ? totalTokens : metric === 'requests' ? totalRequests : totalCost;
+  const avgPerDay = points.length > 0 ? metricTotal / points.length : 0;
 
   let peakDay: { label: string; value: number } | null = null;
   let lowDay: { label: string; value: number } | null = null;
@@ -269,6 +273,111 @@ function fetchProviderBreakdown(period: TimePeriod): ProviderContribution[] {
   }
 }
 
+function fetchModelBreakdown(period: TimePeriod): ProviderContribution[] {
+  if (!isDatabaseInitialized()) return [];
+
+  const now = Date.now();
+  const daysBack = getDaysBack(period);
+  const startMs = now - daysBack * MS_PER_DAY;
+
+  try {
+    const rows = queryModelDailyCosts(startMs, now, MS_PER_DAY);
+
+    const modelMap = new Map<string, {
+      cost: number; tokens: number; requests: number;
+      dailyCosts: Map<number, number>;
+    }>();
+
+    for (const row of rows) {
+      const entry = modelMap.get(row.model) ?? {
+        cost: 0, tokens: 0, requests: 0, dailyCosts: new Map(),
+      };
+      entry.cost += row.costUsd;
+      entry.tokens += row.tokens;
+      entry.requests += row.requestCount;
+      entry.dailyCosts.set(row.bucketStart, (entry.dailyCosts.get(row.bucketStart) ?? 0) + row.costUsd);
+      modelMap.set(row.model, entry);
+    }
+
+    const totalCost = Array.from(modelMap.values()).reduce((sum, p) => sum + p.cost, 0);
+
+    return Array.from(modelMap.entries())
+      .map(([model, d]) => {
+        const dailyCosts: number[] = [];
+        for (let i = daysBack - 1; i >= 0; i--) {
+          const dayTs = Date.now() - i * MS_PER_DAY;
+          const bucket = Math.floor(dayTs / MS_PER_DAY) * MS_PER_DAY;
+          dailyCosts.push(d.dailyCosts.get(bucket) ?? 0);
+        }
+        return {
+          provider: model,
+          cost: d.cost,
+          costShare: totalCost > 0 ? (d.cost / totalCost) * 100 : 0,
+          tokens: d.tokens,
+          requests: d.requests,
+          dailyCosts,
+        };
+      })
+      .sort((a, b) => b.cost - a.cost)
+      .slice(0, 4);
+  } catch {
+    return [];
+  }
+}
+
+function fetchProjectBreakdown(period: TimePeriod): ProviderContribution[] {
+  if (!isDatabaseInitialized()) return [];
+
+  const now = Date.now();
+  const daysBack = getDaysBack(period);
+  const startMs = now - daysBack * MS_PER_DAY;
+
+  try {
+    const rows = queryProjectDailyCosts(startMs, now, MS_PER_DAY);
+
+    const projectMap = new Map<string, {
+      cost: number; tokens: number; requests: number;
+      dailyCosts: Map<number, number>;
+    }>();
+
+    for (const row of rows) {
+      const displayName = row.projectPath.split('/').pop() ?? row.projectPath;
+      const entry = projectMap.get(displayName) ?? {
+        cost: 0, tokens: 0, requests: 0, dailyCosts: new Map(),
+      };
+      entry.cost += row.costUsd;
+      entry.tokens += row.tokens;
+      entry.requests += row.requestCount;
+      entry.dailyCosts.set(row.bucketStart, (entry.dailyCosts.get(row.bucketStart) ?? 0) + row.costUsd);
+      projectMap.set(displayName, entry);
+    }
+
+    const totalCost = Array.from(projectMap.values()).reduce((sum, p) => sum + p.cost, 0);
+
+    return Array.from(projectMap.entries())
+      .map(([project, d]) => {
+        const dailyCosts: number[] = [];
+        for (let i = daysBack - 1; i >= 0; i--) {
+          const dayTs = Date.now() - i * MS_PER_DAY;
+          const bucket = Math.floor(dayTs / MS_PER_DAY) * MS_PER_DAY;
+          dailyCosts.push(d.dailyCosts.get(bucket) ?? 0);
+        }
+        return {
+          provider: project,
+          cost: d.cost,
+          costShare: totalCost > 0 ? (d.cost / totalCost) * 100 : 0,
+          tokens: d.tokens,
+          requests: d.requests,
+          dailyCosts,
+        };
+      })
+      .sort((a, b) => b.cost - a.cost)
+      .slice(0, 4);
+  } catch {
+    return [];
+  }
+}
+
 // ============================================================================
 // Data fetching — Demo mode
 // ============================================================================
@@ -338,6 +447,89 @@ function fetchDemoProviderBreakdown(
       const dailyCosts = allDates.map(date => dayMap.get(date) ?? 0);
       return {
         provider,
+        cost: d.cost,
+        costShare: totalCost > 0 ? (d.cost / totalCost) * 100 : 0,
+        tokens: d.tokens,
+        requests: d.requests,
+        dailyCosts,
+      };
+    })
+    .sort((a, b) => b.cost - a.cost)
+    .slice(0, 4);
+}
+
+function fetchDemoModelBreakdown(
+  simulator: NonNullable<ReturnType<typeof useDemoMode>['simulator']>,
+  period: TimePeriod
+): ProviderContribution[] {
+  const daysBack = getDaysBack(period);
+  const byModel = simulator.generateHistoricalCostDataByModel(daysBack);
+
+  const modelMap = new Map<string, { cost: number; tokens: number; requests: number }>();
+  const modelDayMap = new Map<string, Map<number, number>>();
+
+  for (const entry of byModel) {
+    if (!modelDayMap.has(entry.model)) modelDayMap.set(entry.model, new Map());
+    modelDayMap.get(entry.model)!.set(entry.date, entry.cost);
+
+    const existing = modelMap.get(entry.model) ?? { cost: 0, tokens: 0, requests: 0 };
+    existing.cost += entry.cost;
+    existing.tokens += entry.tokens;
+    existing.requests += entry.requests;
+    modelMap.set(entry.model, existing);
+  }
+
+  const totalCost = Array.from(modelMap.values()).reduce((sum, p) => sum + p.cost, 0);
+  const allDates = [...new Set(byModel.map(e => e.date))].sort((a, b) => a - b);
+
+  return Array.from(modelMap.entries())
+    .map(([model, d]) => {
+      const dayMap = modelDayMap.get(model) ?? new Map();
+      const dailyCosts = allDates.map(date => dayMap.get(date) ?? 0);
+      return {
+        provider: model,
+        cost: d.cost,
+        costShare: totalCost > 0 ? (d.cost / totalCost) * 100 : 0,
+        tokens: d.tokens,
+        requests: d.requests,
+        dailyCosts,
+      };
+    })
+    .sort((a, b) => b.cost - a.cost)
+    .slice(0, 4);
+}
+
+function fetchDemoProjectBreakdown(
+  simulator: NonNullable<ReturnType<typeof useDemoMode>['simulator']>,
+  period: TimePeriod
+): ProviderContribution[] {
+  const daysBack = getDaysBack(period);
+  const byProject = simulator.generateHistoricalCostDataByProject(daysBack);
+
+  const projectMap = new Map<string, { cost: number; tokens: number; requests: number }>();
+  const projectDayMap = new Map<string, Map<number, number>>();
+
+  for (const entry of byProject) {
+    const displayName = entry.projectPath.split('/').pop() ?? entry.projectPath;
+    if (!projectDayMap.has(displayName)) projectDayMap.set(displayName, new Map());
+    projectDayMap.get(displayName)!.set(entry.date, (projectDayMap.get(displayName)!.get(entry.date) ?? 0) + entry.cost);
+
+    const existing = projectMap.get(displayName) ?? { cost: 0, tokens: 0, requests: 0 };
+    existing.cost += entry.cost;
+    existing.tokens += entry.tokens;
+    existing.requests += entry.requests;
+    projectMap.set(displayName, existing);
+  }
+
+  const totalCost = Array.from(projectMap.values()).reduce((sum, p) => sum + p.cost, 0);
+  const allDates = [...new Set(byProject.map(e => e.date))].sort((a, b) => a - b);
+
+  return Array.from(projectMap.entries())
+    .map(([project, d]) => {
+      const dayMap = projectDayMap.get(project) ?? new Map();
+      const dailyCosts = allDates.map(date => dayMap.get(date) ?? 0);
+      return {
+        provider: project,
         cost: d.cost,
         costShare: totalCost > 0 ? (d.cost / totalCost) * 100 : 0,
         tokens: d.tokens,
@@ -483,17 +675,20 @@ const AsciiChart = ({
   }
   plotLine(values, CHART_CHARS, 'main');
 
-  // Cursor overlay
+  // Cursor overlay — final pass, draws on top of chart data
   let cursorCol: number | null = null;
   if (cursorIndex !== null && cursorIndex >= 0 && cursorIndex < data.length) {
     const stepsPerPoint = chartWidth / (data.length - 1);
     cursorCol = Math.round(cursorIndex * stepsPerPoint);
     if (cursorCol >= 0 && cursorCol < chartWidth) {
       for (let y = 0; y < chartHeight; y++) {
-        if (gridTypes[y]?.[cursorCol] === 'empty') {
+        const cellType = gridTypes[y]?.[cursorCol];
+        if (cellType === 'empty') {
           gridChars[y]![cursorCol] = '┆';
-          gridTypes[y]![cursorCol] = 'cursor';
+        } else if (cellType === 'main' || cellType === 'ghost') {
+          gridChars[y]![cursorCol] = '╋';
         }
+        gridTypes[y]![cursorCol] = 'cursor';
       }
     }
   }
@@ -502,7 +697,9 @@ const AsciiChart = ({
   const rows = [];
   for (let r = chartHeight - 1; r >= 0; r--) {
     const rowVal = minVal + (r / (chartHeight - 1)) * (maxVal - minVal);
-    const showLabel = r === 0 || r === chartHeight - 1 || r === Math.floor(chartHeight / 2);
+    const labelCount = Math.max(3, Math.min(7, Math.floor(chartHeight / 5) + 1));
+    const labelStep = (chartHeight - 1) / (labelCount - 1);
+    const showLabel = Array.from({ length: labelCount }, (_, i) => Math.round(i * labelStep)).includes(r);
     const label = showLabel ? fmtYAxisLabel(rowVal, metric) : '     ';
     const sep = r === 0 ? CHART_CHARS.cross : CHART_CHARS.t_l;
 
@@ -573,11 +770,11 @@ function PeriodSummarySection({ summary, metric }: { summary: PeriodSummary; met
       <text fg={colors.textMuted} height={1}><strong>PERIOD SUMMARY</strong></text>
       <box flexDirection="row" justifyContent="space-between" height={1}>
         <text fg={colors.textMuted} height={1}>Total</text>
-        <text fg={colors.success} height={1}><strong>{fmtCurrency(summary.totalCost)}</strong></text>
+        <text fg={colors.success} height={1}><strong>{fmtMetricValue(metric === 'cost' ? summary.totalCost : metric === 'tokens' ? summary.totalTokens : summary.totalRequests, metric)}</strong></text>
       </box>
       <box flexDirection="row" justifyContent="space-between" height={1}>
         <text fg={colors.textMuted} height={1}>Avg/day</text>
-        <text fg={colors.text} height={1}>{fmtCurrency(summary.avgPerDay)}</text>
+        <text fg={colors.text} height={1}>{fmtMetricValue(summary.avgPerDay, metric)}</text>
       </box>
       {summary.peakDay && (
         <box flexDirection="row" justifyContent="space-between" height={1}>
@@ -607,11 +804,11 @@ function PeriodSummarySection({ summary, metric }: { summary: PeriodSummary; met
 // InsightPanel — vs Previous Period
 // ============================================================================
 
-function DeltaSection({ current, previous }: { current: PeriodSummary; previous: PeriodSummary }) {
+function DeltaSection({ current, previous, hasPrevData }: { current: PeriodSummary; previous: PeriodSummary; hasPrevData: boolean }) {
   const colors = useColors();
-  const costDelta = fmtDeltaPct(current.totalCost, previous.totalCost);
-  const tokensDelta = fmtDeltaPct(current.totalTokens, previous.totalTokens);
-  const reqDelta = fmtDeltaPct(current.totalRequests, previous.totalRequests);
+  const costDelta = fmtDeltaPct(current.totalCost, previous.totalCost, hasPrevData);
+  const tokensDelta = fmtDeltaPct(current.totalTokens, previous.totalTokens, hasPrevData);
+  const reqDelta = fmtDeltaPct(current.totalRequests, previous.totalRequests, hasPrevData);
 
   return (
     <box flexDirection="column" paddingX={1}>
@@ -722,22 +919,25 @@ function ContributorsSection({
 
   if (breakdown === 'off' || contributors.length === 0) return null;
 
-  const nameWidth = Math.max(8, panelWidth - 22);
+  // panelWidth includes border(2) + paddingX(2) from InsightPanel = 4 cols overhead
+  const innerWidth = panelWidth - 4;
   const sparkWidth = 7;
+  const costColWidth = 8;
+  const nameWidth = Math.max(6, innerWidth - costColWidth - sparkWidth - 2);
 
   return (
     <box flexDirection="column" paddingX={1}>
-      <text fg={colors.textMuted} height={1}><strong>TOP CONTRIBUTORS</strong></text>
+      <text fg={colors.textMuted} height={1}><strong>TOP {breakdown === 'model' ? 'MODELS' : breakdown === 'project' ? 'PROJECTS' : 'PROVIDERS'}</strong></text>
       {contributors.map((c) => (
         <box key={c.provider} flexDirection="column">
           <box flexDirection="row" height={1}>
             <text fg={colors.primary} width={nameWidth} height={1}>
               {padRight(truncate(c.provider, nameWidth), nameWidth)}
             </text>
-            <text fg={colors.text} height={1}>{fmtCurrency(c.cost).padStart(7)}</text>
+            <text fg={colors.text} height={1}>{fmtCurrency(c.cost).padStart(costColWidth)}</text>
           </box>
           <box flexDirection="row" height={1}>
-            <text fg={colors.textSubtle} height={1}>
+            <text fg={colors.textSubtle} width={5} height={1}>
               {padRight(`${Math.round(c.costShare)}%`, 5)}
             </text>
             <text fg={colors.accent} height={1}>
@@ -755,13 +955,14 @@ function ContributorsSection({
 // ============================================================================
 
 function CursorDayDetail({
-  currentDay, previousDay, metric, contributors, cursorIndex,
+  currentDay, previousDay, metric, contributors, cursorIndex, breakdown,
 }: {
   currentDay: ChartPoint;
   previousDay: ChartPoint | null;
   metric: MetricType;
   contributors: ProviderContribution[];
   cursorIndex: number;
+  breakdown: BreakdownDimension;
 }) {
   const colors = useColors();
 
@@ -796,7 +997,7 @@ function CursorDayDetail({
           <box height={1}>
             <text fg={colors.border} height={1}>{'─'.repeat(20)}</text>
           </box>
-          <text fg={colors.textMuted} height={1}><strong>PROVIDERS</strong></text>
+          <text fg={colors.textMuted} height={1}><strong>{breakdown === 'model' ? 'TOP MODELS' : breakdown === 'project' ? 'TOP PROJECTS' : 'PROVIDERS'}</strong></text>
           {contributors.map((c) => {
             const dayCost = c.dailyCosts[cursorIndex] ?? 0;
             return (
@@ -859,7 +1060,7 @@ function CondensedStrip({
 
 function InsightPanel({
   summary, prevSummary, contributors, previousContributors,
-  metric, breakdown, comparisonMode, cursorMode, cursorIndex, data, panelWidth,
+  metric, breakdown, comparisonMode, cursorMode, cursorIndex, data, panelWidth, hasPrevData,
 }: {
   summary: PeriodSummary;
   prevSummary: PeriodSummary;
@@ -872,6 +1073,7 @@ function InsightPanel({
   cursorIndex: number;
   data: ChartPoint[];
   panelWidth: number;
+  hasPrevData: boolean;
 }) {
   const colors = useColors();
 
@@ -896,6 +1098,7 @@ function InsightPanel({
           metric={metric}
           contributors={contributors}
           cursorIndex={cursorIndex}
+          breakdown={breakdown}
         />
       </box>
     );
@@ -940,7 +1143,7 @@ function InsightPanel({
         <text fg={colors.border} height={1}>{'─'.repeat(Math.max(0, panelWidth - 4))}</text>
       </box>
 
-      <DeltaSection current={summary} previous={prevSummary} />
+      <DeltaSection current={summary} previous={prevSummary} hasPrevData={hasPrevData} />
 
       <box paddingX={1} height={1}>
         <text fg={colors.border} height={1}>{'─'.repeat(Math.max(0, panelWidth - 4))}</text>
@@ -983,25 +1186,77 @@ export function HistoricalTrendsView() {
   // Layout
   const isNarrow = terminalWidth <= 100;
   const panelVisible = showInsight && !isNarrow;
-  const panelWidth = panelVisible ? Math.max(28, Math.floor(terminalWidth * 0.3)) : 0;
+  const panelWidth = panelVisible ? Math.min(40, Math.max(28, Math.floor(terminalWidth * 0.3))) : 0;
   const chartWidth = panelVisible
     ? Math.max(40, terminalWidth - panelWidth - 8)
     : Math.max(40, terminalWidth - 6);
-  const chartHeight = isNarrow
-    ? Math.max(6, terminalHeight - 14)
-    : Math.max(8, terminalHeight - 8);
 
-  // Fetch data
+  // Chart height: budget from actual chrome rows to prevent overflow
+  // Header: 7 rows (large logo at ≥35) or 1 row (compact) + StatusBar: 1 row
+  const appOverhead = (terminalHeight >= 35 ? 7 : 1) + 1;
+  // View chrome: border(2) + padding(2) + view header(1) + marginBottom(1) + footer(1) + marginTop(1)
+  const viewChrome = 8;
+  // Narrow mode has condensed strip (2 rows) + vertical gap (1 row)
+  const stripOverhead = isNarrow ? 3 : 0;
+  const chartHeight = Math.max(isNarrow ? 6 : 8, terminalHeight - appOverhead - viewChrome - stripOverhead);
+
+  // Fetch time series data
   useEffect(() => {
     if (demoMode && simulator) {
       setData(fetchDemoTimeSeries(simulator, period, 0));
       setPrevData(fetchDemoTimeSeries(simulator, period, 1));
-      setContributors(fetchDemoProviderBreakdown(simulator, period));
       setPrevContributors(fetchDemoPrevContributors(simulator, period));
     } else if (isStorageReady) {
       setData(fetchTimeSeries(period, 0));
       setPrevData(fetchTimeSeries(period, 1));
-      setContributors(fetchProviderBreakdown(period));
+    }
+  }, [isStorageReady, period, demoMode, simulator]);
+
+  // Fetch breakdown contributors based on dimension
+  useEffect(() => {
+    if (breakdown === 'off') {
+      setContributors([]);
+      return;
+    }
+    if (demoMode && simulator) {
+      if (breakdown === 'model') setContributors(fetchDemoModelBreakdown(simulator, period));
+      else if (breakdown === 'project') setContributors(fetchDemoProjectBreakdown(simulator, period));
+      else setContributors(fetchDemoProviderBreakdown(simulator, period));
+    } else if (isStorageReady) {
+      if (breakdown === 'model') setContributors(fetchModelBreakdown(period));
+      else if (breakdown === 'project') setContributors(fetchProjectBreakdown(period));
+      else setContributors(fetchProviderBreakdown(period));
+    }
+  }, [isStorageReady, period, breakdown, demoMode, simulator]);
+
+  // Fetch previous period contributors for live mode comparison
+  useEffect(() => {
+    if (demoMode && simulator) return;
+    if (!isStorageReady) return;
+    const now = Date.now();
+    const daysBack = getDaysBack(period);
+    const prevStart = now - daysBack * 2 * MS_PER_DAY;
+    const prevEnd = now - daysBack * MS_PER_DAY;
+    try {
+      const rows = queryProviderDailyCosts(prevStart, prevEnd, MS_PER_DAY);
+      const providerMap = new Map<string, number>();
+      for (const row of rows) {
+        providerMap.set(row.provider, (providerMap.get(row.provider) ?? 0) + row.costUsd);
+      }
+      const totalCost = Array.from(providerMap.values()).reduce((s, v) => s + v, 0);
+      setPrevContributors(
+        Array.from(providerMap.entries())
+          .map(([provider, cost]) => ({
+            provider,
+            cost,
+            costShare: totalCost > 0 ? (cost / totalCost) * 100 : 0,
+            tokens: 0,
+            requests: 0,
+            dailyCosts: [],
+          }))
+          .sort((a, b) => b.cost - a.cost)
+      );
+    } catch {
       setPrevContributors([]);
     }
   }, [isStorageReady, period, demoMode, simulator]);
@@ -1015,7 +1270,14 @@ export function HistoricalTrendsView() {
   const summary = useMemo(() => computeSummary(data, metric), [data, metric]);
   const prevSummary = useMemo(() => computeSummary(prevData, metric), [prevData, metric]);
   const hasData = data.some(p => p.costUsd > 0 || p.tokens > 0 || p.requestCount > 0);
-  const totalCost = useMemo(() => data.reduce((acc, p) => acc + p.costUsd, 0), [data]);
+  const hasPrevData = prevData.some(p => p.costUsd > 0 || p.tokens > 0 || p.requestCount > 0);
+  const totalForMetric = useMemo(() => {
+    switch (metric) {
+      case 'cost': return data.reduce((acc, p) => acc + p.costUsd, 0);
+      case 'tokens': return data.reduce((acc, p) => acc + p.tokens, 0);
+      case 'requests': return data.reduce((acc, p) => acc + p.requestCount, 0);
+    }
+  }, [data, metric]);
 
   // Keyboard
   useKeyboard((key) => {
@@ -1037,7 +1299,7 @@ export function HistoricalTrendsView() {
     if (key.name === 'down' || key.name === 'j') {
       if (!cursorMode) {
         setCursorMode(true);
-        setCursorIndex(Math.max(0, data.length - 1));
+        setCursorIndex(0);
       } else {
         setCursorIndex(prev => Math.min(data.length - 1, prev + 1));
       }
@@ -1045,7 +1307,7 @@ export function HistoricalTrendsView() {
     if (key.name === 'up' || key.name === 'k') {
       if (!cursorMode) {
         setCursorMode(true);
-        setCursorIndex(Math.max(0, data.length - 1));
+        setCursorIndex(0);
       } else {
         setCursorIndex(prev => Math.max(0, prev - 1));
       }
@@ -1081,14 +1343,14 @@ export function HistoricalTrendsView() {
         </text>
         <text height={1}>
           <span fg={colors.textMuted}>Total: </span>
-          <span fg={colors.success}><strong>${totalCost.toFixed(2)}</strong></span>
+          <span fg={colors.success}><strong>{fmtMetricValue(totalForMetric, metric)}</strong></span>
         </text>
       </box>
 
       {/* Main content */}
       <box flexGrow={1} flexDirection={isNarrow ? 'column' : 'row'} gap={1}>
         {/* Chart pane */}
-        <box flexGrow={1} flexDirection="column" justifyContent="center">
+        <box flexGrow={1} flexDirection="column" justifyContent="center" overflow="hidden">
           {!isStorageReady && !demoMode ? (
             <text fg={colors.textMuted}>Loading storage...</text>
           ) : !hasData ? (
@@ -1099,7 +1361,7 @@ export function HistoricalTrendsView() {
           ) : (
             <AsciiChart
               data={data}
-              comparisonData={comparisonMode ? prevData : undefined}
+              comparisonData={comparisonMode && hasPrevData ? prevData : undefined}
               metric={metric}
               cursorIndex={cursorMode ? cursorIndex : null}
               height={chartHeight}
@@ -1134,6 +1396,7 @@ export function HistoricalTrendsView() {
               cursorIndex={cursorIndex}
               data={data}
               panelWidth={panelWidth}
+              hasPrevData={hasPrevData}
             />
           )
         )}
@@ -1145,7 +1408,9 @@ export function HistoricalTrendsView() {
           {cursorMode ? (
             <span>
               <span fg={colors.accent}>CURSOR</span>
-              {'  ←→ move  Esc exit  c compare  m metric  i panel'}
+              {isNarrow
+                ? '  ←→ move  Esc exit  c cmp  m met'
+                : '  ←→ move  Esc exit  c compare  m metric  i panel'}
             </span>
           ) : (
             <span>
@@ -1154,7 +1419,9 @@ export function HistoricalTrendsView() {
               <span fg={period === '30d' ? colors.primary : colors.textSubtle}>30d</span>
               {'  '}
               <span fg={period === '90d' ? colors.primary : colors.textSubtle}>90d</span>
-              {'    h/l period  ↑↓ cursor  c compare  m metric  b breakdown  i panel'}
+              {isNarrow
+                ? '  h/l per  j/k cur  c cmp  m met  b brk  i pan'
+                : '    h/l period  ↑↓ cursor  c compare  m metric  b breakdown  i panel'}
             </span>
           )}
         </text>

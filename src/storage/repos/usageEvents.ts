@@ -225,6 +225,98 @@ export function queryProviderDailyCosts(
   }));
 }
 
+export interface ModelDailyCost {
+  model: string;
+  bucketStart: number;
+  costUsd: number;
+  tokens: number;
+  requestCount: number;
+}
+
+export function queryModelDailyCosts(
+  startMs: number,
+  endMs: number,
+  bucketMs: number
+): ModelDailyCost[] {
+  const db = getDatabase();
+
+  const sql = `
+    SELECT
+      model,
+      (timestamp / ${bucketMs} * ${bucketMs}) AS bucket_start,
+      COALESCE(SUM(cost_usd), 0) AS cost_usd,
+      COALESCE(SUM(input_tokens + output_tokens), 0) AS tokens,
+      COALESCE(SUM(request_count), 0) AS request_count
+    FROM usage_events
+    WHERE timestamp >= ? AND timestamp <= ?
+      AND model IS NOT NULL
+    GROUP BY model, bucket_start
+    ORDER BY model, bucket_start ASC
+  `;
+
+  const rows = db.prepare(sql).all(startMs, endMs) as Array<{
+    model: string;
+    bucket_start: number;
+    cost_usd: number;
+    tokens: number;
+    request_count: number;
+  }>;
+
+  return rows.map(r => ({
+    model: r.model,
+    bucketStart: r.bucket_start,
+    costUsd: r.cost_usd,
+    tokens: r.tokens,
+    requestCount: r.request_count,
+  }));
+}
+
+export interface ProjectDailyCost {
+  projectPath: string;
+  bucketStart: number;
+  costUsd: number;
+  tokens: number;
+  requestCount: number;
+}
+
+export function queryProjectDailyCosts(
+  startMs: number,
+  endMs: number,
+  bucketMs: number
+): ProjectDailyCost[] {
+  const db = getDatabase();
+
+  const sql = `
+    SELECT
+      project_path,
+      (timestamp / ${bucketMs} * ${bucketMs}) AS bucket_start,
+      COALESCE(SUM(cost_usd), 0) AS cost_usd,
+      COALESCE(SUM(input_tokens + output_tokens), 0) AS tokens,
+      COALESCE(SUM(request_count), 0) AS request_count
+    FROM usage_events
+    WHERE timestamp >= ? AND timestamp <= ?
+      AND project_path IS NOT NULL
+    GROUP BY project_path, bucket_start
+    ORDER BY project_path, bucket_start ASC
+  `;
+
+  const rows = db.prepare(sql).all(startMs, endMs) as Array<{
+    project_path: string;
+    bucket_start: number;
+    cost_usd: number;
+    tokens: number;
+    request_count: number;
+  }>;
+
+  return rows.map(r => ({
+    projectPath: r.project_path,
+    bucketStart: r.bucket_start,
+    costUsd: r.cost_usd,
+    tokens: r.tokens,
+    requestCount: r.request_count,
+  }));
+}
+
 export function getSessionActivityTimeline(sessionId: string): SessionActivityPoint[] {
   const db = getDatabase();
 

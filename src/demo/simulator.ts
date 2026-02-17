@@ -636,6 +636,87 @@ export class DemoSimulator {
     return result;
   }
 
+  generateHistoricalCostDataByModel(daysBack: number): Array<{ date: number; model: string; cost: number; tokens: number; requests: number }> {
+    const totalDaily = this.generateHistoricalCostData(daysBack);
+    const result: Array<{ date: number; model: string; cost: number; tokens: number; requests: number }> = [];
+
+    const modelShares = [
+      { id: 'claude-3-5-sonnet', share: 0.40 },
+      { id: 'claude-3-opus', share: 0.20 },
+      { id: 'gpt-4.1', share: 0.25 },
+      { id: 'gemini-2.0-pro', share: 0.15 },
+    ];
+
+    const modelRng = this.rng.fork(77777);
+
+    for (let i = 0; i < totalDaily.length; i++) {
+      const day = totalDaily[i]!;
+      const dayRng = modelRng.fork(i);
+
+      let remainingCost = day.cost;
+
+      for (const model of modelShares) {
+        const variance = dayRng.range(0.8, 1.2);
+        const cost = Math.round(day.cost * model.share * variance * 100) / 100;
+        const actualCost = Math.min(Math.max(cost, 0), remainingCost);
+        remainingCost -= actualCost;
+
+        const tokensPerDollar = dayRng.range(15000, 25000);
+        const requestsPerDollar = dayRng.range(8, 15);
+
+        result.push({
+          date: day.date,
+          model: model.id,
+          cost: actualCost,
+          tokens: Math.floor(actualCost * tokensPerDollar),
+          requests: Math.floor(actualCost * requestsPerDollar),
+        });
+      }
+    }
+
+    return result;
+  }
+
+  generateHistoricalCostDataByProject(daysBack: number): Array<{ date: number; projectPath: string; cost: number; tokens: number; requests: number }> {
+    const totalDaily = this.generateHistoricalCostData(daysBack);
+    const result: Array<{ date: number; projectPath: string; cost: number; tokens: number; requests: number }> = [];
+
+    const projectShares = [
+      { path: '/Users/demo/workspace/tokentop', share: 0.45 },
+      { path: '/Users/demo/workspace/webapp', share: 0.30 },
+      { path: '/Users/demo/workspace/infra', share: 0.25 },
+    ];
+
+    const projectRng = this.rng.fork(66666);
+
+    for (let i = 0; i < totalDaily.length; i++) {
+      const day = totalDaily[i]!;
+      const dayRng = projectRng.fork(i);
+
+      let remainingCost = day.cost;
+
+      for (const project of projectShares) {
+        const variance = dayRng.range(0.8, 1.2);
+        const cost = Math.round(day.cost * project.share * variance * 100) / 100;
+        const actualCost = Math.min(Math.max(cost, 0), remainingCost);
+        remainingCost -= actualCost;
+
+        const tokensPerDollar = dayRng.range(15000, 25000);
+        const requestsPerDollar = dayRng.range(8, 15);
+
+        result.push({
+          date: day.date,
+          projectPath: project.path,
+          cost: actualCost,
+          tokens: Math.floor(actualCost * tokensPerDollar),
+          requests: Math.floor(actualCost * requestsPerDollar),
+        });
+      }
+    }
+
+    return result;
+  }
+
   generateHistoricalCostData(daysBack: number): Array<{ date: number; cost: number }> {
     const historyRng = this.rng.fork(99999);
     const now = Date.now();
