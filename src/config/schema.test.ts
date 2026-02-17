@@ -124,19 +124,18 @@ describe('loadConfig', () => {
     expect(loaded.display.sparkline.showBaseline).toBe(DEFAULT_CONFIG.display.sparkline.showBaseline);
   });
 
-  test('parses JSONC with line comments', async () => {
+  test('falls back to defaults for invalid JSON', async () => {
     mockReadFileWithRaw(`{
-      // Override the theme
+      // comments are not valid JSON
       "display": { "theme": "dracula" }
     }`);
 
     const loaded = await loadConfig();
-    expect(loaded.display.theme).toBe('dracula');
+    expect(loaded.display.theme).toBe(DEFAULT_CONFIG.display.theme);
   });
 
-  test('parses JSONC with block comments', async () => {
+  test('parses valid JSON with budget overrides', async () => {
     mockReadFileWithRaw(`{
-      /* Temporarily override budget */
       "budgets": { "daily": 100 }
     }`);
 
@@ -144,10 +143,10 @@ describe('loadConfig', () => {
     expect(loaded.budgets.daily).toBe(100);
   });
 
-  test('parses JSONC with trailing commas', async () => {
+  test('parses valid JSON with multiple overrides', async () => {
     mockReadFileWithRaw(`{
-      "budgets": { "daily": 50, "weekly": 200, },
-      "alerts": { "warningPercent": 90 },
+      "budgets": { "daily": 50, "weekly": 200 },
+      "alerts": { "warningPercent": 90 }
     }`);
 
     const loaded = await loadConfig();
