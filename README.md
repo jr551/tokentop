@@ -9,6 +9,8 @@
 
 Real-time terminal monitoring of LLM token usage and spending across providers and coding agents.
 
+![Tokentop Dashboard](assets/Screenshot.png)
+
 <video src="https://github.com/tokentopapp/tokentop/raw/main/assets/ttop.mp4" autoplay loop muted playsinline width="100%"></video>
 
 [![CI](https://img.shields.io/github/actions/workflow/status/tokentopapp/tokentop/ci.yml?style=flat-square&label=CI)](https://github.com/tokentopapp/tokentop/actions)
