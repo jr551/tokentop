@@ -63,9 +63,46 @@ That's tokentop.
 
 ## Installation
 
-### Prerequisites
+### Homebrew (macOS/Linux)
 
-[Bun](https://bun.sh) runtime (v1.0+)
+```bash
+brew install tokentopapp/tap/tokentop
+```
+
+### Install script (macOS/Linux)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/tokentopapp/tokentop/main/scripts/install.sh | sh
+```
+
+### Scoop (Windows)
+
+```powershell
+scoop bucket add tokentop https://github.com/tokentopapp/scoop-tokentop
+scoop install tokentop
+```
+
+### Standalone binaries
+
+Download the latest binary for your platform from [GitHub Releases](https://github.com/tokentopapp/tokentop/releases). No dependencies required.
+
+| Platform | Binary |
+|----------|--------|
+| macOS (Apple Silicon) | `ttop-darwin-arm64` |
+| macOS (Intel) | `ttop-darwin-x64` |
+| Linux (x64) | `ttop-linux-x64` |
+| Linux (ARM64) | `ttop-linux-arm64` |
+| Windows (x64) | `ttop-windows-x64.exe` |
+
+### npm
+
+Requires [Bun](https://bun.sh) runtime. If Bun is installed, this works out of the box. If not, it will tell you how to get it.
+
+```bash
+bunx tokentop
+# or install globally
+bun install -g tokentop
+```
 
 ### From source
 
@@ -73,21 +110,8 @@ That's tokentop.
 git clone https://github.com/tokentopapp/tokentop.git
 cd tokentop
 bun install
+bun start
 ```
-
-<!-- TODO: uncomment when published
-### Homebrew (macOS/Linux)
-
-```bash
-brew install tokentopapp/tap/tokentop
-```
-
-### npm
-
-```bash
-npm install -g tokentop
-```
--->
 
 ## Quick Start
 
