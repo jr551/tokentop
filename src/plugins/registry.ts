@@ -36,7 +36,14 @@ class PluginRegistryImpl {
   }
 
   register(plugin: AnyPlugin, source: PluginSource = 'builtin'): void {
-    this.sources.set(this.sourceKey(plugin.type, plugin.id), source);
+    const key = this.sourceKey(plugin.type, plugin.id);
+    const existingSource = this.sources.get(key);
+
+    if (existingSource === 'builtin' && source !== 'builtin') {
+      return;
+    }
+
+    this.sources.set(key, source);
     switch (plugin.type) {
       case 'provider':
         if (this.plugins.provider.has(plugin.id)) {

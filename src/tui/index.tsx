@@ -1,11 +1,9 @@
 import { createCliRenderer } from '@opentui/core';
 import { createRoot } from '@opentui/react';
 import { createAppElement, type CreateAppOptions } from './createApp.tsx';
-import type { ThemePlugin } from '@/plugins/types/theme.ts';
 import type { DemoPreset } from '@/demo/simulator.ts';
 
 export interface TuiOptions {
-  theme?: ThemePlugin;
   refreshInterval?: number;
   debug?: boolean;
   demo?: boolean;
@@ -23,10 +21,7 @@ export async function startTui(options: TuiOptions = {}) {
   const root = createRoot(renderer);
 
   const appOptions: CreateAppOptions = {};
-  
-  if (options.theme) {
-    appOptions.initialTheme = options.theme;
-  }
+
   if (options.refreshInterval !== undefined) {
     appOptions.refreshInterval = options.refreshInterval;
   }

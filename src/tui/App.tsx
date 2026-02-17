@@ -3,7 +3,11 @@ import { useKeyboard } from '@opentui/react';
 
 import { captureFrameToFile, createBurstRecorder, type BurstRecorder } from './debug/captureFrame.ts';
 import { pluginLifecycle } from '@/plugins/lifecycle.ts';
-import { ThemeProvider, useColors, useTheme } from './contexts/ThemeContext.tsx';
+import { ThemeProvider, useColors, useTheme, resolveTheme } from './contexts/ThemeContext.tsx';
+import * as builtinThemeExports from '@/plugins/themes/index.ts';
+import type { ThemePlugin } from '@/plugins/types/theme.ts';
+
+const builtinThemeList = Object.values(builtinThemeExports) as ThemePlugin[];
 import { PluginProvider, usePlugins } from './contexts/PluginContext.tsx';
 import { LogProvider, useLogs } from './contexts/LogContext.tsx';
 import { InputProvider, useInputFocus } from './contexts/InputContext.tsx';
@@ -28,12 +32,10 @@ import { SettingsModal } from './components/SettingsModal.tsx';
 import { DebugPanel } from './components/DebugPanel.tsx';
 import { copyToClipboard } from '@/utils/clipboard.ts';
 import { useSafeRenderer } from './hooks/useSafeRenderer.ts';
-import type { ThemePlugin } from '@/plugins/types/theme.ts';
 import type { DemoPreset } from '@/demo/simulator.ts';
 import { DemoModeProvider, useDemoMode } from './contexts/DemoModeContext.tsx';
 
 interface AppProps {
-  initialTheme?: ThemePlugin;
   debug?: boolean;
   demoMode?: boolean;
   demoSeed?: number;
@@ -46,12 +48,12 @@ type View = 'dashboard' | 'providers' | 'trends' | 'projects';
 function AppContent() {
   const renderer = useSafeRenderer();
   const colors = useColors();
-  const { setTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const { refreshAllProviders, isInitialized, themes } = usePlugins();
   const { info } = useLogs();
   const { toast, showToast, dismissToast } = useToastContext();
   const { isInputFocused } = useInputFocus();
-  const { config } = useConfig();
+  const { config, updateConfig } = useConfig();
   const { demoMode } = useDemoMode();
   const { selectedSession, hideDrawer, isOpen: isDrawerOpen } = useDrawer();
   const { sessions } = useAgentSessions();
@@ -65,7 +67,6 @@ function AppContent() {
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showDebugPanel, setShowDebugPanel] = useState(false);
-  const [themeInitialized, setThemeInitialized] = useState(false);
 
   const isModalOpen = showCommandPalette || showSettings || showDebugPanel || isDrawerOpen;
 
@@ -158,22 +159,32 @@ function AppContent() {
     }
   }, [renderer, showToast, config.notifications.toastsEnabled]);
 
-  const commands: CommandAction[] = useMemo(() => [
-    { id: 'view-dashboard', label: 'Go to Dashboard', shortcut: '1', action: () => setActiveView('dashboard') },
-    { id: 'view-providers', label: 'Go to Providers', shortcut: '2', action: () => setActiveView('providers') },
-    { id: 'view-trends', label: 'Go to Trends', shortcut: '3', action: () => setActiveView('trends') },
-    { id: 'view-projects', label: 'Go to Projects', shortcut: '4', action: () => setActiveView('projects') },
-    { id: 'open-settings', label: 'Open Settings', shortcut: ',', action: () => setShowSettings(true) },
-    { id: 'refresh', label: 'Refresh Data', shortcut: 'r', action: () => {
-      if (isInitialized) {
-        info('Manual refresh triggered');
-        refreshAllProviders().then(() => setLastRefresh(Date.now()));
-      }
-    }},
-    { id: 'toggle-debug', label: 'Toggle Debug Panel', shortcut: '~', action: () => setShowDebugPanel(prev => !prev) },
-    { id: 'capture-frame', label: 'Capture Frame', shortcut: 'Ctrl+P', action: () => handleCaptureFrame() },
-    { id: 'quit', label: 'Quit', shortcut: 'q', action: () => void gracefulShutdown() },
-  ], [isInitialized, refreshAllProviders, info, handleCaptureFrame, renderer, gracefulShutdown]);
+  const commands: CommandAction[] = useMemo(() => {
+    const base: CommandAction[] = [
+      { id: 'view-dashboard', label: 'Go to Dashboard', shortcut: '1', action: () => setActiveView('dashboard') },
+      { id: 'view-providers', label: 'Go to Providers', shortcut: '2', action: () => setActiveView('providers') },
+      { id: 'view-trends', label: 'Go to Trends', shortcut: '3', action: () => setActiveView('trends') },
+      { id: 'view-projects', label: 'Go to Projects', shortcut: '4', action: () => setActiveView('projects') },
+      { id: 'open-settings', label: 'Open Settings', shortcut: ',', action: () => setShowSettings(true) },
+      { id: 'refresh', label: 'Refresh Data', shortcut: 'r', action: () => {
+        if (isInitialized) {
+          info('Manual refresh triggered');
+          refreshAllProviders().then(() => setLastRefresh(Date.now()));
+        }
+      }},
+      { id: 'toggle-debug', label: 'Toggle Debug Panel', shortcut: '~', action: () => setShowDebugPanel(prev => !prev) },
+      { id: 'capture-frame', label: 'Capture Frame', shortcut: 'Ctrl+P', action: () => handleCaptureFrame() },
+      { id: 'quit', label: 'Quit', shortcut: 'q', action: () => void gracefulShutdown() },
+    ];
+
+    const themeCommands: CommandAction[] = themes.map(t => ({
+      id: `theme-${t.id}`,
+      label: `Theme: ${t.name}`,
+      action: () => updateConfig({ ...config, display: { ...config.display, theme: t.id } }),
+    }));
+
+    return [...base, ...themeCommands];
+  }, [isInitialized, refreshAllProviders, info, handleCaptureFrame, renderer, gracefulShutdown, themes, config, updateConfig]);
 
   useKeyboard((key) => {
     if (key.ctrl && key.name === 'p') {
@@ -227,32 +238,17 @@ function AppContent() {
   });
 
   useEffect(() => {
-    if (themes.length === 0 || themeInitialized) return;
-
-    const colorSchemePref = config.display.colorScheme;
-    const detectedMode = renderer?.themeMode ?? null;
-
-    const targetScheme: 'light' | 'dark' | null =
-      colorSchemePref === 'auto' ? detectedMode :
-      colorSchemePref === 'light' ? 'light' :
-      colorSchemePref === 'dark' ? 'dark' :
-      null;
-
-    const configuredTheme = themes.find(t => t.id === config.display.theme);
-
-    if (targetScheme) {
-      if (configuredTheme && configuredTheme.colorScheme === targetScheme) {
-        setTheme(configuredTheme);
-      } else {
-        const schemeMatch = themes.find(t => t.colorScheme === targetScheme);
-        setTheme(schemeMatch ?? configuredTheme ?? themes[0]!);
-      }
-    } else {
-      setTheme(configuredTheme ?? themes[0]!);
+    if (themes.length === 0) return;
+    const resolved = resolveTheme(
+      config.display.theme,
+      config.display.colorScheme,
+      themes,
+      renderer?.themeMode ?? null,
+    );
+    if (resolved.id !== theme.id) {
+      setTheme(resolved);
     }
-
-    setThemeInitialized(true);
-  }, [themes, config.display.theme, config.display.colorScheme, themeInitialized, setTheme, renderer]);
+  }, [themes, config.display.theme, config.display.colorScheme, renderer]);
 
   useEffect(() => {
     if (isInitialized) {
@@ -340,27 +336,31 @@ function ConfiguredApp({ cliPlugins }: { cliPlugins?: string[] }) {
     return null;
   }
 
+  const initialTheme = builtinThemeList.find(t => t.id === config.display.theme);
+  const themeProps = initialTheme ? { initialTheme } : {};
+
   return (
-    <TimeWindowProvider defaultWindow={config.display.defaultTimeWindow}>
-      <ToastProvider>
-        <PluginProvider {...(cliPlugins ? { cliPlugins } : {})}>
-          <RealTimeActivityProvider>
-            <AgentSessionProvider autoRefresh={true} refreshInterval={1000}>
-              <DashboardRuntimeProvider>
-              <DrawerProvider>
-                <AppContent />
-              </DrawerProvider>
-              </DashboardRuntimeProvider>
-            </AgentSessionProvider>
-          </RealTimeActivityProvider>
-        </PluginProvider>
-      </ToastProvider>
-    </TimeWindowProvider>
+    <ThemeProvider {...themeProps}>
+      <TimeWindowProvider defaultWindow={config.display.defaultTimeWindow}>
+        <ToastProvider>
+          <PluginProvider {...(cliPlugins ? { cliPlugins } : {})}>
+            <RealTimeActivityProvider>
+              <AgentSessionProvider autoRefresh={true} refreshInterval={1000}>
+                <DashboardRuntimeProvider>
+                <DrawerProvider>
+                  <AppContent />
+                </DrawerProvider>
+                </DashboardRuntimeProvider>
+              </AgentSessionProvider>
+            </RealTimeActivityProvider>
+          </PluginProvider>
+        </ToastProvider>
+      </TimeWindowProvider>
+    </ThemeProvider>
   );
 }
 
-export function App({ initialTheme, debug = false, demoMode = false, demoSeed, demoPreset, cliPlugins }: AppProps) {
-  const themeProviderProps = initialTheme ? { initialTheme } : {};
+export function App({ debug = false, demoMode = false, demoSeed, demoPreset, cliPlugins }: AppProps) {
   const demoProviderProps: { demoMode: boolean; demoSeed?: number; demoPreset?: DemoPreset } = { demoMode };
   if (demoSeed !== undefined) demoProviderProps.demoSeed = demoSeed;
   if (demoPreset !== undefined) demoProviderProps.demoPreset = demoPreset;
@@ -370,11 +370,9 @@ export function App({ initialTheme, debug = false, demoMode = false, demoSeed, d
       <LogProvider debugEnabled={debug}>
         <InputProvider>
           <StorageProvider>
-            <ThemeProvider {...themeProviderProps}>
-              <ConfigProvider>
-                <ConfiguredApp {...(cliPlugins ? { cliPlugins } : {})} />
-              </ConfigProvider>
-            </ThemeProvider>
+            <ConfigProvider>
+              <ConfiguredApp {...(cliPlugins ? { cliPlugins } : {})} />
+            </ConfigProvider>
           </StorageProvider>
         </InputProvider>
       </LogProvider>

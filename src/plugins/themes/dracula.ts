@@ -5,6 +5,7 @@ export const draculaTheme: ThemePlugin = {
   id: 'dracula',
   type: 'theme',
   name: 'Dracula',
+  family: 'dracula',
   version: '1.0.0',
   permissions: {},
 

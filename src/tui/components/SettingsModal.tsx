@@ -9,6 +9,7 @@ import { useInputFocus } from '../contexts/InputContext.tsx';
 import { ModalBackdrop, Z_INDEX } from './ModalBackdrop.tsx';
 import { type AppConfig, type SparklineStyle, type SparklineOrientation } from '@/config/schema.ts';
 import { parseCurrencyInput, formatBudgetDisplay } from '@/utils/currency.ts';
+import { ThemePicker } from './ThemePicker.tsx';
 
 type SettingCategory = 'refresh' | 'display' | 'budgets' | 'alerts' | 'notifications';
 
@@ -106,21 +107,6 @@ const BASE_SETTINGS: SettingItem[] = [
     }),
   },
   {
-    key: 'colorScheme',
-    label: 'Color Scheme',
-    category: 'display',
-    type: 'select',
-    options: ['Auto', 'Light', 'Dark'],
-    getValue: (c) => {
-      const v = c.display.colorScheme;
-      return v === 'auto' ? 'Auto' : v === 'light' ? 'Light' : 'Dark';
-    },
-    setValue: (c, v) => {
-      const map: Record<string, 'auto' | 'light' | 'dark'> = { 'Auto': 'auto', 'Light': 'light', 'Dark': 'dark' };
-      return { ...c, display: { ...c.display, colorScheme: map[v as string] ?? 'auto' } };
-    },
-  },
-  {
     key: 'sparklineBaseline',
     label: 'Sparkline Baseline',
     category: 'display',
@@ -133,6 +119,15 @@ const BASE_SETTINGS: SettingItem[] = [
         sparkline: { ...c.display.sparkline, showBaseline: v as boolean } 
       } 
     }),
+  },
+  {
+    key: 'theme',
+    label: 'Theme',
+    category: 'display',
+    type: 'select',
+    options: [], // Handled by ThemePicker
+    getValue: (c) => c.display.theme,
+    setValue: (c) => c, // Handled by ThemePicker
   },
   {
     key: 'dailyBudget',
@@ -214,7 +209,7 @@ interface SettingsModalProps {
 
 export function SettingsModal({ onClose }: SettingsModalProps) {
   const colors = useColors();
-  const { setTheme } = useTheme();
+  const { setPreviewTheme } = useTheme();
   const { themes } = usePlugins();
   const { showToast } = useToastContext();
   const { config, updateConfig, resetToDefaults, saveNow } = useConfig();
@@ -225,6 +220,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   const [selectedCategory, setSelectedCategory] = useState<SettingCategory>('refresh');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [focusedPane, setFocusedPane] = useState<'categories' | 'settings'>('categories');
+  const [showThemePicker, setShowThemePicker] = useState(false);
   
   const [editingSettingKey, setEditingSettingKey] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
@@ -238,19 +234,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   // Each setting takes 2 rows (height=1 + marginBottom=1)
   const visibleSettingsCount = Math.max(1, Math.floor(settingsAreaHeight / 2));
 
-  const settings = useMemo(() => {
-    const newSettings = [...BASE_SETTINGS];
-    newSettings.push({
-      key: 'theme',
-      label: 'Theme',
-      category: 'display',
-      type: 'select',
-      options: themes.map(t => t.id),
-      getValue: (c) => c.display.theme,
-      setValue: (c, v) => ({ ...c, display: { ...c.display, theme: v as string } }),
-    });
-    return newSettings;
-  }, [themes]);
+  const settings = BASE_SETTINGS;
 
   const categorySettings = settings.filter(s => s.category === selectedCategory);
   
@@ -265,13 +249,6 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   const visibleSettings = categorySettings.slice(scrollOffset, scrollOffset + visibleSettingsCount);
   const hasMoreAbove = scrollOffset > 0;
   const hasMoreBelow = scrollOffset + visibleSettingsCount < categorySettings.length;
-
-  const applyThemeChange = useCallback((themeId: string) => {
-    const newTheme = themes.find(t => t.id === themeId);
-    if (newTheme) {
-      setTheme(newTheme);
-    }
-  }, [themes, setTheme]);
 
   useEffect(() => {
     setInputFocused(true);
@@ -331,23 +308,21 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 
     if (setting.type === 'toggle') {
       newConfig = setting.setValue(config, !currentValue);
-    } else if (setting.type === 'select' && setting.options) {
+    } else if (setting.type === 'select' && setting.options && setting.options.length > 0) {
       const currentIdx = setting.options.indexOf(currentValue as string);
       const nextIdx = (currentIdx + 1) % setting.options.length;
       const newValue = setting.options[nextIdx]!;
       newConfig = setting.setValue(config, newValue);
-
-      if (setting.key === 'theme') {
-        applyThemeChange(newValue);
-      }
     } else {
       return;
     }
 
     updateConfig(newConfig);
-  }, [categorySettings, selectedIndex, config, updateConfig, applyThemeChange]);
+  }, [categorySettings, selectedIndex, config, updateConfig]);
 
   useKeyboard((key) => {
+    if (showThemePicker) return;
+
     if (editingSettingKey !== null) {
       if (key.ctrl && (key.name === 'p' || key.name === 's')) {
         return;
@@ -414,34 +389,30 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
         setSelectedIndex(i => Math.max(i - 1, 0));
       } else if (key.name === 'return' || key.name === 'space') {
         const setting = categorySettings[selectedIndex];
-        if (setting?.type === 'number') {
+        if (setting?.key === 'theme') {
+          setShowThemePicker(true);
+        } else if (setting?.type === 'number') {
           startEditingNumber();
         } else {
           toggleCurrentSetting();
         }
       } else if (key.name === 'left' || key.name === 'h') {
         const setting = categorySettings[selectedIndex];
-        if (setting?.type === 'select' && setting.options) {
+        if (setting?.type === 'select' && setting.options && setting.options.length > 0) {
           const currentValue = setting.getValue(config) as string;
           const currentIdx = setting.options.indexOf(currentValue);
           const prevIdx = (currentIdx - 1 + setting.options.length) % setting.options.length;
           const newValue = setting.options[prevIdx]!;
           updateConfig(setting.setValue(config, newValue));
-          if (setting.key === 'theme') {
-            applyThemeChange(newValue);
-          }
         }
       } else if (key.name === 'right' || key.name === 'l') {
         const setting = categorySettings[selectedIndex];
-        if (setting?.type === 'select' && setting.options) {
+        if (setting?.type === 'select' && setting.options && setting.options.length > 0) {
           const currentValue = setting.getValue(config) as string;
           const currentIdx = setting.options.indexOf(currentValue);
           const nextIdx = (currentIdx + 1) % setting.options.length;
           const newValue = setting.options[nextIdx]!;
           updateConfig(setting.setValue(config, newValue));
-          if (setting.key === 'theme') {
-            applyThemeChange(newValue);
-          }
         }
       }
     }
@@ -511,72 +482,103 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
             border
             borderStyle={focusedPane === 'settings' ? 'double' : 'single'}
             borderColor={focusedPane === 'settings' ? colors.primary : colors.border}
-            padding={1}
+            padding={0}
             overflow="hidden"
           >
-            <box flexDirection="row" justifyContent="space-between" marginBottom={1} height={1}>
-              <text fg={colors.textMuted}>
-                {CATEGORIES.find(c => c.id === selectedCategory)?.label.toUpperCase()}
-              </text>
-              {(hasMoreAbove || hasMoreBelow) && (
-                <text fg={colors.textSubtle}>
-                  {hasMoreAbove ? '▲' : ' '}{hasMoreBelow ? '▼' : ' '}
-                </text>
-              )}
-            </box>
-
-            {visibleSettings.map((setting) => {
-              const realIdx = categorySettings.findIndex(s => s.key === setting.key);
-              const isSelected = realIdx === selectedIndex && focusedPane === 'settings';
-              const value = setting.getValue(config);
-              const isEditingThis = setting.type === 'number' && editingSettingKey === setting.key;
-
-              let displayValue: string;
-              if (setting.type === 'toggle') {
-                displayValue = value ? '● ON' : '○ OFF';
-              } else if (setting.type === 'select') {
-                displayValue = `◂ ${value} ▸`;
-              } else if (setting.type === 'number' && !isEditingThis) {
-                displayValue = formatBudgetDisplay(value as number | null);
-              } else {
-                displayValue = String(value);
-              }
-
-              return (
-                <box
-                  key={setting.key}
-                  flexDirection="row"
-                  height={1}
-                  marginBottom={1}
-                  paddingX={1}
-                  {...(isSelected && !isEditingThis ? { backgroundColor: colors.primary } : {})}
-                >
-                  <text 
-                    flexGrow={1}
-                    fg={isSelected && !isEditingThis ? colors.background : colors.text}
-                  >
-                    {setting.label}
+            {showThemePicker ? (
+              <ThemePicker
+                themes={themes}
+                currentThemeId={config.display.theme}
+                currentScheme={config.display.colorScheme}
+                onSelect={(themeId, scheme) => {
+                  updateConfig({
+                    ...config,
+                    display: {
+                      ...config.display,
+                      theme: themeId,
+                      colorScheme: scheme,
+                    },
+                  });
+                  setShowThemePicker(false);
+                }}
+                onPreview={(theme) => setPreviewTheme(theme)}
+                onCancel={() => {
+                  setPreviewTheme(null);
+                  setShowThemePicker(false);
+                }}
+              />
+            ) : (
+              <box flexDirection="column" flexGrow={1} padding={1}>
+                <box flexDirection="row" justifyContent="space-between" marginBottom={1} height={1}>
+                  <text fg={colors.textMuted}>
+                    {CATEGORIES.find(c => c.id === selectedCategory)?.label.toUpperCase()}
                   </text>
-                  {isEditingThis ? (
-                    <text fg={colors.text}>
-                      ${inputValue}<span fg={colors.primary}>█</span>
-                    </text>
-                  ) : (
-                    <text fg={isSelected ? colors.background : colors.textMuted}>
-                      {displayValue}
+                  {(hasMoreAbove || hasMoreBelow) && (
+                    <text fg={colors.textSubtle}>
+                      {hasMoreAbove ? '▲' : ' '}{hasMoreBelow ? '▼' : ' '}
                     </text>
                   )}
                 </box>
-              );
-            })}
+
+                {visibleSettings.map((setting) => {
+                  const realIdx = categorySettings.findIndex(s => s.key === setting.key);
+                  const isSelected = realIdx === selectedIndex && focusedPane === 'settings';
+                  const value = setting.getValue(config);
+                  const isEditingThis = setting.type === 'number' && editingSettingKey === setting.key;
+
+                  let displayValue: string;
+                  if (setting.key === 'theme') {
+                    const themeName = themes.find(t => t.id === value)?.name ?? value;
+                    displayValue = `${themeName} ▸`;
+                  } else if (setting.type === 'toggle') {
+                    displayValue = value ? '● ON' : '○ OFF';
+                  } else if (setting.type === 'select') {
+                    displayValue = `◂ ${value} ▸`;
+                  } else if (setting.type === 'number' && !isEditingThis) {
+                    displayValue = formatBudgetDisplay(value as number | null);
+                  } else {
+                    displayValue = String(value);
+                  }
+
+                  return (
+                    <box
+                      key={setting.key}
+                      flexDirection="row"
+                      height={1}
+                      marginBottom={1}
+                      paddingX={1}
+                      {...(isSelected && !isEditingThis ? { backgroundColor: colors.primary } : {})}
+                    >
+                      <text 
+                        flexGrow={1}
+                        fg={isSelected && !isEditingThis ? colors.background : colors.text}
+                      >
+                        {setting.label}
+                      </text>
+                      {isEditingThis ? (
+                        <text fg={colors.text}>
+                          ${inputValue}<span fg={colors.primary}>█</span>
+                        </text>
+                      ) : (
+                        <text fg={isSelected ? colors.background : colors.textMuted}>
+                          {displayValue}
+                        </text>
+                      )}
+                    </box>
+                  );
+                })}
+              </box>
+            )}
           </box>
         </box>
 
          <box flexDirection="row" height={1} paddingX={1} backgroundColor={colors.foreground}>
            <text fg={colors.textSubtle}>
-             {editingSettingKey !== null 
-               ? 'Type value  Enter:save  Esc:cancel'
-               : 'Tab:switch  ↑↓:navigate  ←→:adjust  Enter:edit'}
+              {editingSettingKey !== null 
+                ? 'Type value  Enter:save  Esc:cancel'
+                : showThemePicker 
+                  ? '↑↓:navigate  ←→:scheme  Tab:switch  Enter:apply  Esc:cancel'
+                  : 'Tab:switch  ↑↓:navigate  ←→:adjust  Enter:edit'}
            </text>
          </box>
       </box>

@@ -5,6 +5,7 @@ export const tokyoNightTheme: ThemePlugin = {
   id: 'tokyo-night',
   type: 'theme',
   name: 'Tokyo Night',
+  family: 'tokyo-night',
   version: '1.0.0',
   permissions: {},
 

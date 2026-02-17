@@ -1,5 +1,5 @@
 import { useTerminalDimensions } from '@opentui/react';
-import { useColors } from '../contexts/ThemeContext.tsx';
+import { useColors, useTheme } from '../contexts/ThemeContext.tsx';
 
 interface HeaderProps {
   title?: string;
@@ -21,6 +21,7 @@ const MIN_HEIGHT_FOR_LARGE_LOGO = 35;
 
 export function Header({ title = 'tokentop', subtitle, activeView, demoMode = false }: HeaderProps) {
   const colors = useColors();
+  const { components } = useTheme();
   const { height } = useTerminalDimensions();
 
   const isDashboard = activeView === 'dashboard';
@@ -28,6 +29,10 @@ export function Header({ title = 'tokentop', subtitle, activeView, demoMode = fa
   const isTrends = activeView === 'trends';
   const isProjects = activeView === 'projects';
   const useLargeLogo = height >= MIN_HEIGHT_FOR_LARGE_LOGO;
+
+  const titleColor = components.header?.titleColor;
+  const titleAccentColor = components.header?.titleAccentColor;
+  const hasSplitTitle = titleColor && titleAccentColor && title === 'tokentop';
 
   const headerHeight = useLargeLogo ? 7 : 1;
 
@@ -42,19 +47,35 @@ export function Header({ title = 'tokentop', subtitle, activeView, demoMode = fa
      >
       {useLargeLogo && (
         <box flexDirection="column" alignItems="center" height={6}>
-          {ASCII_LOGO.map((line, idx) => (
-            <text key={idx} height={1} fg={colors.primary}>{line}</text>
-          ))}
+          {ASCII_LOGO.map((line, idx) => {
+            if (hasSplitTitle) {
+              const splitAt = 44;
+              return (
+                <text key={idx} height={1}>
+                  <span fg={titleColor}>{line.slice(0, splitAt)}</span>
+                  <span fg={titleAccentColor}>{line.slice(splitAt)}</span>
+                </text>
+              );
+            }
+            return <text key={idx} height={1} fg={colors.primary}>{line}</text>;
+          })}
         </box>
       )}
       <box flexDirection="row" justifyContent="space-between" alignItems="center" height={1}>
         {!useLargeLogo && (
           <box flexDirection="row" gap={1} alignItems="center" height={1}>
-            <text height={1}>
-              <span fg={colors.primary}>
-                <strong>{title}</strong>
-              </span>
-            </text>
+            {hasSplitTitle ? (
+              <text height={1}>
+                <span fg={titleColor}><strong>token</strong></span>
+                <span fg={titleAccentColor}><strong>top</strong></span>
+              </text>
+            ) : (
+              <text height={1}>
+                <span fg={colors.primary}>
+                  <strong>{title}</strong>
+                </span>
+              </text>
+            )}
             {demoMode && (
               <text height={1} fg={colors.warning}><strong>DEMO</strong></text>
             )}

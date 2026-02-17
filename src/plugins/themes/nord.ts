@@ -5,6 +5,7 @@ export const nordTheme: ThemePlugin = {
   id: 'nord',
   type: 'theme',
   name: 'Nord',
+  family: 'nord',
   version: '1.0.0',
   permissions: {},
 

@@ -73,21 +73,7 @@ const SETTINGS: SettingItem[] = [
     getValue: (c) => c.display.timeFormat,
     setValue: (c, v) => ({ ...c, display: { ...c.display, timeFormat: v as '12h' | '24h' } }),
   },
-  {
-    key: 'colorScheme',
-    label: 'Color Scheme',
-    category: 'display',
-    type: 'select',
-    options: ['Auto', 'Light', 'Dark'],
-    getValue: (c) => {
-      const v = c.display.colorScheme;
-      return v === 'auto' ? 'Auto' : v === 'light' ? 'Light' : 'Dark';
-    },
-    setValue: (c, v) => {
-      const map: Record<string, 'auto' | 'light' | 'dark'> = { 'Auto': 'auto', 'Light': 'light', 'Dark': 'dark' };
-      return { ...c, display: { ...c.display, colorScheme: map[v as string] ?? 'auto' } };
-    },
-  },
+  // Color Scheme + Theme selection is handled by ThemePicker in SettingsModal
   {
     key: 'dailyBudget',
     label: 'Daily Budget ($)',

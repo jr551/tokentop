@@ -1,3 +1,15 @@
 export { tokyoNightTheme } from './tokyo-night.ts';
 export { draculaTheme } from './dracula.ts';
 export { nordTheme } from './nord.ts';
+export { catppuccinMochaTheme } from './catppuccin-mocha.ts';
+export { catppuccinLatteTheme } from './catppuccin-latte.ts';
+export { gruvboxDarkTheme } from './gruvbox-dark.ts';
+export { gruvboxLightTheme } from './gruvbox-light.ts';
+export { githubLightTheme } from './github-light.ts';
+export { solarizedLightTheme } from './solarized-light.ts';
+export { oneDarkTheme } from './one-dark.ts';
+export { rosePineTheme } from './rose-pine.ts';
+export { rosePineDawnTheme } from './rose-pine-dawn.ts';
+export { kanagawaTheme } from './kanagawa.ts';
+export { opencodeTheme } from './opencode.ts';
+export { claudeCodeTheme } from './claude-code.ts';

@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import type { ThemePlugin } from '@/plugins/types/theme.ts';
 import type { DemoPreset } from '@/demo/simulator.ts';
 import { TestModeContext } from './hooks/useSafeRenderer.ts';
 import { App } from './App.tsx';
@@ -7,7 +6,6 @@ import { App } from './App.tsx';
 export { App };
 
 export interface CreateAppOptions {
-  initialTheme?: ThemePlugin;
   debug?: boolean;
   refreshInterval?: number;
   testMode?: boolean;
@@ -29,7 +27,6 @@ export function createAppElement(options: CreateAppOptions = {}): ReactNode {
   
   const appElement = (
     <App
-      {...(options.initialTheme ? { initialTheme: options.initialTheme } : {})}
       debug={options.debug ?? DEFAULT_APP_OPTIONS.debug}
       demoMode={options.demoMode ?? DEFAULT_APP_OPTIONS.demoMode}
       {...(options.demoSeed !== undefined ? { demoSeed: options.demoSeed } : {})}

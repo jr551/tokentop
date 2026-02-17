@@ -30,6 +30,8 @@ export const ThemeComponentsSchema = z.object({
   header: z.object({
     background: z.string().optional(),
     foreground: z.string().optional(),
+    titleColor: z.string().optional(),
+    titleAccentColor: z.string().optional(),
   }).optional(),
   statusBar: z.object({
     background: z.string().optional(),
@@ -53,6 +55,7 @@ export type ColorSchemePreference = 'auto' | 'light' | 'dark';
 
 export interface ThemePlugin extends BasePlugin {
   readonly type: 'theme';
+  readonly family: string;
   readonly colorScheme: ColorScheme;
   readonly colors: ThemeColors;
   readonly components?: ThemeComponents;

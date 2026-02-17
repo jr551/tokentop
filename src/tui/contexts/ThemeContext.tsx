@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
-import type { ThemePlugin, ThemeColors, ThemeComponents, ColorScheme } from '@/plugins/types/theme.ts';
+import type { ThemePlugin, ThemeColors, ThemeComponents, ColorScheme, ColorSchemePreference } from '@/plugins/types/theme.ts';
 import { tokyoNightTheme } from '@/plugins/themes/tokyo-night.ts';
 
 interface ThemeContextValue {
@@ -8,6 +8,8 @@ interface ThemeContextValue {
   components: ThemeComponents;
   colorScheme: ColorScheme;
   setTheme: (theme: ThemePlugin) => void;
+  previewTheme: ThemePlugin | null;
+  setPreviewTheme: (theme: ThemePlugin | null) => void;
 }
 
 const defaultComponents: ThemeComponents = {
@@ -20,19 +22,24 @@ const defaultComponents: ThemeComponents = {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 interface ThemeProviderProps {
-  children: ReactNode;
   initialTheme?: ThemePlugin;
+  children: ReactNode;
 }
 
-export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
+export function ThemeProvider({ initialTheme, children }: ThemeProviderProps) {
   const [theme, setTheme] = useState<ThemePlugin>(initialTheme ?? tokyoNightTheme);
+  const [previewTheme, setPreviewTheme] = useState<ThemePlugin | null>(null);
+
+  const active = previewTheme ?? theme;
 
   const value: ThemeContextValue = {
     theme,
-    colors: theme.colors,
-    components: { ...defaultComponents, ...theme.components },
-    colorScheme: theme.colorScheme,
+    colors: active.colors,
+    components: { ...defaultComponents, ...active.components },
+    colorScheme: active.colorScheme,
     setTheme,
+    previewTheme,
+    setPreviewTheme,
   };
 
   return (
@@ -52,4 +59,37 @@ export function useTheme(): ThemeContextValue {
 
 export function useColors(): ThemeColors {
   return useTheme().colors;
+}
+
+export function resolveTheme(
+  themeId: string,
+  schemePref: ColorSchemePreference,
+  themes: ThemePlugin[],
+  detectedMode: ColorScheme | null,
+): ThemePlugin {
+  if (themes.length === 0) return tokyoNightTheme;
+
+  const targetScheme: ColorScheme | null =
+    schemePref === 'auto' ? detectedMode :
+    schemePref === 'light' ? 'light' :
+    schemePref === 'dark' ? 'dark' :
+    null;
+
+  const stored = themes.find(t => t.id === themeId);
+
+  if (!stored) {
+    if (targetScheme) {
+      return themes.find(t => t.colorScheme === targetScheme) ?? themes[0]!;
+    }
+    return themes[0]!;
+  }
+
+  if (!targetScheme || stored.colorScheme === targetScheme) {
+    return stored;
+  }
+
+  const familySibling = themes.find(
+    t => t.family === stored.family && t.colorScheme === targetScheme && t.id !== stored.id,
+  );
+  return familySibling ?? stored;
 }

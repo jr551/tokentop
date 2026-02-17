@@ -11,6 +11,12 @@ function mockReadFileWithJson(config: unknown) {
   readFileSpies.push(spy);
 }
 
+function mockReadFileWithRaw(content: string) {
+  const spy = spyOn(fs, 'readFile');
+  spy.mockResolvedValue(content);
+  readFileSpies.push(spy);
+}
+
 function mockReadFileError(error: Error) {
   const spy = spyOn(fs, 'readFile');
   spy.mockRejectedValue(error);
@@ -116,5 +122,46 @@ describe('loadConfig', () => {
     expect(loaded.display.sparkline.style).toBe('block');
     expect(loaded.display.sparkline.orientation).toBe(DEFAULT_CONFIG.display.sparkline.orientation);
     expect(loaded.display.sparkline.showBaseline).toBe(DEFAULT_CONFIG.display.sparkline.showBaseline);
+  });
+
+  test('parses JSONC with line comments', async () => {
+    mockReadFileWithRaw(`{
+      // Override the theme
+      "display": { "theme": "dracula" }
+    }`);
+
+    const loaded = await loadConfig();
+    expect(loaded.display.theme).toBe('dracula');
+  });
+
+  test('parses JSONC with block comments', async () => {
+    mockReadFileWithRaw(`{
+      /* Temporarily override budget */
+      "budgets": { "daily": 100 }
+    }`);
+
+    const loaded = await loadConfig();
+    expect(loaded.budgets.daily).toBe(100);
+  });
+
+  test('parses JSONC with trailing commas', async () => {
+    mockReadFileWithRaw(`{
+      "budgets": { "daily": 50, "weekly": 200, },
+      "alerts": { "warningPercent": 90 },
+    }`);
+
+    const loaded = await loadConfig();
+    expect(loaded.budgets.daily).toBe(50);
+    expect(loaded.budgets.weekly).toBe(200);
+    expect(loaded.alerts.warningPercent).toBe(90);
+  });
+
+  test('does not strip // inside string values', async () => {
+    mockReadFileWithRaw(`{
+      "plugins": { "local": ["~/my-plugin // v2"] }
+    }`);
+
+    const loaded = await loadConfig();
+    expect(loaded.plugins.local).toEqual(['~/my-plugin // v2']);
   });
 });

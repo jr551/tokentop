@@ -7,6 +7,7 @@ export const PATHS = {
   config: {
     dir: path.join(HOME, '.config/tokentop'),
     file: path.join(HOME, '.config/tokentop/config.json'),
+    fileJsonc: path.join(HOME, '.config/tokentop/config.jsonc'),
     plugins: path.join(HOME, '.config/tokentop/plugins'),
   },
   data: {

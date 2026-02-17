@@ -55,7 +55,7 @@ That's tokentop.
 - **Projects view** — See which codebase is costing you the most
 - **Provider limits** — Visual gauges showing how close you are to rate limits
 - **Live pricing** — Fetches current model pricing from [models.dev](https://models.dev) with local caching
-- **3 built-in themes** — Tokyo Night (default), Dracula, Nord
+- **15 built-in themes** — Dark: Tokyo Night (default), Dracula, Nord, Catppuccin Mocha, Gruvbox Dark, One Dark, Rosé Pine, Kanagawa, OpenCode, Claude Code · Light: Catppuccin Latte, Gruvbox Light, GitHub Light, Solarized Light, Rosé Pine Dawn
 - **Plugin system** — Extend with custom providers, agents, themes, and notifications
 - **Responsive layout** — Adapts to any terminal size; sidebar, KPI strip, header, and tables all reflow automatically from ultrawide to laptop-width
 - **Demo mode** — Explore the UI with synthetic data, no API keys needed
@@ -159,7 +159,7 @@ Config lives at `~/.config/tokentop/config.json`:
 
 ```jsonc
 {
-  "theme": "tokyo-night",          // tokyo-night, dracula, nord
+  "theme": "tokyo-night",          // 15 themes — see ttop --help for full list
   "colorScheme": "auto",           // auto, light, dark
   "refreshInterval": 60000,        // polling interval (ms)
   "budgets": {
