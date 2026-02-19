@@ -8,6 +8,44 @@ function pad(str: string, len: number): string {
   return str.length >= len ? str.slice(0, len) : str + " ".repeat(len - str.length);
 }
 
+/** Single-line compact gauge: "Label         ████████····  67%" */
+function InlineGauge({
+  label,
+  usedPercent,
+  color,
+}: {
+  label: string;
+  usedPercent: number | null;
+  color?: string;
+}) {
+  const colors = useColors();
+  const providerColor = color ?? colors.primary;
+  const percent = usedPercent ?? 0;
+
+  const labelWidth = 18;
+  const barWidth = 15;
+  const filledWidth = Math.round((percent / 100) * barWidth);
+  const emptyWidth = barWidth - filledWidth;
+
+  const fillColor =
+    percent >= 90 ? colors.gaugeDanger : percent >= 70 ? colors.gaugeWarning : providerColor;
+
+  const truncLabel = label.length > labelWidth ? label.slice(0, labelWidth - 1) + "…" : label;
+  const paddedLabel = pad(truncLabel, labelWidth);
+  const filledBar = "█".repeat(filledWidth);
+  const emptyBar = "·".repeat(emptyWidth);
+  const pctStr = usedPercent !== null ? `${Math.round(percent)}%`.padStart(4) : " --";
+
+  return (
+    <text height={1}>
+      <span fg={colors.textMuted}>{paddedLabel}</span>
+      <span fg={fillColor}>{filledBar}</span>
+      <span fg={colors.gaugeBackground}>{emptyBar}</span>
+      <span fg={colors.text}>{" " + pctStr}</span>
+    </text>
+  );
+}
+
 function padStart(str: string, len: number): string {
   return str.length >= len ? str.slice(0, len) : " ".repeat(len - str.length) + str;
 }
@@ -61,13 +99,18 @@ export function ProviderDetailPanel({ provider }: ProviderDetailPanelProps) {
     );
   }
 
-  const allLimits: UsageLimit[] = [];
+  const rawLimits: UsageLimit[] = [];
   if (usage.limits?.items && usage.limits.items.length > 0) {
-    allLimits.push(...usage.limits.items);
+    rawLimits.push(...usage.limits.items);
   } else {
-    if (usage.limits?.primary) allLimits.push(usage.limits.primary);
-    if (usage.limits?.secondary) allLimits.push(usage.limits.secondary);
+    if (usage.limits?.primary) rawLimits.push(usage.limits.primary);
+    if (usage.limits?.secondary) rawLimits.push(usage.limits.secondary);
   }
+  const sortedLimits = [...rawLimits].sort((a, b) => (b.usedPercent ?? 0) - (a.usedPercent ?? 0));
+  const compactMode = sortedLimits.length > 3;
+  const maxVisibleLimits = 5;
+  const allLimits = sortedLimits.slice(0, maxVisibleLimits);
+  const hiddenLimitCount = sortedLimits.length - allLimits.length;
 
   const historyValues = provider.history.map((s) => s.usedPercent ?? 0);
   const peak = historyValues.length > 0 ? Math.max(...historyValues) : 0;
@@ -99,32 +142,46 @@ export function ProviderDetailPanel({ provider }: ProviderDetailPanelProps) {
         </text>
       </box>
 
-      <box flexDirection="row" gap={2} paddingTop={1}>
-        <box flexDirection="column" flexGrow={1} gap={1}>
+      <box flexDirection="row" gap={2} paddingTop={compactMode ? 0 : 1}>
+        <box flexDirection="column" flexGrow={1} gap={compactMode ? 0 : 1}>
           {allLimits.length > 0 && (
-            <box flexDirection="column" gap={1}>
-              {allLimits.map((limit, idx) => {
-                const label = limit.label ?? "Usage";
-                const windowStr = limit.windowMinutes
-                  ? formatWindow(limit.windowMinutes)
-                  : undefined;
-                const labelHasWindow =
-                  label.toLowerCase().includes("window") ||
-                  label.toLowerCase().includes("hour") ||
-                  label.toLowerCase().includes("day");
-                return (
-                  <box key={idx} flexDirection="column">
-                    <UsageGauge
-                      label={label}
+            <box flexDirection="column" gap={compactMode ? 0 : 1}>
+              {compactMode
+                ? allLimits.map((limit, idx) => (
+                    <InlineGauge
+                      key={idx}
+                      label={limit.label ?? "Usage"}
                       usedPercent={limit.usedPercent}
                       color={providerColor}
-                      width={40}
-                      {...(windowStr && !labelHasWindow ? { windowLabel: windowStr } : {})}
-                      {...(limit.resetsAt ? { resetsAt: limit.resetsAt } : {})}
                     />
-                  </box>
-                );
-              })}
+                  ))
+                : allLimits.map((limit, idx) => {
+                    const label = limit.label ?? "Usage";
+                    const windowStr = limit.windowMinutes
+                      ? formatWindow(limit.windowMinutes)
+                      : undefined;
+                    const labelHasWindow =
+                      label.toLowerCase().includes("window") ||
+                      label.toLowerCase().includes("hour") ||
+                      label.toLowerCase().includes("day");
+                    return (
+                      <box key={idx} flexDirection="column">
+                        <UsageGauge
+                          label={label}
+                          usedPercent={limit.usedPercent}
+                          color={providerColor}
+                          width={40}
+                          {...(windowStr && !labelHasWindow ? { windowLabel: windowStr } : {})}
+                          {...(limit.resetsAt ? { resetsAt: limit.resetsAt } : {})}
+                        />
+                      </box>
+                    );
+                  })}
+              {hiddenLimitCount > 0 && (
+                <text fg={colors.textSubtle} height={1}>
+                  +{hiddenLimitCount} more limit{hiddenLimitCount > 1 ? "s" : ""}
+                </text>
+              )}
             </box>
           )}
 
@@ -229,7 +286,7 @@ export function ProviderDetailPanel({ provider }: ProviderDetailPanelProps) {
         </box>
       </box>
 
-      {historyValues.length >= 2 && (
+      {!compactMode && historyValues.length >= 2 && (
         <box flexDirection="column" paddingTop={1}>
           <box flexDirection="row" justifyContent="space-between" height={1}>
             <text fg={colors.textMuted} height={1}>

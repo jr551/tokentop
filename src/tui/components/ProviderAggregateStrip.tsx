@@ -62,10 +62,13 @@ export function computeAggregates(providers: ProviderState[]): ProviderAggregate
 
     if (p.usage?.cost) {
       const cost = p.usage.cost;
-      const todayTotal = cost.actual?.total ?? cost.estimated?.total ?? 0;
+      const todayTotal =
+        cost.estimatedDaily?.total ?? cost.actual?.total ?? cost.estimated?.total ?? 0;
+      const mtdTotal =
+        cost.estimatedMonthly?.total ?? cost.actual?.total ?? cost.estimated?.total ?? 0;
       costToday += todayTotal;
-      costMtd += todayTotal;
-      if (cost.source === "estimated") {
+      costMtd += mtdTotal;
+      if (cost.source === "estimated" || cost.estimatedDaily || cost.estimatedMonthly) {
         costTodayEstimated = true;
         costMtdEstimated = true;
       }
@@ -197,20 +200,22 @@ export function ProviderAggregateStrip({ providers }: ProviderAggregateStripProp
 
       <box flexDirection="row" height={1} gap={2} paddingX={1}>
         {agg.hottestProvider && (
-          <text height={1}>
-            <span fg={colors.textMuted}>HOTTEST </span>
-            <span fg={agg.hottestPercent >= 80 ? colors.warning : colors.text}>
-              {pad(agg.hottestProvider, isCompact ? 10 : 14)}
-            </span>
-            <span fg={agg.hottestPercent >= 80 ? colors.warning : colors.textMuted}>
-              {` ${Math.round(agg.hottestPercent)}%`}
-            </span>
-          </text>
-        )}
+          <>
+            <text height={1}>
+              <span fg={colors.textMuted}>HOTTEST </span>
+              <span fg={agg.hottestPercent >= 80 ? colors.warning : colors.text}>
+                {pad(agg.hottestProvider, isCompact ? 10 : 14)}
+              </span>
+              <span fg={agg.hottestPercent >= 80 ? colors.warning : colors.textMuted}>
+                {` ${Math.round(agg.hottestPercent)}%`}
+              </span>
+            </text>
 
-        <text fg={colors.textSubtle} height={1}>
-          │
-        </text>
+            <text fg={colors.textSubtle} height={1}>
+              │
+            </text>
+          </>
+        )}
 
         <text height={1}>
           <span fg={colors.textMuted}>vs YESTERDAY </span>

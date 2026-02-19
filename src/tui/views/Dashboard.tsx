@@ -5,9 +5,11 @@ import { GhostProviderCard } from "../components/GhostProviderCard.tsx";
 import { ProviderAggregateStrip } from "../components/ProviderAggregateStrip.tsx";
 import { ProviderCard } from "../components/ProviderCard.tsx";
 import { ProvidersList } from "../components/ProvidersList.tsx";
+import { useAgentSessions } from "../contexts/AgentSessionContext.tsx";
 import { useInputFocus } from "../contexts/InputContext.tsx";
 import { type ProviderState, usePlugins } from "../contexts/PluginContext.tsx";
 import { useColors } from "../contexts/ThemeContext.tsx";
+import { useSessionEnrichedProviders } from "../hooks/useSessionEnrichedProviders.ts";
 
 type SortMode = "name" | "usage" | "status";
 type ViewMode = "cards" | "list";
@@ -15,7 +17,14 @@ type ViewMode = "cards" | "list";
 export function Dashboard() {
   const colors = useColors();
   const { width: termWidth } = useTerminalDimensions();
-  const { providers, isInitialized, refreshAllProviders, refreshProvider } = usePlugins();
+  const {
+    providers: rawProviders,
+    isInitialized,
+    refreshAllProviders,
+    refreshProvider,
+  } = usePlugins();
+  const { sessions } = useAgentSessions();
+  const providers = useSessionEnrichedProviders(rawProviders, sessions);
   const { setInputFocused } = useInputFocus();
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
 
@@ -97,7 +106,7 @@ export function Dashboard() {
         case "usage":
           return getMaxUsage(b) - getMaxUsage(a);
         case "status": {
-          if (a.usage?.limitReached !== b.usage?.limitReached) {
+          if (!!a.usage?.limitReached !== !!b.usage?.limitReached) {
             return a.usage?.limitReached ? -1 : 1;
           }
           if (!!a.usage?.error !== !!b.usage?.error) {
@@ -120,7 +129,8 @@ export function Dashboard() {
 
   const cycleFocus = useCallback(
     (direction: 1 | -1) => {
-      const total = configured.length + (showUnconfigured ? unconfigured.length : 0);
+      const includeUnconfigured = viewMode === "cards" && showUnconfigured;
+      const total = configured.length + (includeUnconfigured ? unconfigured.length : 0);
       if (total === 0) return;
 
       setFocusedIndex((current) => {
@@ -128,12 +138,12 @@ export function Dashboard() {
           return direction === 1 ? 0 : total - 1;
         }
         const next = current + direction;
-        if (next < 0) return null;
-        if (next >= total) return null;
+        if (next < 0) return total - 1;
+        if (next >= total) return 0;
         return next;
       });
     },
-    [configured.length, unconfigured.length, showUnconfigured],
+    [configured.length, unconfigured.length, showUnconfigured, viewMode],
   );
 
   const toggleExpanded = useCallback(() => {

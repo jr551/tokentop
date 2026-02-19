@@ -40,8 +40,8 @@ export const opencodeZenPlugin: ProviderPlugin = {
   capabilities: {
     usageLimits: false,
     apiRateLimits: false,
-    tokenUsage: true,
-    actualCosts: true,
+    tokenUsage: false,
+    actualCosts: false,
   },
 
   pricing: {

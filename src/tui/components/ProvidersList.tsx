@@ -22,6 +22,13 @@ function padStart(str: string, len: number): string {
   return str.length >= len ? str.slice(0, len) : " ".repeat(len - str.length) + str;
 }
 
+function fmtCost(val: number): string {
+  if (val >= 1000) return `$${(val / 1000).toFixed(1)}k`;
+  if (val >= 100) return `$${Math.round(val)}`;
+  if (val >= 10) return `$${val.toFixed(1)}`;
+  return `$${val.toFixed(2)}`;
+}
+
 function formatTokens(val: number | undefined | null): FieldValue {
   if (val === undefined || val === null) return { text: "—", state: "unavailable" };
   const formatted =
@@ -104,11 +111,14 @@ function getNextReset(state: ProviderState): string {
 function getCostToday(state: ProviderState): FieldValue {
   if (!state.usage?.cost) return { text: "—", state: "unavailable" };
   const cost = state.usage.cost;
+  if (cost.estimatedDaily) {
+    return { text: `~${fmtCost(cost.estimatedDaily.total)}`, state: "estimated" };
+  }
   if (cost.actual) {
-    return { text: `$${cost.actual.total.toFixed(2)}`, state: "actual" };
+    return { text: fmtCost(cost.actual.total), state: "actual" };
   }
   if (cost.estimated) {
-    return { text: `~$${cost.estimated.total.toFixed(2)}`, state: "estimated" };
+    return { text: `~${fmtCost(cost.estimated.total)}`, state: "estimated" };
   }
   return { text: "—", state: "unavailable" };
 }
@@ -116,11 +126,14 @@ function getCostToday(state: ProviderState): FieldValue {
 function getCostMtd(state: ProviderState): FieldValue {
   if (!state.usage?.cost) return { text: "—", state: "unavailable" };
   const cost = state.usage.cost;
+  if (cost.estimatedMonthly) {
+    return { text: `~${fmtCost(cost.estimatedMonthly.total)}`, state: "estimated" };
+  }
   if (cost.actual) {
-    return { text: `$${cost.actual.total.toFixed(2)}`, state: "actual" };
+    return { text: fmtCost(cost.actual.total), state: "actual" };
   }
   if (cost.estimated) {
-    return { text: `~$${cost.estimated.total.toFixed(2)}`, state: "estimated" };
+    return { text: `~${fmtCost(cost.estimated.total)}`, state: "estimated" };
   }
   return { text: "—", state: "unavailable" };
 }
@@ -217,12 +230,6 @@ function getLayoutTier(termWidth: number): LayoutTier {
   };
 }
 
-interface GroupedProvider {
-  state: ProviderState;
-  status: ReturnType<typeof getStatusInfo>;
-  originalIndex: number;
-}
-
 export interface ProvidersListProps {
   providers: ProviderState[];
   selectedIndex: number | null;
@@ -253,18 +260,10 @@ export function ProvidersList({
     showTrend,
   } = layout;
 
-  const grouped = useMemo(() => {
-    const groups: Record<StatusGroup, GroupedProvider[]> = { error: [], warn: [], ok: [] };
-
-    providers.forEach((state, idx) => {
-      const status = getStatusInfo(state, colors);
-      groups[status.group].push({ state, status, originalIndex: idx });
-    });
-
-    return groups;
-  }, [providers, colors]);
-
-  const groupOrder: StatusGroup[] = ["error", "warn", "ok"];
+  const providerStatuses = useMemo(
+    () => providers.map((state) => getStatusInfo(state, colors)),
+    [providers, colors],
+  );
 
   const fieldColor = (fv: FieldValue): string => {
     if (fv.state === "estimated") return colors.textMuted;
@@ -274,9 +273,10 @@ export function ProvidersList({
 
   const selBg = colors.selection;
 
-  const renderRow = (item: GroupedProvider) => {
-    const { state, status, originalIndex } = item;
-    const isSelected = originalIndex === selectedIndex;
+  const renderRow = (idx: number) => {
+    const state = providers[idx]!;
+    const status = providerStatuses[idx]!;
+    const isSelected = idx === selectedIndex;
     const providerColor = state.plugin.meta?.brandColor ?? colors.primary;
     const costToday = getCostToday(state);
     const costMtd = getCostMtd(state);
@@ -296,7 +296,7 @@ export function ProvidersList({
         height={1}
         flexGrow={1}
         focusable
-        onMouseDown={() => onSelect(originalIndex)}
+        onMouseDown={() => onSelect(idx)}
         {...(rowBg ? { backgroundColor: rowBg } : {})}
       >
         <text width={2} fg={isSelected ? colors.primary : colors.textSubtle} height={1} {...bgProp}>
@@ -377,8 +377,8 @@ export function ProvidersList({
     );
   };
 
-  const renderSeparator = (label: string) => (
-    <box height={1} paddingX={1} key={`sep-${label}`}>
+  const renderSeparator = (label: string, afterIndex: number) => (
+    <box height={1} paddingX={1} key={`sep-${afterIndex}-${label}`}>
       <text fg={colors.textSubtle} height={1}>
         {"─".repeat(3)} {label} {"─".repeat(Math.max(0, termWidth - label.length - 10))}
       </text>
@@ -433,32 +433,29 @@ export function ProvidersList({
   );
 
   const rows: React.ReactNode[] = [];
-  let isFirst = true;
+  let currentGroup: StatusGroup | null = null;
 
-  for (const group of groupOrder) {
-    const items = grouped[group];
-    if (items.length === 0) continue;
+  for (let idx = 0; idx < providers.length; idx++) {
+    const status = providerStatuses[idx]!;
 
-    if (!isFirst) {
-      const label = group === "error" ? "ERRORS" : group === "warn" ? "WARNINGS" : "OK";
-      rows.push(renderSeparator(label));
-    } else if (group !== "ok" && items.length > 0) {
-      const label = group === "error" ? "ERRORS" : "WARNINGS";
-      rows.push(renderSeparator(label));
-    }
-
-    for (const item of items) {
-      rows.push(renderRow(item));
-      if (expandedIndex !== null && item.originalIndex === expandedIndex) {
-        rows.push(
-          <box key={`detail-${item.state.plugin.id}`} paddingX={1}>
-            <ProviderDetailPanel provider={item.state} />
-          </box>,
-        );
+    if (status.group !== currentGroup) {
+      const label =
+        status.group === "error" ? "ERRORS" : status.group === "warn" ? "WARNINGS" : "OK";
+      if (currentGroup !== null || status.group !== "ok") {
+        rows.push(renderSeparator(label, idx));
       }
+      currentGroup = status.group;
     }
 
-    isFirst = false;
+    rows.push(renderRow(idx));
+
+    if (expandedIndex !== null && idx === expandedIndex) {
+      rows.push(
+        <box key={`detail-${providers[idx]!.plugin.id}`} paddingX={1}>
+          <ProviderDetailPanel provider={providers[idx]!} />
+        </box>,
+      );
+    }
   }
 
   return (
