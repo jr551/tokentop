@@ -257,6 +257,18 @@ function createMockSessionDetailsDrawerProps() {
             cacheWrite: 5.0,
           },
         },
+        {
+          providerId: "openai",
+          modelId: "gpt-4o",
+          tokens: { input: 50000, output: 12000 },
+          requestCount: 8,
+          costUsd: 0.42,
+          costBreakdown: {
+            total: 0.42,
+            input: 0.13,
+            output: 0.29,
+          },
+        },
       ],
       costInDay: 16.05,
       costInWeek: 16.05,

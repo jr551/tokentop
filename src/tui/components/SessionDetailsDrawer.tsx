@@ -3,7 +3,9 @@ import { useTerminalDimensions } from "@opentui/react";
 import { useMemo } from "react";
 import { getSessionActivityTimeline, isDatabaseInitialized } from "@/storage/index.ts";
 import type { AgentSessionAggregate } from "../../agents/types.ts";
+import { usePlugins } from "../contexts/PluginContext.tsx";
 import { useColors } from "../contexts/ThemeContext.tsx";
+import { getProviderColor } from "../utils/providerColor.ts";
 
 const OVERLAY_BG = RGBA.fromValues(0.0, 0.0, 0.0, 0.5);
 
@@ -105,6 +107,7 @@ function shortenPath(fullPath: string, maxLength: number): string {
 export function SessionDetailsDrawer({ session, onClose: _onClose }: SessionDetailsDrawerProps) {
   void _onClose;
   const colors = useColors();
+  const { providers } = usePlugins();
   const { width: termWidth, height: termHeight } = useTerminalDimensions();
 
   const width = Math.max(70, Math.min(termWidth - 4, 100));
@@ -345,6 +348,11 @@ export function SessionDetailsDrawer({ session, onClose: _onClose }: SessionDeta
         </box>
 
         <box flexDirection="row" height={1} paddingLeft={1} paddingRight={2} marginBottom={0}>
+          <box width={12}>
+            <text fg={colors.primary}>
+              <strong>PROVIDER</strong>
+            </text>
+          </box>
           <text flexGrow={1} fg={colors.primary}>
             <strong>MODEL</strong>
           </text>
@@ -370,10 +378,22 @@ export function SessionDetailsDrawer({ session, onClose: _onClose }: SessionDeta
           <scrollbox flexGrow={1}>
             {session.streams.map((stream, idx) => {
               const modelName = stream.modelId.split("/").pop() ?? stream.modelId;
+              const providerName =
+                stream.providerId.charAt(0).toUpperCase() + stream.providerId.slice(1);
+              const providerColor = getProviderColor(
+                stream.providerId,
+                providers,
+                colors.textMuted,
+              );
               return (
                 <box key={`${stream.modelId}-${idx}`} flexDirection="row" height={1} paddingX={1}>
+                  <box width={12} height={1}>
+                    <text height={1} fg={providerColor} overflow="hidden">
+                      {truncateMiddle(providerName, 11)}
+                    </text>
+                  </box>
                   <text flexGrow={1} height={1} fg={colors.text} overflow="hidden">
-                    {truncateMiddle(modelName, contentWidth - 25)}
+                    {truncateMiddle(modelName, contentWidth - 37)}
                   </text>
                   <box width={10} height={1} justifyContent="flex-end">
                     <text fg={colors.textMuted}>
