@@ -1,6 +1,5 @@
 import { useKeyboard } from "@opentui/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { pluginLifecycle } from "@/plugins/lifecycle.ts";
 import * as builtinThemeExports from "@/plugins/themes/index.ts";
 import type { ThemePlugin } from "@/plugins/types/theme.ts";
 import { resolveTheme, ThemeProvider, useColors, useTheme } from "./contexts/ThemeContext.tsx";
@@ -37,6 +36,7 @@ import { StorageProvider } from "./contexts/StorageContext.tsx";
 import { TimeWindowProvider } from "./contexts/TimeWindowContext.tsx";
 import { ToastProvider, useToastContext } from "./contexts/ToastContext.tsx";
 import { useSafeRenderer } from "./hooks/useSafeRenderer.ts";
+import { triggerShutdown } from "./shutdown.ts";
 import { Dashboard } from "./views/Dashboard.tsx";
 import { HistoricalTrendsView } from "./views/HistoricalTrendsView.tsx";
 import { ProjectsView } from "./views/ProjectsView.tsx";
@@ -77,16 +77,7 @@ function AppContent() {
 
   const isModalOpen = showCommandPalette || showSettings || showDebugPanel || isDrawerOpen;
 
-  const shutdownPromiseRef = { current: null as Promise<void> | null };
-  const gracefulShutdown = useCallback(async () => {
-    if (shutdownPromiseRef.current) return shutdownPromiseRef.current;
-    shutdownPromiseRef.current = (async () => {
-      await pluginLifecycle.stopAll();
-      await pluginLifecycle.destroyAll();
-      renderer?.destroy();
-    })();
-    return shutdownPromiseRef.current;
-  }, [renderer]);
+  const gracefulShutdown = useCallback(() => triggerShutdown(), []);
 
   const inspectorData = useMemo(
     () => ({

@@ -1,7 +1,10 @@
 import { createCliRenderer } from "@opentui/core";
 import { createRoot } from "@opentui/react";
 import type { DemoPreset } from "@/demo/simulator.ts";
+import { pluginLifecycle } from "@/plugins/lifecycle.ts";
+import { notificationBus } from "@/plugins/notification-bus.ts";
 import { type CreateAppOptions, createAppElement } from "./createApp.tsx";
+import { registerShutdown } from "./shutdown.ts";
 
 export interface TuiOptions {
   refreshInterval?: number;
@@ -11,6 +14,8 @@ export interface TuiOptions {
   demoPreset?: DemoPreset;
   cliPlugins?: string[];
 }
+
+const FORCE_EXIT_GRACE_MS = 1_000;
 
 export async function startTui(options: TuiOptions = {}) {
   const renderer = await createCliRenderer({
@@ -42,6 +47,24 @@ export async function startTui(options: TuiOptions = {}) {
   }
 
   root.render(createAppElement(appOptions));
+
+  const shutdown = async () => {
+    try {
+      await pluginLifecycle.stopAll();
+      await pluginLifecycle.destroyAll();
+    } catch {
+      /* best-effort */
+    }
+    notificationBus.destroy();
+    renderer.destroy();
+
+    const forceExit = setTimeout(() => process.exit(0), FORCE_EXIT_GRACE_MS);
+    if (typeof forceExit === "object" && "unref" in forceExit) {
+      forceExit.unref();
+    }
+  };
+
+  registerShutdown(shutdown);
 
   return renderer;
 }

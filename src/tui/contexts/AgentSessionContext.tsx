@@ -32,6 +32,7 @@ interface AgentSessionContextValue {
 
 const AgentSessionContext = createContext<AgentSessionContextValue | null>(null);
 
+const MAX_PERSISTENCE_FINGERPRINTS = 500;
 const sessionPersistenceFingerprints = new Map<string, string>();
 
 function sessionFingerprint(session: AgentSessionAggregate): string {
@@ -60,6 +61,7 @@ export function AgentSessionProvider({
   const { demoMode, simulator } = useDemoMode();
   const { windowMs } = useTimeWindow();
   const hasBackfilled = useRef(false);
+  const isRefreshingRef = useRef(false);
 
   const discoverAgents = useCallback(async (): Promise<AgentInfo[]> => {
     const agentPlugins = pluginRegistry.getAll("agent");
@@ -122,6 +124,9 @@ export function AgentSessionProvider({
 
   const refreshSessions = useCallback(
     async (options: SessionParseOptions = {}) => {
+      if (isRefreshingRef.current) return;
+      isRefreshingRef.current = true;
+
       const isInitialLoad = sessions.length === 0;
       if (isInitialLoad) {
         setIsLoading(true);
@@ -228,6 +233,16 @@ export function AgentSessionProvider({
               })),
             );
           }
+          if (sessionPersistenceFingerprints.size > MAX_PERSISTENCE_FINGERPRINTS) {
+            const excess = sessionPersistenceFingerprints.size - MAX_PERSISTENCE_FINGERPRINTS;
+            const keys = sessionPersistenceFingerprints.keys();
+            for (let i = 0; i < excess; i++) {
+              const next = keys.next();
+              if (next.done) break;
+              sessionPersistenceFingerprints.delete(next.value);
+            }
+          }
+
           debug(
             `Persisted ${persistedCount}/${pricedSessions.length} changed sessions to storage`,
             undefined,
@@ -244,6 +259,7 @@ export function AgentSessionProvider({
         logError(`Session refresh failed: ${errorMsg}`, undefined, "agent-sessions");
         setError(errorMsg);
       } finally {
+        isRefreshingRef.current = false;
         if (isInitialLoad) {
           setIsLoading(false);
         }

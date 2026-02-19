@@ -24,6 +24,14 @@ interface RealTimeActivityContextValue {
 
 const RealTimeActivityContext = createContext<RealTimeActivityContextValue | null>(null);
 
+const LAST_SEEN_MAX_AGE_MS = 5 * 60_000;
+const LAST_SEEN_MAX_ENTRIES = 10_000;
+
+interface LastSeenEntry {
+  tokens: number;
+  updatedAt: number;
+}
+
 export function RealTimeActivityProvider({ children }: { children: ReactNode }) {
   const [lastActivityAt, setLastActivityAt] = useState<number | null>(null);
   const [isWatching, setIsWatching] = useState(false);
@@ -31,7 +39,7 @@ export function RealTimeActivityProvider({ children }: { children: ReactNode }) 
   const { debug, info } = useLogs();
   const { demoMode } = useDemoMode();
 
-  const lastSeenRef = useRef<Map<string, number>>(new Map());
+  const lastSeenRef = useRef<Map<string, LastSeenEntry>>(new Map());
   const listenersRef = useRef<Set<ActivityListener>>(new Set());
   const cleanupRef = useRef<(() => void) | null>(null);
 
@@ -45,12 +53,13 @@ export function RealTimeActivityProvider({ children }: { children: ReactNode }) 
   const handleActivityUpdate = useCallback(
     (update: ActivityUpdate) => {
       const key = `${update.sessionId}:${update.messageId}`;
-      const prevTokens = lastSeenRef.current.get(key) ?? 0;
+      const prev = lastSeenRef.current.get(key);
+      const prevTokens = prev?.tokens ?? 0;
       const newTokens = update.tokens.input + update.tokens.output + (update.tokens.reasoning ?? 0);
       const delta = Math.max(0, newTokens - prevTokens);
 
       if (delta > 0) {
-        lastSeenRef.current.set(key, newTokens);
+        lastSeenRef.current.set(key, { tokens: newTokens, updatedAt: Date.now() });
         setLastActivityAt(update.timestamp);
         debug(`Real-time activity: +${delta} tokens`, { sessionId: update.sessionId }, "realtime");
 
@@ -101,14 +110,28 @@ export function RealTimeActivityProvider({ children }: { children: ReactNode }) 
 
   useEffect(() => {
     const interval = setInterval(() => {
+      const map = lastSeenRef.current;
       const now = Date.now();
-      if (lastActivityAt && now - lastActivityAt > 60000) {
-        lastSeenRef.current.clear();
+
+      for (const [key, entry] of map) {
+        if (now - entry.updatedAt > LAST_SEEN_MAX_AGE_MS) {
+          map.delete(key);
+        }
       }
-    }, 30000);
+
+      if (map.size > LAST_SEEN_MAX_ENTRIES) {
+        const excess = map.size - LAST_SEEN_MAX_ENTRIES;
+        const keys = map.keys();
+        for (let i = 0; i < excess; i++) {
+          const next = keys.next();
+          if (next.done) break;
+          map.delete(next.value);
+        }
+      }
+    }, 30_000);
 
     return () => clearInterval(interval);
-  }, [lastActivityAt]);
+  }, []);
 
   const value: RealTimeActivityContextValue = {
     lastActivityAt,

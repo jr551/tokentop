@@ -2,6 +2,7 @@
 import * as path from "path";
 import type { DemoPreset } from "./demo/simulator.ts";
 import { startTui, type TuiOptions } from "./tui/index.tsx";
+import { triggerShutdown } from "./tui/shutdown.ts";
 import { VERSION } from "./version.ts";
 
 const DEMO_PRESETS: DemoPreset[] = ["light", "normal", "heavy"];
@@ -159,6 +160,10 @@ async function main() {
     launchOptions.demoPreset = demoPreset;
   }
   await startTui(launchOptions);
+
+  const handleSignal = () => void triggerShutdown();
+  process.on("SIGINT", handleSignal);
+  process.on("SIGTERM", handleSignal);
 }
 
 main().catch((err) => {

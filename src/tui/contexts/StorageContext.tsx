@@ -42,6 +42,19 @@ interface StorageContextValue {
 const StorageContext = createContext<StorageContextValue | null>(null);
 
 const SNAPSHOT_INTERVAL_MS = 60_000;
+const MAX_TRACKED_SESSIONS = 1_000;
+const MAX_TRACKED_STREAMS = 5_000;
+
+function capMapSize<K, V>(map: Map<K, V>, max: number): void {
+  if (map.size <= max) return;
+  const excess = map.size - max;
+  const keys = map.keys();
+  for (let i = 0; i < excess; i++) {
+    const next = keys.next();
+    if (next.done) break;
+    map.delete(next.value);
+  }
+}
 
 interface StorageProviderProps {
   children: ReactNode;
@@ -203,6 +216,9 @@ export function StorageProvider({ children }: StorageProviderProps) {
         if (usageEvents.length > 0) {
           insertUsageEventBatch(usageEvents);
         }
+
+        capMapSize(lastSessionSnapshotRef.current, MAX_TRACKED_SESSIONS);
+        capMapSize(previousTotalsRef.current, MAX_TRACKED_STREAMS);
 
         return snapshotId;
       } catch (err) {
