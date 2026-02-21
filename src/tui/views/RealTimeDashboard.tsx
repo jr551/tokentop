@@ -1,6 +1,6 @@
 import type { ScrollBoxRenderable } from "@opentui/core";
 import { useTerminalDimensions } from "@opentui/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { notificationBus } from "@/plugins/notification-bus.ts";
 import { HelpOverlay } from "../components/HelpOverlay.tsx";
 import { KpiStrip } from "../components/KpiStrip.tsx";
@@ -63,7 +63,11 @@ export function RealTimeDashboard() {
   const [isFiltering, setIsFiltering] = useState(false);
   const [sortField, setSortField] = useState<"cost" | "tokens" | "time">("cost");
   const [pendingG, setPendingG] = useState(false);
-  const [scrollOffset, setScrollOffset] = useState(0);
+  const scrollOffsetRef = useRef(0);
+  const setScrollOffset = useCallback((val: number) => {
+    scrollOffsetRef.current = val;
+    sessionsScrollboxRef.current?.scrollTo(val);
+  }, []);
   const [limitSelectedIndex, setLimitSelectedIndex] = useState(0);
   const [driverDimension, setDriverDimension] = useState<DriverDimension>("model");
   const [selectedDriverIndex, setSelectedDriverIndex] = useState(0);
@@ -191,7 +195,7 @@ export function RealTimeDashboard() {
   useEffect(() => {
     if (processedSessions.length === 0) {
       if (selectedRow !== 0) setSelectedRow(0);
-      if (scrollOffset !== 0) setScrollOffset(0);
+      if (scrollOffsetRef.current !== 0) setScrollOffset(0);
       return;
     }
 
@@ -200,25 +204,22 @@ export function RealTimeDashboard() {
       setSelectedRow(maxRow);
       return;
     }
-  }, [processedSessions.length, selectedRow, scrollOffset]);
+  }, [processedSessions.length, selectedRow, setScrollOffset]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!sessionsScrollboxRef.current || processedSessions.length === 0) return;
 
-    let newOffset = scrollOffset;
+    let newOffset = scrollOffsetRef.current;
 
-    if (selectedRow < scrollOffset) {
+    if (selectedRow < newOffset) {
       newOffset = selectedRow;
-    } else if (selectedRow >= scrollOffset + visibleRows) {
+    } else if (selectedRow >= newOffset + visibleRows) {
       newOffset = selectedRow - visibleRows + 1;
     }
 
-    if (newOffset !== scrollOffset) {
-      setScrollOffset(newOffset);
-    }
-
+    scrollOffsetRef.current = newOffset;
     sessionsScrollboxRef.current.scrollTo(newOffset);
-  }, [selectedRow, processedSessions.length, scrollOffset, visibleRows]);
+  }, [selectedRow, processedSessions.length, visibleRows]);
 
   const openSessionDrawer = useCallback(() => {
     const session = processedSessions[selectedRow];
@@ -240,7 +241,7 @@ export function RealTimeDashboard() {
       isFiltering,
       sortField,
       pendingG,
-      scrollOffset,
+      scrollOffset: scrollOffsetRef.current,
       limitSelectedIndex,
       providerCount: configuredProviders.length,
       driverDimension,
