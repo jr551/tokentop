@@ -1,7 +1,8 @@
+import type { ScrollBoxRenderable } from "@opentui/core";
 import { RGBA } from "@opentui/core";
 import { useKeyboard, useTerminalDimensions } from "@opentui/react";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { AgentSessionAggregate } from "../../agents/types.ts";
 import { useAgentSessions } from "../contexts/AgentSessionContext.tsx";
 import { useInputFocus } from "../contexts/InputContext.tsx";
@@ -1199,6 +1200,8 @@ export function ProjectsView() {
   const [drawerProject, setDrawerProject] = useState<ProjectStats | null>(null);
   const [filterQuery, setFilterQuery] = useState("");
   const [isFiltering, setIsFiltering] = useState(false);
+  const scrollOffsetRef = useRef(0);
+  const scrollboxRef = useRef<ScrollBoxRenderable>(null);
 
   // Aggregate projects
   const projectStats = useMemo(
@@ -1253,10 +1256,52 @@ export function ProjectsView() {
   useEffect(() => {
     if (sortedProjects.length === 0) {
       if (selectedIndex !== 0) setSelectedIndex(0);
+      scrollOffsetRef.current = 0;
+      scrollboxRef.current?.scrollTo(0);
     } else if (selectedIndex >= sortedProjects.length) {
       setSelectedIndex(sortedProjects.length - 1);
     }
   }, [sortedProjects.length, selectedIndex]);
+
+  // Scroll to keep selected row visible
+  const visibleRows = useMemo(() => {
+    const appChrome = (termHeight >= 35 ? 7 : 1) + 1; // App.tsx: Header (large/small) + StatusBar
+    const outerPadding = 2;
+    const aggregateHeader = 1;
+    const columnHeaders = 1;
+    const tableBorder = 2;
+    const summaryFooter = 1;
+    const footerHints = 1;
+    const filterBar = isFiltering ? 1 : 0;
+    const insightsHeight = showInsights && termHeight >= 26 ? 9 : 0;
+    return Math.max(
+      1,
+      termHeight -
+        appChrome -
+        outerPadding -
+        aggregateHeader -
+        columnHeaders -
+        tableBorder -
+        summaryFooter -
+        footerHints -
+        filterBar -
+        insightsHeight,
+    );
+  }, [termHeight, isFiltering, showInsights]);
+
+  useLayoutEffect(() => {
+    if (!scrollboxRef.current || sortedProjects.length === 0) return;
+
+    let newOffset = scrollOffsetRef.current;
+    if (selectedIndex < newOffset) {
+      newOffset = selectedIndex;
+    } else if (selectedIndex >= newOffset + visibleRows) {
+      newOffset = selectedIndex - visibleRows + 1;
+    }
+
+    scrollOffsetRef.current = newOffset;
+    scrollboxRef.current.scrollTo(newOffset);
+  }, [selectedIndex, visibleRows, sortedProjects.length]);
 
   // Input focus sync
   useEffect(() => {
@@ -1325,11 +1370,12 @@ export function ProjectsView() {
             setFilterQuery("");
           }
         }
-        // Jump to top/bottom
-        else if (key.name === "g") {
-          setSelectedIndex(0);
-        } else if (key.name === "G" || (key.name === "g" && key.shift)) {
+        // Jump to bottom (Shift+G) / top (g)
+        else if (key.shift && key.name === "g") {
           setSelectedIndex(Math.max(0, sortedProjects.length - 1));
+        } else if (key.name === "g") {
+          setSelectedIndex(0);
+          scrollOffsetRef.current = 0;
         }
       },
       [drawerProject, isFiltering, sortedProjects, selectedIndex, cycleWindow, filterQuery],
@@ -1422,7 +1468,7 @@ export function ProjectsView() {
         borderColor={colors.border}
         overflow="hidden"
       >
-        <scrollbox flexGrow={1}>
+        <scrollbox ref={scrollboxRef} flexGrow={1}>
           <box flexDirection="column">
             {sortedProjects.map((project: ProjectStats, index: number) => (
               <ProjectRow
