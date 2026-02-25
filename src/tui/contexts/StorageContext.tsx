@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { closeDatabase, getAppRunId, initDatabase, isDatabaseInitialized } from "@/storage/db.ts";
+import { incrementalVacuum, pruneOldData } from "@/storage/retention.ts";
 import {
   getLatestStreamTotalsForAllSessions,
   insertAgentSessionSnapshot,
@@ -41,9 +42,10 @@ interface StorageContextValue {
 
 const StorageContext = createContext<StorageContextValue | null>(null);
 
-const SNAPSHOT_INTERVAL_MS = 60_000;
+const SNAPSHOT_INTERVAL_MS = 300_000;
 const MAX_TRACKED_SESSIONS = 1_000;
 const MAX_TRACKED_STREAMS = 5_000;
+const PRUNE_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 
 function capMapSize<K, V>(map: Map<K, V>, max: number): void {
   if (map.size <= max) return;
@@ -81,6 +83,21 @@ export function StorageProvider({ children }: StorageProviderProps) {
     async function init() {
       try {
         await initDatabase();
+
+        // Prune expired snapshots before seeding — keeps startup fast
+        try {
+          const pruneResult = pruneOldData();
+          if (pruneResult.agentSessionSnapshots > 0 || pruneResult.providerSnapshots > 0) {
+            console.log(
+              `[retention] Pruned ${pruneResult.agentSessionSnapshots} session snapshots, ` +
+              `${pruneResult.providerSnapshots} provider snapshots in ${pruneResult.durationMs}ms`,
+            );
+            incrementalVacuum();
+          }
+        } catch (err) {
+          console.error("Failed to prune old data:", err);
+        }
+
         if (mounted) {
           try {
             const latestTotals = getLatestStreamTotalsForAllSessions();
@@ -238,6 +255,24 @@ export function StorageProvider({ children }: StorageProviderProps) {
 
     return () => clearInterval(interval);
   }, [demoMode, isReady, simulator]);
+
+  // Periodic data retention pruning (every hour)
+  useEffect(() => {
+    if (demoMode || !isReady) return;
+
+    const intervalId = setInterval(() => {
+      try {
+        const result = pruneOldData();
+        if (result.agentSessionSnapshots > 0 || result.providerSnapshots > 0) {
+          incrementalVacuum();
+        }
+      } catch {
+        // Silently ignore periodic prune failures
+      }
+    }, PRUNE_INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
+  }, [demoMode, isReady]);
 
   const value: StorageContextValue = useMemo(
     () => ({
