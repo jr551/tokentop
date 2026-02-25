@@ -12,6 +12,7 @@ import { notificationBus } from "@/plugins/notification-bus.ts";
 import { createPluginContext } from "@/plugins/plugin-context-factory.ts";
 import { safeInvoke, safeInvokeSync } from "@/plugins/plugin-host.ts";
 import { pluginRegistry } from "@/plugins/registry.ts";
+import type { AgentPlugin } from "@/plugins/types/agent.ts";
 import { createPluginLogger, createSandboxedHttpClient } from "@/plugins/sandbox.ts";
 import { installGlobalFetchGuard, runInPluginGuard } from "@/plugins/sandbox-guard.ts";
 import type { NotificationPlugin } from "@/plugins/types/notification.ts";
@@ -43,6 +44,7 @@ export interface ProviderState {
 
 interface PluginContextValue {
   providers: Map<string, ProviderState>;
+  agents: AgentPlugin[];
   themes: ThemePlugin[];
   notifications: NotificationPlugin[];
   isInitialized: boolean;
@@ -87,6 +89,7 @@ export function PluginProvider({ children, cliPlugins }: PluginProviderProps) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [providers, setProviders] = useState<Map<string, ProviderState>>(new Map());
   const [themes, setThemes] = useState<ThemePlugin[]>([]);
+  const [agents, setAgents] = useState<AgentPlugin[]>([]);
   const [notifications, setNotifications] = useState<NotificationPlugin[]>([]);
   const { demoMode, simulator } = useDemoMode();
   const { debug, info, warn, error: logError } = useLogs();
@@ -116,6 +119,7 @@ export function PluginProvider({ children, cliPlugins }: PluginProviderProps) {
       }
 
       const providerPlugins = pluginRegistry.getAll("provider");
+      const agentPlugins = pluginRegistry.getAll("agent");
       const themePlugins = pluginRegistry.getAll("theme");
       const notificationPlugins = pluginRegistry.getAll("notification");
 
@@ -221,6 +225,7 @@ export function PluginProvider({ children, cliPlugins }: PluginProviderProps) {
       notificationBus.registerPlugins(notificationPlugins);
 
       setProviders(providerStates);
+      setAgents(agentPlugins);
       setThemes(themePlugins);
       setNotifications(notificationPlugins);
       setIsInitialized(true);
@@ -444,6 +449,7 @@ export function PluginProvider({ children, cliPlugins }: PluginProviderProps) {
 
   const value: PluginContextValue = {
     providers,
+    agents,
     themes,
     notifications,
     isInitialized,

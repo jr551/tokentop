@@ -284,7 +284,7 @@ export function SettingsView() {
   const colors = useColors();
   const { showToast } = useToastContext();
   const { config, isLoading, updateConfig, resetToDefaults, saveNow } = useConfig();
-  const { providers, notifications } = usePlugins();
+  const { providers, agents, themes, notifications } = usePlugins();
   const { demoMode, seed, preset } = useDemoMode();
   const { width: terminalWidth } = useTerminalDimensions();
 
@@ -293,9 +293,14 @@ export function SettingsView() {
   const [focusedPane, setFocusedPane] = useState<"categories" | "settings">("settings");
 
   const pluginSettings = useMemo(() => {
-    const allPlugins = [...Array.from(providers.values()).map((p) => p.plugin), ...notifications];
+    const allPlugins = [
+      ...Array.from(providers.values()).map((p) => p.plugin),
+      ...agents,
+      ...themes,
+      ...notifications,
+    ];
     return buildPluginSettings(allPlugins);
-  }, [providers, notifications, config]);
+  }, [providers, agents, themes, notifications]);
 
   const allSettings = useMemo(() => [...SETTINGS, ...pluginSettings], [pluginSettings]);
   const categorySettings = allSettings.filter((s) => s.category === selectedCategory);

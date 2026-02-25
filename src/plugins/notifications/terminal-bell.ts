@@ -18,8 +18,10 @@ export const terminalBellPlugin: NotificationPlugin = {
   permissions: {},
 
   configSchema: {
-    enabled: { type: "boolean", default: true, description: "Enable terminal bell notifications" },
+    enabled: { type: "boolean", label: "Enabled", default: true, description: "Enable terminal bell notifications" },
     minSeverity: {
+      label: "Minimum severity",
+      description: "Only trigger bell for alerts at this severity or higher.",
       type: "select",
       default: "warning",
       options: [

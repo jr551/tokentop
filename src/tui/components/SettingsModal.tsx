@@ -1,6 +1,7 @@
 import { useKeyboard, useTerminalDimensions } from "@opentui/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AppConfig, SparklineOrientation, SparklineStyle } from "@/config/schema.ts";
+import type { ConfigField, PluginType } from "@/plugins/types/base.ts";
 import { formatBudgetDisplay, parseCurrencyInput } from "@/utils/currency.ts";
 import { useConfig } from "../contexts/ConfigContext.tsx";
 import { useDemoMode } from "../contexts/DemoModeContext.tsx";
@@ -11,12 +12,14 @@ import { useToastContext } from "../contexts/ToastContext.tsx";
 import { ModalBackdrop, Z_INDEX } from "./ModalBackdrop.tsx";
 import { ThemePicker } from "./ThemePicker.tsx";
 
-type SettingCategory = "refresh" | "display" | "budgets" | "alerts" | "notifications";
+type SettingCategory = "refresh" | "display" | "budgets" | "alerts" | "notifications" | "plugins";
 
 interface SettingItem {
   key: string;
   label: string;
+  description?: string;
   category: SettingCategory;
+  pluginId?: string;
   type: "toggle" | "select" | "number";
   options?: string[];
   getValue: (config: AppConfig) => string | number | boolean | null;
@@ -210,7 +213,87 @@ const CATEGORIES: { id: SettingCategory; label: string }[] = [
   { id: "budgets", label: "Budgets" },
   { id: "alerts", label: "Alerts" },
   { id: "notifications", label: "Notifications" },
+  { id: "plugins", label: "Plugins" },
 ];
+
+function buildPluginSettings(
+  plugins: Array<{ id: string; name: string; configSchema?: Record<string, ConfigField> }>,
+): SettingItem[] {
+  const items: SettingItem[] = [];
+  for (const plugin of plugins) {
+    if (!plugin.configSchema) continue;
+    for (const [fieldKey, field] of Object.entries(plugin.configSchema)) {
+      const settingKey = `${plugin.id}.${fieldKey}`;
+      // Short label for the setting row; long description shown in help area
+      const label = field.label ?? fieldKey;
+      const description = field.description;
+
+      const getPluginValue = (c: AppConfig): unknown => {
+        const pluginCfg = c.pluginConfig[plugin.id];
+        const raw = pluginCfg?.[fieldKey];
+        return raw ?? field.default;
+      };
+
+      const setPluginValue = (c: AppConfig, value: unknown): AppConfig => ({
+        ...c,
+        pluginConfig: {
+          ...c.pluginConfig,
+          [plugin.id]: {
+            ...(c.pluginConfig[plugin.id] ?? {}),
+            [fieldKey]: value,
+          },
+        },
+      });
+
+      const baseItem: Omit<SettingItem, "type" | "getValue" | "setValue"> = {
+        key: settingKey,
+        label,
+        ...(description != null ? { description } : {}),
+        category: "plugins" as SettingCategory,
+        pluginId: plugin.id,
+      };
+
+      if (field.type === "boolean") {
+        items.push({
+          ...baseItem,
+          type: "toggle",
+          getValue: (c) => getPluginValue(c) as boolean,
+          setValue: (c, v) => setPluginValue(c, v),
+        });
+      } else if (field.type === "select" && field.options) {
+        items.push({
+          ...baseItem,
+          type: "select",
+          options: field.options.map((o) => o.label),
+          getValue: (c) => {
+            const val = getPluginValue(c) as string;
+            const opt = field.options?.find((o) => o.value === val);
+            return opt?.label ?? val ?? "";
+          },
+          setValue: (c, v) => {
+            const opt = field.options?.find((o) => o.label === v);
+            return setPluginValue(c, opt?.value ?? v);
+          },
+        });
+      } else if (field.type === "number") {
+        items.push({
+          ...baseItem,
+          type: "number",
+          getValue: (c) => (getPluginValue(c) as number) ?? 0,
+          setValue: (c, v) => setPluginValue(c, v),
+        });
+      } else {
+        items.push({
+          ...baseItem,
+          type: "select",
+          getValue: (c) => String(getPluginValue(c) ?? ""),
+          setValue: (c, v) => setPluginValue(c, v),
+        });
+      }
+    }
+  }
+  return items;
+}
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -219,7 +302,7 @@ interface SettingsModalProps {
 export function SettingsModal({ onClose }: SettingsModalProps) {
   const colors = useColors();
   const { setPreviewTheme } = useTheme();
-  const { themes } = usePlugins();
+  const { providers, agents, themes, notifications } = usePlugins();
   const { showToast } = useToastContext();
   const { config, updateConfig, resetToDefaults, saveNow } = useConfig();
   const { demoMode, seed, preset } = useDemoMode();
@@ -228,6 +311,8 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 
   const [selectedCategory, setSelectedCategory] = useState<SettingCategory>("refresh");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedPluginId, setSelectedPluginId] = useState<string | null>(null);
+  const [isPluginsExpanded, setIsPluginsExpanded] = useState(false);
   const [focusedPane, setFocusedPane] = useState<"categories" | "settings">("categories");
   const [showThemePicker, setShowThemePicker] = useState(false);
 
@@ -238,14 +323,82 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   const height = Math.min(termHeight - 4, 28);
 
   // Calculate available height for settings list
-  // Modal height - header(1) - footer(1) - outer padding(2) - inner borders(4) - title row with margin(2)
-  const settingsAreaHeight = height - 1 - 1 - 2 - 4 - 2 - (demoMode ? 1 : 0);
+  // Modal height - header(1) - footer(1) - outer padding(2) - inner borders(4) - title row with margin(2) - help area(4)
+  const helpAreaHeight = 4; // separator(1) + 3 lines of description text
+  const settingsAreaHeight = height - 1 - 1 - 2 - 4 - 2 - helpAreaHeight - (demoMode ? 1 : 0);
   // Each setting takes 2 rows (height=1 + marginBottom=1)
   const visibleSettingsCount = Math.max(1, Math.floor(settingsAreaHeight / 2));
 
-  const settings = BASE_SETTINGS;
+  const pluginsByType = useMemo(() => {
+    const allPlugins = [
+      ...Array.from(providers.values()).map((p) => p.plugin),
+      ...agents,
+      ...themes,
+      ...notifications,
+    ].filter((p) => p.configSchema && Object.keys(p.configSchema).length > 0);
 
-  const categorySettings = settings.filter((s) => s.category === selectedCategory);
+    const grouped = new Map<PluginType, typeof allPlugins>();
+    for (const p of allPlugins) {
+      const list = grouped.get(p.type) ?? [];
+      list.push(p);
+      grouped.set(p.type, list);
+    }
+    // Sort plugins within each group
+    for (const list of grouped.values()) {
+      list.sort((a, b) => a.name.localeCompare(b.name));
+    }
+    return grouped;
+  }, [providers, agents, themes, notifications]);
+
+  const availablePlugins = useMemo(() => {
+    return [...pluginsByType.values()].flat();
+  }, [pluginsByType]);
+
+  const pluginSettings = useMemo(() => {
+    return buildPluginSettings(availablePlugins);
+  }, [availablePlugins]);
+
+  const TYPE_LABELS: Record<PluginType, string> = {
+    provider: "Providers",
+    agent: "Agents",
+    theme: "Themes",
+    notification: "Delivery",
+  };
+
+  // Stable ordering for plugin type groups in sidebar
+  const TYPE_ORDER: PluginType[] = ["provider", "agent", "theme", "notification"];
+
+  type NavItem =
+    | { type: "category"; id: SettingCategory; label: string }
+    | { type: "pluginTypeHeader"; pluginType: PluginType; label: string }
+    | { type: "plugin"; id: string; label: string };
+
+  const navItems = useMemo<NavItem[]>(() => {
+    const items: NavItem[] = [];
+    for (const cat of CATEGORIES) {
+      items.push({ type: "category", id: cat.id, label: cat.label });
+      if (cat.id === "plugins" && isPluginsExpanded) {
+        for (const pt of TYPE_ORDER) {
+          const pluginsOfType = pluginsByType.get(pt);
+          if (!pluginsOfType || pluginsOfType.length === 0) continue;
+          items.push({ type: "pluginTypeHeader", pluginType: pt, label: TYPE_LABELS[pt] });
+          for (const p of pluginsOfType) {
+            items.push({ type: "plugin", id: p.id, label: p.name });
+          }
+        }
+      }
+    }
+    return items;
+  }, [isPluginsExpanded, pluginsByType]);
+
+  const settings = useMemo(() => [...BASE_SETTINGS, ...pluginSettings], [pluginSettings]);
+
+  const categorySettings = useMemo(() => {
+    if (selectedCategory === "plugins" && selectedPluginId) {
+      return settings.filter((s) => s.category === "plugins" && s.pluginId === selectedPluginId);
+    }
+    return settings.filter((s) => s.category === selectedCategory && !s.pluginId);
+  }, [settings, selectedCategory, selectedPluginId]);
 
   // Calculate scroll offset to keep selected item visible
   const scrollOffset = useMemo(() => {
@@ -258,6 +411,19 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   const visibleSettings = categorySettings.slice(scrollOffset, scrollOffset + visibleSettingsCount);
   const hasMoreAbove = scrollOffset > 0;
   const hasMoreBelow = scrollOffset + visibleSettingsCount < categorySettings.length;
+  const focusedDescription = useMemo(() => {
+    if (focusedPane !== "settings") return null;
+    const setting = categorySettings[selectedIndex];
+    const desc = setting?.description ?? null;
+    if (!desc) return null;
+
+    // Truncate to fit 3 lines with ellipsis if needed
+    // Help area usable width: total width - sidebar(20) - borders(2) - outer padding(2) - help paddingX(2) - inner padding(2)
+    const lineWidth = Math.max(20, width - 20 - 2 - 2 - 2 - 2);
+    const maxChars = lineWidth * 3;
+    if (desc.length <= maxChars) return desc;
+    return desc.slice(0, maxChars - 1) + "\u2026";
+  }, [focusedPane, categorySettings, selectedIndex, width]);
 
   useEffect(() => {
     setInputFocused(true);
@@ -376,17 +542,74 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
     }
 
     if (focusedPane === "categories") {
-      const catIdx = CATEGORIES.findIndex((c) => c.id === selectedCategory);
+      // Find current position — skip headers when matching
+      const currentIdx = navItems.findIndex((item) =>
+        item.type === "category"
+          ? item.id === selectedCategory && (item.id !== "plugins" || !selectedPluginId)
+          : item.type === "plugin"
+            ? item.id === selectedPluginId
+            : false,
+      );
+
+      // Helper: find next focusable item (skip pluginTypeHeader)
+      const findNext = (from: number, dir: 1 | -1): number => {
+        let idx = from + dir;
+        while (idx >= 0 && idx < navItems.length) {
+          if (navItems[idx]!.type !== "pluginTypeHeader") return idx;
+          idx += dir;
+        }
+        return from; // no focusable item found, stay put
+      };
+
       if (key.name === "down" || key.name === "j") {
-        const nextIdx = Math.min(catIdx + 1, CATEGORIES.length - 1);
-        setSelectedCategory(CATEGORIES[nextIdx]!.id);
-        setSelectedIndex(0);
+        const nextIdx = findNext(currentIdx, 1);
+        const nextItem = navItems[nextIdx];
+        if (nextItem && nextIdx !== currentIdx) {
+          if (nextItem.type === "category") {
+            setSelectedCategory(nextItem.id);
+            setSelectedPluginId(null);
+            if (nextItem.id === "plugins") {
+              setIsPluginsExpanded(true);
+            }
+          } else if (nextItem.type === "plugin") {
+            setSelectedPluginId(nextItem.id);
+          }
+          setSelectedIndex(0);
+        }
       } else if (key.name === "up" || key.name === "k") {
-        const prevIdx = Math.max(catIdx - 1, 0);
-        setSelectedCategory(CATEGORIES[prevIdx]!.id);
-        setSelectedIndex(0);
+        const prevIdx = findNext(currentIdx, -1);
+        const prevItem = navItems[prevIdx];
+        if (prevItem && prevIdx !== currentIdx) {
+          if (prevItem.type === "category") {
+            setSelectedCategory(prevItem.id);
+            setSelectedPluginId(null);
+            // Collapse plugins if navigating up from first plugin child to Plugins parent
+            if (prevItem.id === "plugins" && navItems[currentIdx]?.type === "plugin") {
+              setIsPluginsExpanded(false);
+            }
+          } else if (prevItem.type === "plugin") {
+            setSelectedPluginId(prevItem.id);
+          }
+          setSelectedIndex(0);
+        }
       } else if (key.name === "return" || key.name === "right" || key.name === "l") {
-        setFocusedPane("settings");
+        const currentItem = navItems[currentIdx];
+        if (currentItem?.type === "category" && currentItem.id === "plugins") {
+          if (!isPluginsExpanded) {
+            setIsPluginsExpanded(true);
+          } else if (key.name === "return") {
+            setIsPluginsExpanded((p) => !p);
+          }
+        } else if (selectedPluginId || selectedCategory !== "plugins") {
+          setFocusedPane("settings");
+        }
+      } else if (key.name === "left" || key.name === "h") {
+        if (selectedPluginId) {
+          setSelectedPluginId(null);
+          setSelectedIndex(0);
+        } else if (selectedCategory === "plugins" && isPluginsExpanded) {
+          setIsPluginsExpanded(false);
+        }
       }
       return;
     }
@@ -471,19 +694,69 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
             borderColor={focusedPane === "categories" ? colors.primary : colors.border}
             padding={1}
           >
-            {CATEGORIES.map((cat) => {
-              const isActive = cat.id === selectedCategory;
+            {navItems.map((item) => {
+              if (item.type === "pluginTypeHeader") {
+                // Non-interactive type group header with · prefix
+                return (
+                  <box key={`type-${item.pluginType}`} height={1}>
+                    <text fg={colors.textSubtle}>
+                      {` · ${item.label}`}
+                    </text>
+                  </box>
+                );
+              }
+
+              const isCategory = item.type === "category";
+              const isPlugin = item.type === "plugin";
+              const isActive = isCategory
+                ? item.id === selectedCategory && (!selectedPluginId || item.id !== "plugins")
+                : isPlugin
+                  ? item.id === selectedPluginId
+                  : false;
               const isFocusedActive = isActive && focusedPane === "categories";
+
+              let prefix = "  ";
+              if (isCategory) {
+                if (item.id === "plugins") {
+                  prefix = isPluginsExpanded ? "▾ " : isActive ? "▸ " : "  ";
+                } else {
+                  prefix = isActive ? "> " : "  ";
+                }
+              } else if (isPlugin) {
+                prefix = isActive ? "  > " : "    ";
+              }
+
+              // Smart truncation: preserve last word when possible
+              const maxLabelWidth = 18 - prefix.length;
+              let label = item.label;
+              if (label.length > maxLabelWidth) {
+                const words = label.split(" ");
+                if (words.length > 1) {
+                  const lastWord = words[words.length - 1];
+                  // Try to fit "X… LastWord" format
+                  const ellipsisAndLast = `… ${lastWord}`;
+                  if (ellipsisAndLast.length < maxLabelWidth) {
+                    const firstPartLen = maxLabelWidth - ellipsisAndLast.length;
+                    label = label.slice(0, firstPartLen) + ellipsisAndLast;
+                  } else {
+                    // Last word alone is too long, just truncate
+                    label = label.slice(0, maxLabelWidth - 1) + "…";
+                  }
+                } else {
+                  label = label.slice(0, maxLabelWidth - 1) + "…";
+                }
+              }
+
               return (
-                <box key={cat.id} height={1}>
+                <box key={`${item.type}-${item.id}`} height={1}>
                   <text
                     fg={
                       isFocusedActive ? colors.background : isActive ? colors.primary : colors.text
                     }
                     {...(isFocusedActive ? { bg: colors.primary } : {})}
                   >
-                    {isActive ? "▸ " : "  "}
-                    {cat.label}
+                    {prefix}
+                    {label}
                   </text>
                 </box>
               );
@@ -522,68 +795,97 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                 }}
               />
             ) : (
-              <box flexDirection="column" flexGrow={1} padding={1}>
-                <box flexDirection="row" justifyContent="space-between" marginBottom={1} height={1}>
-                  <text fg={colors.textMuted}>
-                    {CATEGORIES.find((c) => c.id === selectedCategory)?.label.toUpperCase()}
-                  </text>
-                  {(hasMoreAbove || hasMoreBelow) && (
-                    <text fg={colors.textSubtle}>
-                      {hasMoreAbove ? "▲" : " "}
-                      {hasMoreBelow ? "▼" : " "}
+              <box flexDirection="column" flexGrow={1} padding={1} justifyContent="space-between">
+                {/* Settings list area */}
+                <box flexDirection="column" flexGrow={1}>
+                  <box flexDirection="row" justifyContent="space-between" marginBottom={1} height={1}>
+                    <text fg={colors.textMuted}>
+                      {selectedCategory === "plugins" && selectedPluginId
+                        ? availablePlugins.find((p) => p.id === selectedPluginId)?.name.toUpperCase()
+                        : CATEGORIES.find((c) => c.id === selectedCategory)?.label.toUpperCase()}
+                    </text>
+                    {(hasMoreAbove || hasMoreBelow) && (
+                      <text fg={colors.textSubtle}>
+                        {hasMoreAbove ? "▲" : " "}
+                        {hasMoreBelow ? "▼" : " "}
+                      </text>
+                    )}
+                  </box>
+
+                  {visibleSettings.length === 0 && (
+                    <text fg={colors.textMuted}>
+                      {selectedCategory === "plugins" && !selectedPluginId
+                        ? "Select a plugin to configure"
+                        : "No settings available"}
                     </text>
                   )}
+                  {visibleSettings.map((setting) => {
+                    const realIdx = categorySettings.findIndex((s) => s.key === setting.key);
+                    const isSelected = realIdx === selectedIndex && focusedPane === "settings";
+                    const value = setting.getValue(config);
+                    const isEditingThis =
+                      setting.type === "number" && editingSettingKey === setting.key;
+
+                    let displayValue: string;
+                    if (setting.key === "theme") {
+                      const themeName = themes.find((t) => t.id === value)?.name ?? value;
+                      displayValue = `${themeName} ▸`;
+                    } else if (setting.type === "toggle") {
+                      displayValue = value ? "● ON" : "○ OFF";
+                    } else if (setting.type === "select") {
+                      displayValue = `◂ ${value} ▸`;
+                    } else if (setting.type === "number" && !isEditingThis) {
+                      displayValue =
+                        setting.category === "budgets"
+                          ? formatBudgetDisplay(value as number | null)
+                          : value === null
+                            ? "—"
+                            : String(value);
+                    } else {
+                      displayValue = String(value);
+                    }
+
+                    return (
+                      <box
+                        key={setting.key}
+                        flexDirection="row"
+                        height={1}
+                        marginBottom={1}
+                        paddingX={1}
+                        {...(isSelected && !isEditingThis ? { backgroundColor: colors.primary } : {})}
+                      >
+                        <text
+                          flexGrow={1}
+                          fg={isSelected && !isEditingThis ? colors.background : colors.text}
+                        >
+                          {setting.label}
+                        </text>
+                        {isEditingThis ? (
+                          <text fg={colors.text}>
+                            ${inputValue}
+                            <span fg={colors.primary}>█</span>
+                          </text>
+                        ) : (
+                          <text fg={isSelected ? colors.background : colors.textMuted}>
+                            {displayValue}
+                          </text>
+                        )}
+                      </box>
+                    );
+                  })}
                 </box>
 
-                {visibleSettings.map((setting) => {
-                  const realIdx = categorySettings.findIndex((s) => s.key === setting.key);
-                  const isSelected = realIdx === selectedIndex && focusedPane === "settings";
-                  const value = setting.getValue(config);
-                  const isEditingThis =
-                    setting.type === "number" && editingSettingKey === setting.key;
-
-                  let displayValue: string;
-                  if (setting.key === "theme") {
-                    const themeName = themes.find((t) => t.id === value)?.name ?? value;
-                    displayValue = `${themeName} ▸`;
-                  } else if (setting.type === "toggle") {
-                    displayValue = value ? "● ON" : "○ OFF";
-                  } else if (setting.type === "select") {
-                    displayValue = `◂ ${value} ▸`;
-                  } else if (setting.type === "number" && !isEditingThis) {
-                    displayValue = formatBudgetDisplay(value as number | null);
-                  } else {
-                    displayValue = String(value);
-                  }
-
-                  return (
-                    <box
-                      key={setting.key}
-                      flexDirection="row"
-                      height={1}
-                      marginBottom={1}
-                      paddingX={1}
-                      {...(isSelected && !isEditingThis ? { backgroundColor: colors.primary } : {})}
-                    >
-                      <text
-                        flexGrow={1}
-                        fg={isSelected && !isEditingThis ? colors.background : colors.text}
-                      >
-                        {setting.label}
-                      </text>
-                      {isEditingThis ? (
-                        <text fg={colors.text}>
-                          ${inputValue}
-                          <span fg={colors.primary}>█</span>
-                        </text>
-                      ) : (
-                        <text fg={isSelected ? colors.background : colors.textMuted}>
-                          {displayValue}
-                        </text>
-                      )}
-                    </box>
-                  );
-                })}
+                {/* Help area — shows focused setting's description */}
+                <box height={helpAreaHeight} flexDirection="column" paddingX={1}>
+                  <box height={1}>
+                    <text fg={colors.border}>
+                      {"─".repeat(40)}
+                    </text>
+                  </box>
+                  <text fg={colors.textSubtle} height={3}>
+                    {focusedDescription ?? " "}
+                  </text>
+                </box>
               </box>
             )}
           </box>
