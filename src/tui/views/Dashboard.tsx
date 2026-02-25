@@ -1,6 +1,6 @@
 import type { BoxRenderable, InputRenderable, ScrollBoxRenderable } from "@opentui/core";
 import { useKeyboard, useTerminalDimensions } from "@opentui/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { GhostProviderCard } from "../components/GhostProviderCard.tsx";
 import { ProviderAggregateStrip } from "../components/ProviderAggregateStrip.tsx";
 import { ProviderCard } from "../components/ProviderCard.tsx";
@@ -39,6 +39,7 @@ export function Dashboard() {
   const isFilteringRef = useRef(isFiltering);
   const expandedIndexRef = useRef(expandedIndex);
   const focusedIndexRef = useRef(focusedIndex);
+  const selectedProviderIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     isFilteringRef.current = isFiltering;
@@ -49,7 +50,6 @@ export function Dashboard() {
   useEffect(() => {
     focusedIndexRef.current = focusedIndex;
   }, [focusedIndex]);
-
   useEffect(() => {
     setInputFocused(isFiltering);
     return () => setInputFocused(false);
@@ -80,7 +80,7 @@ export function Dashboard() {
     return Math.max(primary, secondary);
   }, []);
 
-  const providerList = Array.from(providers.values());
+  const providerList = useMemo(() => Array.from(providers.values()), [providers]);
 
   const filteredAndSortedProviders = useMemo(() => {
     let result = providerList.filter((p) => p.configured);
@@ -126,6 +126,45 @@ export function Dashboard() {
 
   const configured = filteredAndSortedProviders;
   const unconfigured = useMemo(() => providerList.filter((p) => !p.configured), [providerList]);
+
+  // Stabilize selection across re-sorts: track selected provider by ID
+  // so the highlight follows the same provider when live data causes reordering.
+  useLayoutEffect(() => {
+    if (focusedIndex === null) return;
+
+    if (selectedProviderIdRef.current && focusedIndex < configured.length) {
+      // Early return if current index already points to tracked provider
+      // (prevents infinite re-render loop when providerList creates new array refs)
+      if (configured[focusedIndex]?.plugin.id === selectedProviderIdRef.current) return;
+
+      const newIndex = configured.findIndex(
+        (p) => p.plugin.id === selectedProviderIdRef.current,
+      );
+      if (newIndex !== -1) {
+        if (newIndex !== focusedIndex) setFocusedIndex(newIndex);
+        return;
+      }
+      selectedProviderIdRef.current = null;
+    }
+
+    const includeUnconfigured = viewMode === "cards" && showUnconfigured;
+    const total = configured.length + (includeUnconfigured ? unconfigured.length : 0);
+    if (total === 0) {
+      setFocusedIndex(null);
+    } else if (focusedIndex >= total) {
+      setFocusedIndex(total - 1);
+    }
+  }, [filteredAndSortedProviders, unconfigured.length, showUnconfigured, viewMode]);
+
+  // Record which provider the user selected
+  useEffect(() => {
+    if (focusedIndex !== null && focusedIndex < configured.length) {
+      const provider = configured[focusedIndex];
+      if (provider) selectedProviderIdRef.current = provider.plugin.id;
+    } else {
+      selectedProviderIdRef.current = null;
+    }
+  }, [focusedIndex, configured]);
 
   const cycleFocus = useCallback(
     (direction: 1 | -1) => {

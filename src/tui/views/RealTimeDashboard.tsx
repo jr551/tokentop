@@ -64,6 +64,7 @@ export function RealTimeDashboard() {
   const [sortField, setSortField] = useState<"cost" | "tokens" | "time">("cost");
   const [pendingG, setPendingG] = useState(false);
   const scrollOffsetRef = useRef(0);
+  const selectedSessionIdRef = useRef<string | null>(null);
   const setScrollOffset = useCallback((val: number) => {
     scrollOffsetRef.current = val;
     sessionsScrollboxRef.current?.scrollTo(val);
@@ -192,19 +193,40 @@ export function RealTimeDashboard() {
     return result;
   }, [baseFilteredSessions, activeDriverFilter, driverDimension, sortField]);
 
-  useEffect(() => {
+  // Stabilize selection across re-sorts: track selected session by ID
+  // so the highlight follows the same session when live data causes reordering.
+  useLayoutEffect(() => {
     if (processedSessions.length === 0) {
-      if (selectedRow !== 0) setSelectedRow(0);
-      if (scrollOffsetRef.current !== 0) setScrollOffset(0);
+      setSelectedRow(0);
+      setScrollOffset(0);
+      selectedSessionIdRef.current = null;
       return;
     }
 
-    const maxRow = processedSessions.length - 1;
-    if (selectedRow > maxRow) {
-      setSelectedRow(maxRow);
-      return;
+    if (selectedSessionIdRef.current) {
+      const newIndex = processedSessions.findIndex(
+        (s) => s.sessionId === selectedSessionIdRef.current,
+      );
+      if (newIndex !== -1) {
+        setSelectedRow(newIndex);
+        return;
+      }
+      // Tracked session was filtered out — fall through to clamp
+      selectedSessionIdRef.current = null;
     }
-  }, [processedSessions.length, selectedRow, setScrollOffset]);
+
+    // Clamp to valid range (functional update avoids selectedRow in deps)
+    setSelectedRow((prev) => Math.min(prev, processedSessions.length - 1));
+  }, [processedSessions, setScrollOffset]);
+
+
+  // Record which session the user selected (runs after navigation and stabilization)
+  useEffect(() => {
+    const session = processedSessions[selectedRow];
+    if (session) {
+      selectedSessionIdRef.current = session.sessionId;
+    }
+  }, [selectedRow, processedSessions]);
 
   useLayoutEffect(() => {
     if (!sessionsScrollboxRef.current || processedSessions.length === 0) return;

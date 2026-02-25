@@ -1202,6 +1202,7 @@ export function ProjectsView() {
   const [isFiltering, setIsFiltering] = useState(false);
   const scrollOffsetRef = useRef(0);
   const scrollboxRef = useRef<ScrollBoxRenderable>(null);
+  const selectedProjectPathRef = useRef<string | null>(null);
 
   // Aggregate projects
   const projectStats = useMemo(
@@ -1252,16 +1253,40 @@ export function ProjectsView() {
   // Visible columns
   const visibleColumns: ColumnSpec[] = useMemo(() => getVisibleColumns(termWidth), [termWidth]);
 
-  // Clamp selection
-  useEffect(() => {
+  // Stabilize selection across re-sorts: track selected project by path
+  // so the highlight follows the same project when live data causes reordering.
+  useLayoutEffect(() => {
     if (sortedProjects.length === 0) {
-      if (selectedIndex !== 0) setSelectedIndex(0);
+      setSelectedIndex(0);
       scrollOffsetRef.current = 0;
       scrollboxRef.current?.scrollTo(0);
-    } else if (selectedIndex >= sortedProjects.length) {
-      setSelectedIndex(sortedProjects.length - 1);
+      selectedProjectPathRef.current = null;
+      return;
     }
-  }, [sortedProjects.length, selectedIndex]);
+
+    if (selectedProjectPathRef.current) {
+      const newIndex = sortedProjects.findIndex(
+        (p) => p.path === selectedProjectPathRef.current,
+      );
+      if (newIndex !== -1) {
+        setSelectedIndex(newIndex);
+        return;
+      }
+      // Tracked project was filtered out — fall through to clamp
+      selectedProjectPathRef.current = null;
+    }
+
+    // Clamp to valid range (functional update avoids selectedIndex in deps)
+    setSelectedIndex((prev) => Math.min(prev, sortedProjects.length - 1));
+  }, [sortedProjects]);
+
+  // Record which project the user selected
+  useEffect(() => {
+    const project = sortedProjects[selectedIndex];
+    if (project) {
+      selectedProjectPathRef.current = project.path;
+    }
+  }, [selectedIndex, sortedProjects]);
 
   // Scroll to keep selected row visible
   const visibleRows = useMemo(() => {

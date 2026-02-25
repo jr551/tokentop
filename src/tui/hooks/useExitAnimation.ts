@@ -43,6 +43,10 @@ export function useExitAnimation<T>(
     for (const [key, entry] of exitingRef.current) {
       if (now - entry.startTime >= durationMs) {
         exitingRef.current.delete(key);
+        // Also clean from prev refs so the render-time diff
+        // doesn't re-add them on the next forceUpdate render.
+        prevKeysRef.current.delete(key);
+        prevItemsRef.current.delete(key);
       } else {
         anyActive = true;
       }
