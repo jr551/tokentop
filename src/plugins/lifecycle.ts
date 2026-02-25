@@ -91,25 +91,29 @@ class PluginLifecycleManager {
   async initializeAll(): Promise<void> {
     const plugins = pluginRegistry.getAllPlugins();
 
-    for (const plugin of plugins) {
-      const entry = this.getOrCreate(plugin);
-      if (entry.state !== "loaded") continue;
+    await Promise.all(
+      plugins.map(async (plugin) => {
+        const entry = this.getOrCreate(plugin);
+        if (entry.state !== "loaded") return;
 
-      const ok = await this.invokeHook(plugin, "initialize");
-      entry.state = ok ? "initialized" : "failed";
-    }
+        const ok = await this.invokeHook(plugin, "initialize");
+        entry.state = ok ? "initialized" : "failed";
+      }),
+    );
   }
 
   async startAll(): Promise<void> {
     const plugins = pluginRegistry.getAllPlugins();
 
-    for (const plugin of plugins) {
-      const entry = this.getOrCreate(plugin);
-      if (entry.state !== "initialized") continue;
+    await Promise.all(
+      plugins.map(async (plugin) => {
+        const entry = this.getOrCreate(plugin);
+        if (entry.state !== "initialized") return;
 
-      const ok = await this.invokeHook(plugin, "start");
-      entry.state = ok ? "started" : "failed";
-    }
+        const ok = await this.invokeHook(plugin, "start");
+        entry.state = ok ? "started" : "failed";
+      }),
+    );
   }
 
   async stopAll(): Promise<void> {

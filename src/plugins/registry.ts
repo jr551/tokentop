@@ -35,6 +35,7 @@ class PluginRegistryImpl {
 
   private sources = new Map<string, PluginSource>();
   private initialized = false;
+  private officialIds = new Set<string>();
 
   private sourceKey(type: string, id: string): string {
     return `${type}-${id}`;
@@ -44,37 +45,20 @@ class PluginRegistryImpl {
     const key = this.sourceKey(plugin.type, plugin.id);
     const existingSource = this.sources.get(key);
 
-    if (existingSource === "builtin" && source !== "builtin") {
+    // Priority: local > npm > builtin
+    // If a higher-priority source already registered this plugin, skip.
+    const priority: Record<PluginSource, number> = { local: 2, npm: 1, builtin: 0 };
+    if (existingSource && priority[existingSource] > priority[source]) {
       return;
     }
 
-    this.sources.set(key, source);
-    switch (plugin.type) {
-      case "provider":
-        if (this.plugins.provider.has(plugin.id)) {
-          console.warn(`Plugin "${plugin.id}" already registered, overwriting`);
-        }
-        this.plugins.provider.set(plugin.id, plugin);
-        break;
-      case "agent":
-        if (this.plugins.agent.has(plugin.id)) {
-          console.warn(`Plugin "${plugin.id}" already registered, overwriting`);
-        }
-        this.plugins.agent.set(plugin.id, plugin);
-        break;
-      case "theme":
-        if (this.plugins.theme.has(plugin.id)) {
-          console.warn(`Plugin "${plugin.id}" already registered, overwriting`);
-        }
-        this.plugins.theme.set(plugin.id, plugin);
-        break;
-      case "notification":
-        if (this.plugins.notification.has(plugin.id)) {
-          console.warn(`Plugin "${plugin.id}" already registered, overwriting`);
-        }
-        this.plugins.notification.set(plugin.id, plugin);
-        break;
+    if (existingSource && existingSource !== source) {
+      console.info(`Plugin "${plugin.id}" overridden by ${source} (was ${existingSource})`);
     }
+
+    this.sources.set(key, source);
+    const map = this.plugins[plugin.type] as Map<string, AnyPlugin>;
+    map.set(plugin.id, plugin);
   }
 
   unregister(type: PluginType, id: string): boolean {
@@ -118,6 +102,10 @@ class PluginRegistryImpl {
     return this.sources.get(this.sourceKey(type, id));
   }
 
+  isOfficial(type: PluginType, id: string): boolean {
+    return this.officialIds.has(this.sourceKey(type, id));
+  }
+
   async loadBuiltinPlugins(): Promise<void> {
     const [providers, agents, themes, notifications] = await Promise.all([
       import("./providers/index.ts"),
@@ -127,19 +115,31 @@ class PluginRegistryImpl {
     ]);
 
     for (const plugin of Object.values(providers)) {
-      if (isProviderPlugin(plugin)) this.register(plugin, "builtin");
+      if (isProviderPlugin(plugin)) {
+        this.register(plugin, "builtin");
+        this.officialIds.add(this.sourceKey(plugin.type, plugin.id));
+      }
     }
 
     for (const plugin of Object.values(agents)) {
-      if (isAgentPlugin(plugin)) this.register(plugin, "builtin");
+      if (isAgentPlugin(plugin)) {
+        this.register(plugin, "builtin");
+        this.officialIds.add(this.sourceKey(plugin.type, plugin.id));
+      }
     }
 
     for (const plugin of Object.values(themes)) {
-      if (isThemePlugin(plugin)) this.register(plugin, "builtin");
+      if (isThemePlugin(plugin)) {
+        this.register(plugin, "builtin");
+        this.officialIds.add(this.sourceKey(plugin.type, plugin.id));
+      }
     }
 
     for (const plugin of Object.values(notifications)) {
-      if (isNotificationPlugin(plugin)) this.register(plugin, "builtin");
+      if (isNotificationPlugin(plugin)) {
+        this.register(plugin, "builtin");
+        this.officialIds.add(this.sourceKey(plugin.type, plugin.id));
+      }
     }
   }
 
@@ -148,13 +148,13 @@ class PluginRegistryImpl {
     const resolvedExtraPaths = extraPaths.map((p) => resolvePluginPath(p));
     const allPaths = [...discoveredPaths, ...resolvedExtraPaths];
 
-    for (const pluginPath of allPaths) {
-      const result = await loadLocalPlugin(pluginPath);
+    const results = await Promise.all(allPaths.map((p) => loadLocalPlugin(p)));
+    for (const [i, result] of results.entries()) {
       if (result.success && result.plugin) {
         this.register(result.plugin, "local");
         console.info(`Loaded local plugin: ${result.plugin.name} (${result.plugin.id})`);
       } else {
-        console.warn(`Failed to load plugin from ${pluginPath}: ${result.error}`);
+        console.warn(`Failed to load plugin from ${allPaths[i]}: ${result.error}`);
       }
     }
   }
@@ -171,9 +171,14 @@ class PluginRegistryImpl {
       }
     }
 
-    for (const packageName of packages) {
-      const resolvedPath = resolveNpmPluginPath(packageName);
-      const result = await loadNpmPlugin(packageName, resolvedPath);
+    const loadResults = await Promise.all(
+      packages.map(async (packageName) => {
+        const resolvedPath = resolveNpmPluginPath(packageName);
+        const result = await loadNpmPlugin(packageName, resolvedPath);
+        return { packageName, result };
+      }),
+    );
+    for (const { packageName, result } of loadResults) {
       if (result.success && result.plugin) {
         this.register(result.plugin, "npm");
         console.info(`Loaded npm plugin: ${result.plugin.name} (${packageName})`);

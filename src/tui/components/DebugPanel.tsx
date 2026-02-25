@@ -9,7 +9,7 @@ import { useColors } from "../contexts/ThemeContext.tsx";
 import { ModalBackdrop, Z_INDEX } from "./ModalBackdrop.tsx";
 
 type DebugTab = "logs" | "inspector" | "plugins";
-type PluginSort = "name" | "type" | "official";
+type PluginSort = "name" | "type" | "source";
 
 interface DebugInspectorData {
   sessions: Array<{
@@ -193,7 +193,7 @@ export function DebugPanel({ onClose, inspectorData }: DebugPanelProps) {
     if (activeTab === "plugins") {
       if (key.name === "s") {
         setPluginSort((prev) => {
-          const order: PluginSort[] = ["name", "type", "official"];
+          const order: PluginSort[] = ["name", "type", "source"];
           return order[(order.indexOf(prev) + 1) % order.length] ?? "name";
         });
         return;
@@ -656,12 +656,12 @@ interface PluginsTabProps {
 
 const TYPE_ORDER: Record<string, number> = { provider: 0, agent: 1, theme: 2, notification: 3 };
 
-function isOfficialPlugin(pluginId: string, pluginType: string): boolean {
+function getSourcePriority(pluginId: string, pluginType: string): number {
   const source = pluginRegistry.getSource(
     pluginType as "provider" | "agent" | "theme" | "notification",
     pluginId,
   );
-  return source === "builtin";
+  return source === "local" ? 0 : source === "npm" ? 1 : 2;
 }
 
 function PluginsTab({ colors, scrollboxRef, sortBy }: PluginsTabProps) {
@@ -671,10 +671,10 @@ function PluginsTab({ colors, scrollboxRef, sortBy }: PluginsTabProps) {
       if (sortBy === "name") {
         return a.name.localeCompare(b.name);
       }
-      if (sortBy === "official") {
-        const aOfficial = isOfficialPlugin(a.id, a.type) ? 0 : 1;
-        const bOfficial = isOfficialPlugin(b.id, b.type) ? 0 : 1;
-        if (aOfficial !== bOfficial) return aOfficial - bOfficial;
+      if (sortBy === "source") {
+        const aPriority = getSourcePriority(a.id, a.type);
+        const bPriority = getSourcePriority(b.id, b.type);
+        if (aPriority !== bPriority) return aPriority - bPriority;
         return a.name.localeCompare(b.name);
       }
       const typeA = TYPE_ORDER[a.type] ?? 99;
@@ -733,6 +733,9 @@ function PluginsTab({ colors, scrollboxRef, sortBy }: PluginsTabProps) {
         <text width={14} fg={colors.textSubtle}>
           {padRight("TYPE", 14)}
         </text>
+        <text width={10} fg={colors.textSubtle}>
+          {padRight("SOURCE", 10)}
+        </text>
         <text width={14} fg={colors.textSubtle}>
           {padRight("VERSION", 14)}
         </text>
@@ -743,7 +746,14 @@ function PluginsTab({ colors, scrollboxRef, sortBy }: PluginsTabProps) {
           {allPlugins.map((plugin) => {
             const key = `${plugin.type}-${plugin.id}`;
             const updateInfo = updates.get(key);
-            const official = isOfficialPlugin(plugin.id, plugin.type);
+            const source = pluginRegistry.getSource(plugin.type, plugin.id) ?? "builtin";
+            const official = pluginRegistry.isOfficial(plugin.type, plugin.id);
+
+            const sourceColors: Record<string, string> = {
+              builtin: colors.textSubtle,
+              local: colors.success,
+              npm: colors.info,
+            };
 
             let versionSuffix = "";
             let versionColor = colors.textMuted;
@@ -758,11 +768,14 @@ function PluginsTab({ colors, scrollboxRef, sortBy }: PluginsTabProps) {
             return (
               <box key={key} flexDirection="row" height={1}>
                 <text width={22}>
-                  {official && <span fg={colors.success}>❖ </span>}
+                  {official && <span fg={colors.warning}>✦ </span>}
                   <span fg={colors.text}>{padRight(plugin.name, official ? 20 : 22)}</span>
                 </text>
                 <text width={14} fg={typeColors[plugin.type] ?? colors.textMuted}>
                   {padRight(plugin.type, 14)}
+                </text>
+                <text width={10} fg={sourceColors[source] ?? colors.textMuted}>
+                  {padRight(source, 10)}
                 </text>
                 <text width={14} fg={versionColor}>
                   {padRight(plugin.version + versionSuffix, 14)}
