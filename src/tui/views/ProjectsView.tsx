@@ -1265,9 +1265,7 @@ export function ProjectsView() {
     }
 
     if (selectedProjectPathRef.current) {
-      const newIndex = sortedProjects.findIndex(
-        (p) => p.path === selectedProjectPathRef.current,
-      );
+      const newIndex = sortedProjects.findIndex((p) => p.path === selectedProjectPathRef.current);
       if (newIndex !== -1) {
         setSelectedIndex(newIndex);
         return;

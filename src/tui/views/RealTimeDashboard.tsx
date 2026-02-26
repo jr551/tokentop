@@ -219,7 +219,6 @@ export function RealTimeDashboard() {
     setSelectedRow((prev) => Math.min(prev, processedSessions.length - 1));
   }, [processedSessions, setScrollOffset]);
 
-
   // Record which session the user selected (runs after navigation and stabilization)
   useEffect(() => {
     const session = processedSessions[selectedRow];

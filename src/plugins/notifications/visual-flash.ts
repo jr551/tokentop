@@ -18,8 +18,18 @@ export const visualFlashPlugin: NotificationPlugin = {
   permissions: {},
 
   configSchema: {
-    enabled: { type: "boolean", label: "Enabled", default: true, description: "Enable visual flash notifications" },
-    duration: { type: "number", label: "Flash duration (ms)", default: 100, description: "Flash duration in milliseconds" },
+    enabled: {
+      type: "boolean",
+      label: "Enabled",
+      default: true,
+      description: "Enable visual flash notifications",
+    },
+    duration: {
+      type: "number",
+      label: "Flash duration (ms)",
+      default: 100,
+      description: "Flash duration in milliseconds",
+    },
   },
 
   supports(event: NotificationEvent): boolean {

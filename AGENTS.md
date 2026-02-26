@@ -246,6 +246,11 @@ Display estimated costs with `~` indicator: `~$0.0234`
 - Keep functions small and focused
 - Use meaningful variable names
 
+### Linting Rules
+
+- **NEVER run `biome check --fix --unsafe`** — Unsafe auto-fixes change runtime behavior (e.g., `!` → `?.`, React dependency array modifications, `isNaN` → `Number.isNaN`). These can introduce subtle bugs, infinite re-render loops, and type errors. Always fix lint issues manually or use `biome check --fix` (safe fixes only).
+- Fix lint **errors** (which fail CI). Lint **warnings** are advisory and do not block CI.
+- The linter is Biome (`biome check src/`). The config is in `biome.json`.
 ## Git Workflow
 
 - Feature branches from `main`

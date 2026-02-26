@@ -699,9 +699,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                 // Non-interactive type group header with · prefix
                 return (
                   <box key={`type-${item.pluginType}`} height={1}>
-                    <text fg={colors.textSubtle}>
-                      {` · ${item.label}`}
-                    </text>
+                    <text fg={colors.textSubtle}>{` · ${item.label}`}</text>
                   </box>
                 );
               }
@@ -798,10 +796,17 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
               <box flexDirection="column" flexGrow={1} padding={1} justifyContent="space-between">
                 {/* Settings list area */}
                 <box flexDirection="column" flexGrow={1}>
-                  <box flexDirection="row" justifyContent="space-between" marginBottom={1} height={1}>
+                  <box
+                    flexDirection="row"
+                    justifyContent="space-between"
+                    marginBottom={1}
+                    height={1}
+                  >
                     <text fg={colors.textMuted}>
                       {selectedCategory === "plugins" && selectedPluginId
-                        ? availablePlugins.find((p) => p.id === selectedPluginId)?.name.toUpperCase()
+                        ? availablePlugins
+                            .find((p) => p.id === selectedPluginId)
+                            ?.name.toUpperCase()
                         : CATEGORIES.find((c) => c.id === selectedCategory)?.label.toUpperCase()}
                     </text>
                     {(hasMoreAbove || hasMoreBelow) && (
@@ -852,7 +857,9 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                         height={1}
                         marginBottom={1}
                         paddingX={1}
-                        {...(isSelected && !isEditingThis ? { backgroundColor: colors.primary } : {})}
+                        {...(isSelected && !isEditingThis
+                          ? { backgroundColor: colors.primary }
+                          : {})}
                       >
                         <text
                           flexGrow={1}
@@ -878,9 +885,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                 {/* Help area — shows focused setting's description */}
                 <box height={helpAreaHeight} flexDirection="column" paddingX={1}>
                   <box height={1}>
-                    <text fg={colors.border}>
-                      {"─".repeat(40)}
-                    </text>
+                    <text fg={colors.border}>{"─".repeat(40)}</text>
                   </box>
                   <text fg={colors.textSubtle} height={3}>
                     {focusedDescription ?? " "}

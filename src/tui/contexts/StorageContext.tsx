@@ -9,7 +9,6 @@ import {
   useState,
 } from "react";
 import { closeDatabase, getAppRunId, initDatabase, isDatabaseInitialized } from "@/storage/db.ts";
-import { incrementalVacuum, pruneOldData } from "@/storage/retention.ts";
 import {
   getLatestStreamTotalsForAllSessions,
   insertAgentSessionSnapshot,
@@ -17,6 +16,7 @@ import {
 } from "@/storage/repos/agentSessions.ts";
 import { insertProviderSnapshotBatch } from "@/storage/repos/providerSnapshots.ts";
 import { insertUsageEventBatch } from "@/storage/repos/usageEvents.ts";
+import { incrementalVacuum, pruneOldData } from "@/storage/retention.ts";
 import type {
   AgentSessionSnapshotInsert,
   AgentSessionStreamSnapshotRow,
@@ -90,7 +90,7 @@ export function StorageProvider({ children }: StorageProviderProps) {
           if (pruneResult.agentSessionSnapshots > 0 || pruneResult.providerSnapshots > 0) {
             console.log(
               `[retention] Pruned ${pruneResult.agentSessionSnapshots} session snapshots, ` +
-              `${pruneResult.providerSnapshots} provider snapshots in ${pruneResult.durationMs}ms`,
+                `${pruneResult.providerSnapshots} provider snapshots in ${pruneResult.durationMs}ms`,
             );
             incrementalVacuum();
           }

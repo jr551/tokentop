@@ -137,9 +137,7 @@ export function Dashboard() {
       // (prevents infinite re-render loop when providerList creates new array refs)
       if (configured[focusedIndex]?.plugin.id === selectedProviderIdRef.current) return;
 
-      const newIndex = configured.findIndex(
-        (p) => p.plugin.id === selectedProviderIdRef.current,
-      );
+      const newIndex = configured.findIndex((p) => p.plugin.id === selectedProviderIdRef.current);
       if (newIndex !== -1) {
         if (newIndex !== focusedIndex) setFocusedIndex(newIndex);
         return;
