@@ -14,11 +14,11 @@ import { createPluginContext } from "@/plugins/plugin-context-factory.ts";
 import { pluginRegistry } from "@/plugins/registry.ts";
 import { createPluginLogger, createSandboxedHttpClient } from "@/plugins/sandbox.ts";
 import type { AgentPlugin, SessionParseOptions } from "@/plugins/types/agent.ts";
+import { persistSessions } from "@/storage/persistence-service.ts";
 import type { PricingSource } from "@/storage/types.ts";
 import { useDemoMode } from "./DemoModeContext.tsx";
 import { useLogs } from "./LogContext.tsx";
 import { usePlugins } from "./PluginContext.tsx";
-import { useStorage } from "./StorageContext.tsx";
 import { useTimeWindow } from "./TimeWindowContext.tsx";
 
 interface AgentSessionContextValue {
@@ -31,13 +31,6 @@ interface AgentSessionContextValue {
 }
 
 const AgentSessionContext = createContext<AgentSessionContextValue | null>(null);
-
-const MAX_PERSISTENCE_FINGERPRINTS = 500;
-const sessionPersistenceFingerprints = new Map<string, string>();
-
-function sessionFingerprint(session: AgentSessionAggregate): string {
-  return `${session.lastActivityAt}:${session.totalCostUsd ?? 0}:${session.requestCount}`;
-}
 
 interface AgentSessionProviderProps {
   children: ReactNode;
@@ -57,7 +50,6 @@ export function AgentSessionProvider({
   const [error, setError] = useState<string | null>(null);
   const { debug, warn, error: logError } = useLogs();
   const { isInitialized: pluginsInitialized } = usePlugins();
-  const { isReady: storageReady, recordAgentSession } = useStorage();
   const { demoMode, simulator } = useDemoMode();
   const { windowMs } = useTimeWindow();
   const hasBackfilled = useRef(false);
@@ -190,65 +182,47 @@ export function AgentSessionProvider({
 
         pricedSessions.sort((a, b) => b.lastActivityAt - a.lastActivityAt);
 
-        if (storageReady) {
-          const now = Date.now();
-          let persistedCount = 0;
-          for (const session of pricedSessions) {
-            const fp = sessionFingerprint(session);
-            const prevFp = sessionPersistenceFingerprints.get(session.sessionId);
-            if (prevFp === fp) continue;
-
-            sessionPersistenceFingerprints.set(session.sessionId, fp);
-            persistedCount++;
-
-            recordAgentSession(
-              {
-                agentId: session.agentId,
-                sessionId: session.sessionId,
-                projectPath: session.projectPath ?? null,
-                startedAt: session.startedAt ?? null,
-                lastSeenAt: now,
-              },
-              {
-                timestamp: now,
-                lastActivityAt: session.lastActivityAt,
-                status: session.status,
-                totalInputTokens: session.totals.input,
-                totalOutputTokens: session.totals.output,
-                totalCacheReadTokens: session.totals.cacheRead ?? 0,
-                totalCacheWriteTokens: session.totals.cacheWrite ?? 0,
-                totalCostUsd: session.totalCostUsd ?? 0,
-                requestCount: session.requestCount,
-              },
-              session.streams.map((s) => ({
-                provider: s.providerId,
-                model: s.modelId,
-                inputTokens: s.tokens.input,
-                outputTokens: s.tokens.output,
-                cacheReadTokens: s.tokens.cacheRead ?? 0,
-                cacheWriteTokens: s.tokens.cacheWrite ?? 0,
-                costUsd: s.costUsd ?? 0,
-                requestCount: s.requestCount,
-                pricingSource: (s.pricingSource as PricingSource) ?? null,
-              })),
-            );
-          }
-          if (sessionPersistenceFingerprints.size > MAX_PERSISTENCE_FINGERPRINTS) {
-            const excess = sessionPersistenceFingerprints.size - MAX_PERSISTENCE_FINGERPRINTS;
-            const keys = sessionPersistenceFingerprints.keys();
-            for (let i = 0; i < excess; i++) {
-              const next = keys.next();
-              if (next.done) break;
-              sessionPersistenceFingerprints.delete(next.value);
-            }
-          }
-
-          debug(
-            `Persisted ${persistedCount}/${pricedSessions.length} changed sessions to storage`,
-            undefined,
-            "agent-sessions",
-          );
-        }
+        // Persist to storage — the persistence service handles throttling
+        // internally (fingerprint gate + 5-minute per-session throttle).
+        // Safe to call every tick; state lives on globalThis, survives HMR.
+        const now = Date.now();
+        const persistData = pricedSessions.map((session) => ({
+          session: {
+            agentId: session.agentId,
+            sessionId: session.sessionId,
+            projectPath: session.projectPath ?? null,
+            startedAt: session.startedAt ?? null,
+            lastSeenAt: now,
+          },
+          snapshot: {
+            timestamp: now,
+            lastActivityAt: session.lastActivityAt,
+            status: session.status,
+            totalInputTokens: session.totals.input,
+            totalOutputTokens: session.totals.output,
+            totalCacheReadTokens: session.totals.cacheRead ?? 0,
+            totalCacheWriteTokens: session.totals.cacheWrite ?? 0,
+            totalCostUsd: session.totalCostUsd ?? 0,
+            requestCount: session.requestCount,
+          },
+          streams: session.streams.map((s) => ({
+            provider: s.providerId,
+            model: s.modelId,
+            inputTokens: s.tokens.input,
+            outputTokens: s.tokens.output,
+            cacheReadTokens: s.tokens.cacheRead ?? 0,
+            cacheWriteTokens: s.tokens.cacheWrite ?? 0,
+            costUsd: s.costUsd ?? 0,
+            requestCount: s.requestCount,
+            pricingSource: (s.pricingSource as PricingSource) ?? null,
+          })),
+        }));
+        const persistedCount = persistSessions(persistData);
+        debug(
+          `Persisted ${persistedCount}/${pricedSessions.length} sessions to storage`,
+          undefined,
+          "agent-sessions",
+        );
 
         setSessions(pricedSessions);
         setLastRefreshAt(Date.now());
@@ -265,17 +239,7 @@ export function AgentSessionProvider({
         }
       }
     },
-    [
-      sessions.length,
-      discoverAgents,
-      fetchAgentSessions,
-      debug,
-      warn,
-      logError,
-      storageReady,
-      recordAgentSession,
-      demoMode,
-    ],
+    [sessions.length, discoverAgents, fetchAgentSessions, debug, warn, logError, demoMode],
   );
 
   const refreshSessionsRef = useRef(refreshSessions);

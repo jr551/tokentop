@@ -9,23 +9,11 @@ import {
   useState,
 } from "react";
 import { closeDatabase, getAppRunId, initDatabase, isDatabaseInitialized } from "@/storage/db.ts";
-import {
-  getLatestStreamTotalsForAllSessions,
-  insertAgentSessionSnapshot,
-  upsertAgentSession,
-} from "@/storage/repos/agentSessions.ts";
+import { seedPreviousTotals } from "@/storage/persistence-service.ts";
 import { insertProviderSnapshotBatch } from "@/storage/repos/providerSnapshots.ts";
 import { insertUsageEventBatch } from "@/storage/repos/usageEvents.ts";
 import { incrementalVacuum, pruneOldData } from "@/storage/retention.ts";
-import type {
-  AgentSessionSnapshotInsert,
-  AgentSessionStreamSnapshotRow,
-  AgentSessionUpsert,
-  ProviderSnapshotInsert,
-  StreamTotals,
-  UsageEventInsert,
-} from "@/storage/types.ts";
-import { computeStreamDelta } from "@/storage/types.ts";
+import type { ProviderSnapshotInsert, UsageEventInsert } from "@/storage/types.ts";
 import { useDemoMode } from "./DemoModeContext.tsx";
 
 interface StorageContextValue {
@@ -33,30 +21,12 @@ interface StorageContextValue {
   appRunId: number | null;
   recordProviderSnapshots: (snapshots: ProviderSnapshotInsert[]) => void;
   recordUsageEvents: (events: UsageEventInsert[]) => void;
-  recordAgentSession: (
-    session: AgentSessionUpsert,
-    snapshot: Omit<AgentSessionSnapshotInsert, "agentSessionId">,
-    streams: Omit<AgentSessionStreamSnapshotRow, "agentSessionSnapshotId">[],
-  ) => number | null;
 }
 
 const StorageContext = createContext<StorageContextValue | null>(null);
 
-const SNAPSHOT_INTERVAL_MS = 300_000;
-const MAX_TRACKED_SESSIONS = 1_000;
-const MAX_TRACKED_STREAMS = 5_000;
+const PROVIDER_SNAPSHOT_INTERVAL_MS = 300_000;
 const PRUNE_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
-
-function capMapSize<K, V>(map: Map<K, V>, max: number): void {
-  if (map.size <= max) return;
-  const excess = map.size - max;
-  const keys = map.keys();
-  for (let i = 0; i < excess; i++) {
-    const next = keys.next();
-    if (next.done) break;
-    map.delete(next.value);
-  }
-}
 
 interface StorageProviderProps {
   children: ReactNode;
@@ -66,8 +36,6 @@ export function StorageProvider({ children }: StorageProviderProps) {
   const [isReady, setIsReady] = useState(false);
   const [appRunId, setAppRunId] = useState<number | null>(null);
   const lastProviderSnapshotRef = useRef<Map<string, number>>(new Map());
-  const lastSessionSnapshotRef = useRef<Map<string, number>>(new Map());
-  const previousTotalsRef = useRef<Map<string, StreamTotals>>(new Map());
   const { demoMode, simulator } = useDemoMode();
 
   useEffect(() => {
@@ -99,22 +67,8 @@ export function StorageProvider({ children }: StorageProviderProps) {
         }
 
         if (mounted) {
-          try {
-            const latestTotals = getLatestStreamTotalsForAllSessions();
-            for (const row of latestTotals) {
-              const streamKey = `${row.agentId}:${row.sessionId}:${row.provider}:${row.model}`;
-              previousTotalsRef.current.set(streamKey, {
-                inputTokens: row.inputTokens,
-                outputTokens: row.outputTokens,
-                cacheReadTokens: row.cacheReadTokens,
-                cacheWriteTokens: row.cacheWriteTokens,
-                costUsd: row.costUsd,
-                requestCount: row.requestCount,
-              });
-            }
-          } catch (err) {
-            console.error("Failed to seed previous totals from DB:", err);
-          }
+          // Seed the persistence service with previous stream totals from DB
+          seedPreviousTotals();
           setIsReady(true);
           setAppRunId(getAppRunId());
         }
@@ -140,7 +94,7 @@ export function StorageProvider({ children }: StorageProviderProps) {
       const now = Date.now();
       const filtered = snapshots.filter((s) => {
         const lastTs = lastProviderSnapshotRef.current.get(s.provider) ?? 0;
-        return now - lastTs >= SNAPSHOT_INTERVAL_MS;
+        return now - lastTs >= PROVIDER_SNAPSHOT_INTERVAL_MS;
       });
 
       if (filtered.length === 0) return;
@@ -165,82 +119,6 @@ export function StorageProvider({ children }: StorageProviderProps) {
         insertUsageEventBatch(events);
       } catch (err) {
         console.error("Failed to record usage events:", err);
-      }
-    },
-    [isReady, demoMode],
-  );
-
-  const recordAgentSession = useCallback(
-    (
-      session: AgentSessionUpsert,
-      snapshot: Omit<AgentSessionSnapshotInsert, "agentSessionId">,
-      streams: Omit<AgentSessionStreamSnapshotRow, "agentSessionSnapshotId">[],
-    ): number | null => {
-      if (!isReady || demoMode) return null;
-
-      const sessionKey = `${session.agentId}:${session.sessionId}`;
-      const now = Date.now();
-      const lastTs = lastSessionSnapshotRef.current.get(sessionKey) ?? 0;
-
-      if (now - lastTs < SNAPSHOT_INTERVAL_MS) {
-        return null;
-      }
-
-      try {
-        const agentSessionId = upsertAgentSession(session);
-
-        const snapshotId = insertAgentSessionSnapshot({ ...snapshot, agentSessionId }, streams);
-
-        lastSessionSnapshotRef.current.set(sessionKey, now);
-
-        const usageEvents: UsageEventInsert[] = [];
-        for (const stream of streams) {
-          const streamKey = `${sessionKey}:${stream.provider}:${stream.model}`;
-          const current: StreamTotals = {
-            inputTokens: stream.inputTokens,
-            outputTokens: stream.outputTokens,
-            cacheReadTokens: stream.cacheReadTokens,
-            cacheWriteTokens: stream.cacheWriteTokens,
-            costUsd: stream.costUsd,
-            requestCount: stream.requestCount,
-          };
-
-          const previous = previousTotalsRef.current.get(streamKey);
-          const delta = computeStreamDelta(current, previous);
-
-          if (delta) {
-            usageEvents.push({
-              timestamp: now,
-              source: "agent",
-              provider: stream.provider,
-              model: stream.model,
-              agentId: session.agentId,
-              sessionId: session.sessionId,
-              projectPath: session.projectPath ?? null,
-              inputTokens: delta.inputTokens,
-              outputTokens: delta.outputTokens,
-              cacheReadTokens: delta.cacheReadTokens,
-              cacheWriteTokens: delta.cacheWriteTokens,
-              costUsd: delta.costUsd,
-              requestCount: delta.requestCount,
-              pricingSource: stream.pricingSource ?? null,
-            });
-          }
-
-          previousTotalsRef.current.set(streamKey, current);
-        }
-
-        if (usageEvents.length > 0) {
-          insertUsageEventBatch(usageEvents);
-        }
-
-        capMapSize(lastSessionSnapshotRef.current, MAX_TRACKED_SESSIONS);
-        capMapSize(previousTotalsRef.current, MAX_TRACKED_STREAMS);
-
-        return snapshotId;
-      } catch (err) {
-        console.error("Failed to record agent session:", err);
-        return null;
       }
     },
     [isReady, demoMode],
@@ -280,9 +158,8 @@ export function StorageProvider({ children }: StorageProviderProps) {
       appRunId,
       recordProviderSnapshots,
       recordUsageEvents,
-      recordAgentSession,
     }),
-    [isReady, appRunId, recordProviderSnapshots, recordUsageEvents, recordAgentSession],
+    [isReady, appRunId, recordProviderSnapshots, recordUsageEvents],
   );
 
   return <StorageContext.Provider value={value}>{children}</StorageContext.Provider>;
