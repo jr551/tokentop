@@ -60,6 +60,9 @@ export interface AgentSessionAggregate {
 
   /** @internal Keyed by `providerId::modelId`. Set by aggregator, consumed by costing. */
   _streamWindowedTokens?: Map<string, StreamWindowedTokens>;
+
+  /** Plugin-provided metadata merged from underlying SessionUsageData rows. */
+  metadata?: Record<string, unknown>;
 }
 
 export interface AgentInfo {

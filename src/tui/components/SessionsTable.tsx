@@ -154,6 +154,7 @@ const SessionRow = memo(function SessionRow({
   const effectiveTokens = session.totals.input + session.totals.output;
   const cacheRead = session.totals.cacheRead ?? 0;
   const hasCacheData = cacheRead > 0;
+  const isEstimated = session.metadata?.isEstimated === true;
   const costUsd = session.totalCostUsd ?? 0;
 
   const animatedTokens = useAnimatedValue(effectiveTokens, { durationMs: 300, precision: 0 });
@@ -260,7 +261,10 @@ const SessionRow = memo(function SessionRow({
           {String(session.requestCount).padStart(4)}
         </text>
         <text width={14} height={1} {...bgProp}>
-          <span fg={tokenColor}>{formatTokensVal(animatedTokens).padStart(7)}</span>
+          <span fg={tokenColor}>
+            {isEstimated ? "≈" : " "}
+            {formatTokensVal(animatedTokens).padStart(7)}
+          </span>
           <span fg={colors.textMuted}>
             {hasCacheData ? ` ↯${formatCacheBadge(cacheRead)}` : ""}
           </span>
@@ -315,7 +319,10 @@ const SessionRow = memo(function SessionRow({
           : modelWithCount.padEnd(narrowModelMaxChars)}
       </text>
       <text width={narrowTokenW} height={1} {...bgProp}>
-        <span fg={tokenColor}>{formatTokensVal(animatedTokens).padStart(7)}</span>
+        <span fg={tokenColor}>
+          {isEstimated ? "≈" : " "}
+          {formatTokensVal(animatedTokens).padStart(7)}
+        </span>
         <span fg={colors.textMuted}>
           {hasCacheData && showCacheBadge ? ` ↯${formatCacheBadge(cacheRead)}` : ""}
         </span>

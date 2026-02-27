@@ -314,6 +314,16 @@ export function SessionDetailsDrawer({ session, onClose: _onClose }: SessionDeta
             </text>
           </box>
 
+          {session.metadata?.isEstimated === true && (
+            <box flexDirection="row" height={1} marginBottom={0}>
+              <text height={1} overflow="hidden">
+                <span fg={colors.warning}>
+                  ≈ Token data is estimated — server enrichment pending
+                </span>
+              </text>
+            </box>
+          )}
+
           {hasCacheData && (
             <box flexDirection="row" height={1} marginBottom={0}>
               <text height={1} overflow="hidden">

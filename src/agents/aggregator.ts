@@ -189,6 +189,13 @@ export function aggregateSessionUsage(options: AggregateOptions): AgentSessionAg
     };
     if (session.sessionName) aggregate.sessionName = session.sessionName;
     if (session.projectPath) aggregate.projectPath = session.projectPath;
+
+    // Propagate metadata — session is estimated if any row is estimated
+    const sessionRows = rows.filter((r) => r.sessionId === sessionId);
+    const anyEstimated = sessionRows.some((r) => (r.metadata?.isEstimated as boolean) === true);
+    if (anyEstimated) {
+      aggregate.metadata = { isEstimated: true };
+    }
     results.push(aggregate);
   }
 
