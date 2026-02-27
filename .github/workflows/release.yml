@@ -25,6 +25,30 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      # Workaround: draft releases use lazy tag creation (GitHub doesn't
+      # materialize the git tag until the release is published). Without a
+      # tag, subsequent release-please runs can't find the latest version
+      # and regenerate the entire changelog. Create the tag immediately.
+      # See: googleapis/release-please#1650, googleapis/release-please#2267
+      # TODO: Replace with `force-tag-creation: true` in release-please-config.json
+      # once release-please-action bundles release-please v17.2.0+
+      - name: Create git tag for draft release
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.release.outputs.tag_name }}"
+          SHA="${{ steps.release.outputs.sha }}"
+          if gh api "repos/${{ github.repository }}/git/ref/tags/${TAG}" --silent 2>/dev/null; then
+            echo "Tag ${TAG} already exists, skipping"
+          else
+            echo "Creating tag ${TAG} at ${SHA}"
+            gh api "repos/${{ github.repository }}/git/refs" \
+              --method POST \
+              -f "ref=refs/tags/${TAG}" \
+              -f "sha=${SHA}"
+          fi
+
   build:
     name: Build ${{ matrix.name }}
     needs: release-please
