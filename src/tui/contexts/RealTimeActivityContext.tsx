@@ -50,25 +50,38 @@ export function RealTimeActivityProvider({ children }: { children: ReactNode }) 
     };
   }, []);
 
-  const handleActivityUpdate = useCallback(
-    (update: ActivityUpdate) => {
-      const key = `${update.sessionId}:${update.messageId}`;
-      const prev = lastSeenRef.current.get(key);
-      const prevTokens = prev?.tokens ?? 0;
-      const newTokens = update.tokens.input + update.tokens.output + (update.tokens.reasoning ?? 0);
-      const delta = Math.max(0, newTokens - prevTokens);
+  // Store the actual handler logic in a ref so it always has access to the
+  // latest `debug` without changing callback identity. This prevents the
+  // useEffect below from re-running on every render (which would trigger
+  // stopActivityWatch/startActivityWatch churn on every plugin).
+  const handleActivityUpdateRef = useRef<(update: ActivityUpdate) => void>(() => {});
+  handleActivityUpdateRef.current = (update: ActivityUpdate) => {
+    const key = `${update.sessionId}:${update.messageId}`;
+    const prev = lastSeenRef.current.get(key);
+    const prevTokens = prev?.tokens ?? 0;
+    const input = update.tokens.input ?? 0;
+    const output = update.tokens.output ?? 0;
+    const reasoning = update.tokens.reasoning ?? 0;
+    const newTokens = input + output + reasoning;
+    if (!Number.isFinite(newTokens)) return;
+    const delta = Math.max(0, newTokens - prevTokens);
 
-      if (delta > 0) {
-        lastSeenRef.current.set(key, { tokens: newTokens, updatedAt: Date.now() });
-        setLastActivityAt(update.timestamp);
-        debug(`Real-time activity: +${delta} tokens`, { sessionId: update.sessionId }, "realtime");
+    if (delta > 0) {
+      lastSeenRef.current.set(key, { tokens: newTokens, updatedAt: Date.now() });
+      setLastActivityAt(update.timestamp);
+      debug(`Real-time activity: +${delta} tokens`, { sessionId: update.sessionId }, "realtime");
 
-        for (const listener of listenersRef.current) {
-          listener(delta, update.timestamp);
-        }
+      for (const listener of listenersRef.current) {
+        listener(delta, update.timestamp);
       }
-    },
-    [debug],
+    }
+  };
+
+  // Stable wrapper — identity never changes, so the useEffect below only
+  // runs once per plugin initialization (not on every debug/info change).
+  const handleActivityUpdate = useCallback(
+    (update: ActivityUpdate) => handleActivityUpdateRef.current(update),
+    [],
   );
 
   useEffect(() => {
@@ -106,7 +119,7 @@ export function RealTimeActivityProvider({ children }: { children: ReactNode }) 
         cleanupRef.current = null;
       }
     };
-  }, [pluginsInitialized, demoMode, handleActivityUpdate, info]);
+  }, [pluginsInitialized, demoMode, handleActivityUpdate]);
 
   useEffect(() => {
     const interval = setInterval(() => {
