@@ -3,7 +3,7 @@ import {
   type PluginLogger,
   PluginPermissionError,
   type PluginPermissions,
-} from "./types/index.ts";
+} from "@tokentop/plugin-sdk";
 
 export function createSandboxedHttpClient(
   pluginId: string,

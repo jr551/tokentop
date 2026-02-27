@@ -6,7 +6,7 @@ import type {
   ProviderFetchContext,
   ProviderPlugin,
   ProviderUsageData,
-} from "../types/provider.ts";
+} from "@tokentop/plugin-sdk";
 
 const CHUTES_QUOTA_URL = "https://api.chutes.ai/users/me/quota_usage/me";
 

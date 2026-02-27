@@ -1,4 +1,4 @@
-import type { UsageLimit } from "@/plugins/types/provider.ts";
+import type { UsageLimit } from "@tokentop/plugin-sdk";
 import type { ProviderState } from "../contexts/PluginContext.tsx";
 import { useColors } from "../contexts/ThemeContext.tsx";
 import { Sparkline } from "./Sparkline.tsx";

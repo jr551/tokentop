@@ -9,7 +9,7 @@
  * skipped because they have no registry entry to compare against.
  */
 
-import type { PluginType } from "./types/base.ts";
+import type { PluginType } from "@tokentop/plugin-sdk";
 
 // ---------------------------------------------------------------------------
 // Types

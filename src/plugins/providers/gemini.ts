@@ -9,7 +9,7 @@ import type {
   ProviderUsageData,
   RefreshedCredentials,
   UsageLimit,
-} from "../types/provider.ts";
+} from "@tokentop/plugin-sdk";
 
 const GOOGLE_ENDPOINT = "https://cloudcode-pa.googleapis.com";
 

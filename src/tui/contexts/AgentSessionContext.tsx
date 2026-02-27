@@ -1,3 +1,4 @@
+import type { AgentPlugin, SessionParseOptions } from "@tokentop/plugin-sdk";
 import {
   createContext,
   type ReactNode,
@@ -13,7 +14,6 @@ import type { AgentId, AgentInfo, AgentSessionAggregate } from "@/agents/types.t
 import { createPluginContext } from "@/plugins/plugin-context-factory.ts";
 import { pluginRegistry } from "@/plugins/registry.ts";
 import { createPluginLogger, createSandboxedHttpClient } from "@/plugins/sandbox.ts";
-import type { AgentPlugin, SessionParseOptions } from "@/plugins/types/agent.ts";
 import { persistSessions } from "@/storage/persistence-service.ts";
 import type { PricingSource } from "@/storage/types.ts";
 import { useDemoMode } from "./DemoModeContext.tsx";

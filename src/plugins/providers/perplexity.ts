@@ -6,7 +6,7 @@ import type {
   ProviderFetchContext,
   ProviderPlugin,
   ProviderUsageData,
-} from "../types/provider.ts";
+} from "@tokentop/plugin-sdk";
 
 /**
  * Perplexity Shadow API Discovery (January 2026):

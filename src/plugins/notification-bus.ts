@@ -1,8 +1,11 @@
+import type {
+  NotificationEvent,
+  NotificationPlugin,
+  ProviderUsageData,
+} from "@tokentop/plugin-sdk";
 import type { AppConfig } from "@/config/schema.ts";
 import { safeInvoke } from "./plugin-host.ts";
 import { createPluginLogger } from "./sandbox.ts";
-import type { NotificationEvent, NotificationPlugin } from "./types/notification.ts";
-import type { ProviderUsageData } from "./types/provider.ts";
 
 interface DedupEntry {
   key: string;

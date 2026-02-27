@@ -7,7 +7,7 @@ import type {
   ProviderPlugin,
   ProviderUsageData,
   UsageLimit,
-} from "../types/provider.ts";
+} from "@tokentop/plugin-sdk";
 
 interface CopilotUserResponse {
   access_type_sku?: string;

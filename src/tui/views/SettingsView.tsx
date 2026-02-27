@@ -1,7 +1,7 @@
 import { useKeyboard, useTerminalDimensions } from "@opentui/react";
+import type { ConfigField } from "@tokentop/plugin-sdk";
 import { useCallback, useMemo, useState } from "react";
 import type { AppConfig } from "@/config/schema.ts";
-import type { ConfigField } from "@/plugins/types/base.ts";
 import { useConfig } from "../contexts/ConfigContext.tsx";
 import { useDemoMode } from "../contexts/DemoModeContext.tsx";
 import { usePlugins } from "../contexts/PluginContext.tsx";

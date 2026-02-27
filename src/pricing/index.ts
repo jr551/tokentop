@@ -1,4 +1,4 @@
-import type { ModelPricing, ProviderPlugin, ProviderPricing } from "@/plugins/types/provider.ts";
+import type { ModelPricing, ProviderPlugin, ProviderPricing } from "@tokentop/plugin-sdk";
 import { getFallbackPricing, getFallbackProviderPricing } from "./fallback.ts";
 import {
   clearCache as clearModelsDevCache,

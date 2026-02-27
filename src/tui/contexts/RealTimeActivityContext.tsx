@@ -1,3 +1,4 @@
+import type { ActivityUpdate } from "@tokentop/plugin-sdk";
 import {
   createContext,
   type ReactNode,
@@ -9,7 +10,6 @@ import {
 } from "react";
 import { createPluginContext } from "@/plugins/plugin-context-factory.ts";
 import { pluginRegistry } from "@/plugins/registry.ts";
-import type { ActivityUpdate } from "@/plugins/types/agent.ts";
 import { useDemoMode } from "./DemoModeContext.tsx";
 import { useLogs } from "./LogContext.tsx";
 import { usePlugins } from "./PluginContext.tsx";

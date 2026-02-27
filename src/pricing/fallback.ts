@@ -1,4 +1,4 @@
-import type { ModelPricing } from "@/plugins/types/provider.ts";
+import type { ModelPricing } from "@tokentop/plugin-sdk";
 
 //TODO: get more up to date fallback pricing
 export const FALLBACK_PRICING: Record<string, Record<string, ModelPricing>> = {

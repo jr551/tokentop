@@ -1,14 +1,22 @@
+import type { AnyPlugin, BasePlugin, PluginType } from "@tokentop/plugin-sdk";
+import { CURRENT_API_VERSION } from "@tokentop/plugin-sdk";
 import * as fs from "fs/promises";
 import * as os from "os";
 import * as path from "path";
 import { PATHS } from "@/storage/paths.ts";
-import { CURRENT_API_VERSION } from "./types/base.ts";
-import type {
-  AnyPlugin,
-  PluginLoadResult,
-  PluginType,
-  PluginValidationResult,
-} from "./types/index.ts";
+
+interface PluginValidationResult {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+interface PluginLoadResult<T extends BasePlugin = BasePlugin> {
+  success: boolean;
+  plugin?: T;
+  error?: string;
+  source: "builtin" | "local" | "npm";
+}
 
 const CUSTOM_PLUGINS_DIR = PATHS.config.plugins;
 

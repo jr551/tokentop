@@ -1,7 +1,7 @@
 import { useKeyboard, useTerminalDimensions } from "@opentui/react";
+import type { ConfigField, PluginType } from "@tokentop/plugin-sdk";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AppConfig, SparklineOrientation, SparklineStyle } from "@/config/schema.ts";
-import type { ConfigField, PluginType } from "@/plugins/types/base.ts";
 import { formatBudgetDisplay, parseCurrencyInput } from "@/utils/currency.ts";
 import { useConfig } from "../contexts/ConfigContext.tsx";
 import { useDemoMode } from "../contexts/DemoModeContext.tsx";

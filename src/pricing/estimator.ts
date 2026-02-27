@@ -1,4 +1,4 @@
-import type { CostBreakdown, ModelPricing } from "@/plugins/types/provider.ts";
+import type { CostBreakdown, ModelPricing } from "@tokentop/plugin-sdk";
 
 export interface TokenUsage {
   input: number;

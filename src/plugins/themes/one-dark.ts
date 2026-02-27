@@ -1,4 +1,4 @@
-import type { ThemePlugin } from "../types/theme.ts";
+import type { ThemePlugin } from "@tokentop/plugin-sdk";
 
 export const oneDarkTheme: ThemePlugin = {
   apiVersion: 2,

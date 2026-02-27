@@ -5,11 +5,11 @@
  * with safeInvoke for error isolation and circuit breaker protection.
  */
 
+import type { BasePlugin, PluginLifecycleContext, PluginLogger } from "@tokentop/plugin-sdk";
 import { safeInvoke } from "./plugin-host.ts";
 import { pluginRegistry } from "./registry.ts";
 import { createPluginLogger } from "./sandbox.ts";
 import { runInPluginGuard } from "./sandbox-guard.ts";
-import type { BasePlugin, PluginLifecycleContext, PluginLogger } from "./types/base.ts";
 
 // ---------------------------------------------------------------------------
 // State machine

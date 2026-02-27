@@ -1,9 +1,8 @@
+import type { AuthSources, OpenCodeAuthEntry, PluginPermissions } from "@tokentop/plugin-sdk";
+import { PluginPermissionError } from "@tokentop/plugin-sdk";
 import * as fs from "fs/promises";
 import * as os from "os";
 import * as path from "path";
-import type { PluginPermissions } from "./types/base.ts";
-import { PluginPermissionError } from "./types/base.ts";
-import type { AuthSources, OpenCodeAuthEntry } from "./types/provider.ts";
 
 const OPENCODE_AUTH_PATH = path.join(os.homedir(), ".local/share/opencode/auth.json");
 const OPENCODE_CONFIG_PATH = path.join(os.homedir(), ".config/opencode/opencode.json");

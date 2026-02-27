@@ -1,4 +1,3 @@
-import { execFileSync } from "child_process";
 import type {
   CredentialResult,
   Credentials,
@@ -8,7 +7,8 @@ import type {
   ProviderFetchContext,
   ProviderPlugin,
   ProviderUsageData,
-} from "../types/provider.ts";
+} from "@tokentop/plugin-sdk";
+import { execFileSync } from "child_process";
 
 const TOKEN_EXPIRY_BUFFER_MS = 5 * 60 * 1000;
 

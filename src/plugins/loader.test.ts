@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { CURRENT_API_VERSION } from "@tokentop/plugin-sdk";
 import { validatePlugin } from "./loader.ts";
-import { CURRENT_API_VERSION } from "./types/base.ts";
 
 const validPlugin = {
   id: "test-plugin",

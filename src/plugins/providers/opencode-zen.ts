@@ -6,7 +6,7 @@ import type {
   ProviderFetchContext,
   ProviderPlugin,
   ProviderUsageData,
-} from "../types/provider.ts";
+} from "@tokentop/plugin-sdk";
 
 export const opencodeZenPlugin: ProviderPlugin = {
   apiVersion: 2,

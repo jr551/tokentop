@@ -1,4 +1,4 @@
-import type { ModelPricing } from "@/plugins/types/provider.ts";
+import type { ModelPricing } from "@tokentop/plugin-sdk";
 
 const MODELS_DEV_API = "https://models.dev/api.json";
 const CACHE_TTL_MS = 3600000;

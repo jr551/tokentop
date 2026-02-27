@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { ModelPricing } from "@/plugins/types/provider.ts";
+import type { ModelPricing } from "@tokentop/plugin-sdk";
 import { estimateCost, estimateSessionCost, formatCost, formatTokenCount } from "./estimator.ts";
 
 describe("estimateCost()", () => {

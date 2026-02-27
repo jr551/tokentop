@@ -1,3 +1,11 @@
+import type {
+  AgentPlugin,
+  Credentials,
+  NotificationPlugin,
+  ProviderPlugin,
+  ProviderUsageData,
+  ThemePlugin,
+} from "@tokentop/plugin-sdk";
 import {
   createContext,
   type ReactNode,
@@ -14,10 +22,6 @@ import { safeInvoke, safeInvokeSync } from "@/plugins/plugin-host.ts";
 import { pluginRegistry } from "@/plugins/registry.ts";
 import { createPluginLogger, createSandboxedHttpClient } from "@/plugins/sandbox.ts";
 import { installGlobalFetchGuard, runInPluginGuard } from "@/plugins/sandbox-guard.ts";
-import type { AgentPlugin } from "@/plugins/types/agent.ts";
-import type { NotificationPlugin } from "@/plugins/types/notification.ts";
-import type { Credentials, ProviderPlugin, ProviderUsageData } from "@/plugins/types/provider.ts";
-import type { ThemePlugin } from "@/plugins/types/theme.ts";
 import { initPricingFromPlugins } from "@/pricing/index.ts";
 import type { ProviderSnapshotInsert } from "@/storage/types.ts";
 import { useConfig } from "./ConfigContext.tsx";

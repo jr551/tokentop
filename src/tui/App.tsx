@@ -1,7 +1,7 @@
 import { useKeyboard } from "@opentui/react";
+import type { ThemePlugin } from "@tokentop/plugin-sdk";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import * as builtinThemeExports from "@/plugins/themes/index.ts";
-import type { ThemePlugin } from "@/plugins/types/theme.ts";
 import { resolveTheme, ThemeProvider, useColors, useTheme } from "./contexts/ThemeContext.tsx";
 import {
   type BurstRecorder,

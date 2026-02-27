@@ -6,7 +6,7 @@ import type {
   ProviderFetchContext,
   ProviderPlugin,
   ProviderUsageData,
-} from "../types/provider.ts";
+} from "@tokentop/plugin-sdk";
 
 const MINIMAX_USAGE_URL = "https://platform.minimax.io/v1/api/openplatform/coding_plan/remains";
 

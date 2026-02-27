@@ -7,7 +7,7 @@ import type {
   ProviderPlugin,
   ProviderUsageData,
   UsageLimit,
-} from "../types/provider.ts";
+} from "@tokentop/plugin-sdk";
 
 const ZAI_USAGE_URL = "https://api.z.ai/api/monitor/usage/quota/limit";
 

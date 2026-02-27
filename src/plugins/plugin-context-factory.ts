@@ -1,15 +1,14 @@
+import type { PluginContext, PluginPermissions, PluginStorage } from "@tokentop/plugin-sdk";
+import { isDatabaseInitialized } from "@/storage/db.ts";
 import {
   pluginStorageDelete,
   pluginStorageGet,
   pluginStorageHas,
   pluginStorageSet,
-  } from "@/storage/repos/pluginStorage.ts";
-import { isDatabaseInitialized } from "@/storage/db.ts";
+} from "@/storage/repos/pluginStorage.ts";
 import { createAuthSources } from "./auth-sources.ts";
 import { createPluginLogger, createSandboxedHttpClient } from "./sandbox.ts";
 import { deepFreeze } from "./sandbox-guard.ts";
-import type { PluginPermissions } from "./types/base.ts";
-import type { PluginContext, PluginStorage } from "./types/provider.ts";
 
 function isDbAvailable(): boolean {
   return isDatabaseInitialized();

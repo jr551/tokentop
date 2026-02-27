@@ -9,7 +9,7 @@ import type {
   ProviderUsageData,
   RefreshedCredentials,
   UsageLimit,
-} from "../types/provider.ts";
+} from "@tokentop/plugin-sdk";
 
 const ANTIGRAVITY_ENDPOINTS = [
   "https://daily-cloudcode-pa.sandbox.googleapis.com",

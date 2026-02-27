@@ -2,7 +2,7 @@ import type {
   NotificationContext,
   NotificationEvent,
   NotificationPlugin,
-} from "../types/notification.ts";
+} from "@tokentop/plugin-sdk";
 
 export const terminalBellPlugin: NotificationPlugin = {
   apiVersion: 2,

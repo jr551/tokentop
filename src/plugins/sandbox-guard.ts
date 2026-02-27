@@ -11,9 +11,9 @@
  * 2. **Deep-freeze** — prevents plugins from mutating the PluginContext.
  */
 
+import { PluginPermissionError, type PluginPermissions } from "@tokentop/plugin-sdk";
 import { AsyncLocalStorage } from "async_hooks";
 import { createPluginLogger } from "./sandbox.ts";
-import { PluginPermissionError, type PluginPermissions } from "./types/base.ts";
 
 // ---------------------------------------------------------------------------
 // Plugin execution context (AsyncLocalStorage)

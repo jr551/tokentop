@@ -1,11 +1,3 @@
-import type { PluginsConfig } from "@/config/schema.ts";
-import {
-  discoverLocalPlugins,
-  loadLocalPlugin,
-  loadNpmPlugin,
-  resolvePluginPath,
-} from "./loader.ts";
-import { installAllNpmPlugins, resolveNpmPluginPath } from "./npm-installer.ts";
 import type {
   AgentPlugin,
   AnyPlugin,
@@ -14,7 +6,15 @@ import type {
   PluginType,
   ProviderPlugin,
   ThemePlugin,
-} from "./types/index.ts";
+} from "@tokentop/plugin-sdk";
+import type { PluginsConfig } from "@/config/schema.ts";
+import {
+  discoverLocalPlugins,
+  loadLocalPlugin,
+  loadNpmPlugin,
+  resolvePluginPath,
+} from "./loader.ts";
+import { installAllNpmPlugins, resolveNpmPluginPath } from "./npm-installer.ts";
 
 export type PluginSource = "builtin" | "local" | "npm";
 

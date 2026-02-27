@@ -1,11 +1,11 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { PluginPermissionError } from "@tokentop/plugin-sdk";
 import {
   deepFreeze,
   getActivePluginGuard,
   installGlobalFetchGuard,
   runInPluginGuard,
 } from "./sandbox-guard.ts";
-import { PluginPermissionError } from "./types/base.ts";
 
 const originalFetch = globalThis.fetch;
 const fetchCalls: string[] = [];

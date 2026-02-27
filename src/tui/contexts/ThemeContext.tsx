@@ -1,12 +1,12 @@
-import { createContext, type ReactNode, useContext, useState } from "react";
-import { tokyoNightTheme } from "@/plugins/themes/tokyo-night.ts";
 import type {
   ColorScheme,
   ColorSchemePreference,
   ThemeColors,
   ThemeComponents,
   ThemePlugin,
-} from "@/plugins/types/theme.ts";
+} from "@tokentop/plugin-sdk";
+import { createContext, type ReactNode, useContext, useState } from "react";
+import { tokyoNightTheme } from "@/plugins/themes/tokyo-night.ts";
 
 interface ThemeContextValue {
   theme: ThemePlugin;

@@ -1,5 +1,5 @@
+import type { ProviderUsageData } from "@tokentop/plugin-sdk";
 import type { AgentSessionAggregate, AgentSessionStream } from "@/agents/types.ts";
-import type { ProviderUsageData } from "@/plugins/types/provider.ts";
 import type { UsageEventInsert } from "@/storage/types.ts";
 
 /**

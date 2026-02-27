@@ -1,7 +1,7 @@
 import type { BoxRenderable } from "@opentui/core";
 import { useTerminalDimensions } from "@opentui/react";
+import type { ProviderUsageData } from "@tokentop/plugin-sdk";
 import { forwardRef, useCallback, useEffect, useState } from "react";
-import type { ProviderUsageData } from "@/plugins/types/provider.ts";
 import { useColors } from "../contexts/ThemeContext.tsx";
 import { SkeletonProviderContent } from "./Skeleton.tsx";
 import { useSpinner } from "./Spinner.tsx";

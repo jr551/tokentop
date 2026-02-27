@@ -1,6 +1,6 @@
 import { useKeyboard } from "@opentui/react";
+import type { ColorSchemePreference, ThemePlugin } from "@tokentop/plugin-sdk";
 import { useEffect, useMemo, useState } from "react";
-import type { ColorSchemePreference, ThemePlugin } from "@/plugins/types/theme.ts";
 import { useColors } from "../contexts/ThemeContext.tsx";
 
 interface ThemePickerProps {

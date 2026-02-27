@@ -1,4 +1,4 @@
-import type { SessionUsageData } from "@/plugins/types/agent.ts";
+import type { SessionUsageData } from "@tokentop/plugin-sdk";
 import {
   type AgentId,
   type AgentName,

@@ -1,6 +1,6 @@
+import type { ProviderUsageData } from "@tokentop/plugin-sdk";
 import { useMemo } from "react";
 import type { AgentSessionAggregate } from "@/agents/types.ts";
-import type { ProviderUsageData } from "@/plugins/types/provider.ts";
 import type { ProviderState } from "../contexts/PluginContext.tsx";
 
 interface ProviderSessionTotals {
