@@ -36,6 +36,7 @@
     "@opentui/core": "0.1.81",
     "@opentui/react": "0.1.81",
     "@tokentop/agent-claude-code": "^1.1.0",
+    "@tokentop/agent-cursor": "^1.1.0",
     "@tokentop/agent-opencode": "^1.0.0",
     "@tokentop/plugin-sdk": "^1.2.0",
     "react": "^19.0.0",

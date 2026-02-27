@@ -8,6 +8,7 @@
         "@opentui/core": "0.1.81",
         "@opentui/react": "0.1.81",
         "@tokentop/agent-claude-code": "^1.1.0",
+        "@tokentop/agent-cursor": "^1.1.0",
         "@tokentop/agent-opencode": "^1.0.0",
         "@tokentop/plugin-sdk": "^1.2.0",
         "react": "^19.0.0",
@@ -117,6 +118,8 @@
     "@tokenizer/token": ["@tokenizer/token@0.3.0", "", {}, "sha512-OvjF+z51L3ov0OyAU0duzsYuvO01PH7x4t6DJx+guahgTnBHkhJdG7soQeTSFLWN3efnHyibZ4Z8l2EuWwJN3A=="],
 
     "@tokentop/agent-claude-code": ["@tokentop/agent-claude-code@1.1.0", "", { "peerDependencies": { "@tokentop/plugin-sdk": "^1.0.0" } }, "sha512-mzR9NUAgd9p88zUxZtnhYgxqUGEfr8N3A25D2wGfojkPVAda0DTwTHeUXTLyXMabTSyWz+7vuqLoyXYA4Qpusw=="],
+
+    "@tokentop/agent-cursor": ["@tokentop/agent-cursor@1.1.0", "", { "peerDependencies": { "@tokentop/plugin-sdk": "^1.0.0" } }, "sha512-eFgDwdII6AzefjQbkLi27DESauvJBxwhC3bvjRuv08S+OADxBq7iV83yL+hpKUs1QtF+KkH37IzMTPyaf29aBA=="],
 
     "@tokentop/agent-opencode": ["@tokentop/agent-opencode@1.0.0", "", { "peerDependencies": { "@tokentop/plugin-sdk": "^1.0.0" } }, "sha512-2Y/1sBULn+VHnQDdVqaWLOTiTCEN5OGPWkZ3C+njmdJVfgAEZ6tL6rV8iFxZvWITV5gr845WV+3m1jZEy/dffw=="],
 
