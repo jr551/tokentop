@@ -164,6 +164,23 @@ export const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 2,
+    up: (db: Database) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS plugin_storage (
+          plugin_id TEXT NOT NULL,
+          key TEXT NOT NULL,
+          value TEXT NOT NULL,
+          updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+          PRIMARY KEY (plugin_id, key)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_plugin_storage_plugin
+          ON plugin_storage(plugin_id);
+      `);
+    },
+  },
 ];
 
 export function getCurrentVersion(db: Database): number {

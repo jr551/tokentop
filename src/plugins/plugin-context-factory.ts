@@ -1,27 +1,18 @@
 import {
-  getDatabase,
   pluginStorageDelete,
   pluginStorageGet,
   pluginStorageHas,
   pluginStorageSet,
-} from "@/storage/database.ts";
+  } from "@/storage/repos/pluginStorage.ts";
+import { isDatabaseInitialized } from "@/storage/db.ts";
 import { createAuthSources } from "./auth-sources.ts";
 import { createPluginLogger, createSandboxedHttpClient } from "./sandbox.ts";
 import { deepFreeze } from "./sandbox-guard.ts";
 import type { PluginPermissions } from "./types/base.ts";
 import type { PluginContext, PluginStorage } from "./types/provider.ts";
 
-let dbAvailable: boolean | null = null;
-
 function isDbAvailable(): boolean {
-  if (dbAvailable !== null) return dbAvailable;
-  try {
-    getDatabase();
-    dbAvailable = true;
-  } catch {
-    dbAvailable = false;
-  }
-  return dbAvailable;
+  return isDatabaseInitialized();
 }
 
 function createPluginStorage(pluginId: string): PluginStorage {
@@ -44,11 +35,6 @@ function createPluginStorage(pluginId: string): PluginStorage {
     },
   };
 }
-
-export function resetDbAvailableCache(): void {
-  dbAvailable = null;
-}
-
 export function createPluginContext(
   pluginId: string,
   permissions: PluginPermissions,

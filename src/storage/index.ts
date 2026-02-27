@@ -38,6 +38,12 @@ export {
   queryProviderDailyCosts,
   queryUsageTimeSeries,
 } from "./repos/usageEvents.ts";
+export {
+  pluginStorageDelete,
+  pluginStorageGet,
+  pluginStorageHas,
+  pluginStorageSet,
+} from "./repos/pluginStorage.ts";
 
 export type {
   AgentSessionDim,
