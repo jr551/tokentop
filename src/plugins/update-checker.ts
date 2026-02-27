@@ -60,7 +60,7 @@ function isNewer(current: string, latest: string): boolean {
  * Uses the abbreviated metadata endpoint for minimal payload.
  */
 async function fetchLatestVersion(packageName: string): Promise<string> {
-  const url = `https://registry.npmjs.org/${encodeURIComponent(packageName).replace("%40", "@")}`;
+  const url = `https://registry.npmjs.org/${encodeURIComponent(packageName).replaceAll("%40", "@")}`;
   const res = await fetch(url, {
     headers: { Accept: "application/vnd.npm.install-v1+json" },
     signal: AbortSignal.timeout(8_000),
