@@ -114,7 +114,7 @@ async function main() {
       }
       const seedStr = commandArgs[++i];
       const seed = seedStr ? parseInt(seedStr, 10) : NaN;
-      if (isNaN(seed)) {
+      if (Number.isNaN(seed)) {
         console.error("Error: --seed requires a number");
         process.exit(1);
       }
@@ -137,7 +137,7 @@ async function main() {
     if (arg === "-r" || arg === "--refresh") {
       const intervalStr = commandArgs[++i];
       const interval = intervalStr ? parseInt(intervalStr, 10) : NaN;
-      if (isNaN(interval) || interval < 1000) {
+      if (Number.isNaN(interval) || interval < 1000) {
         console.error("Error: --refresh must be a number >= 1000");
         process.exit(1);
       }
