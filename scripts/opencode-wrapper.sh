@@ -26,10 +26,13 @@ fi
 echo "   Detected shell: $DETECTED_SHELL"
 
 # Define the wrapper function
-WRAPPER_CODE='# OpenCode wrapper - launch tokentop (ttop) on exit
+WRAPPER_CODE='# OpenCode wrapper - launch tokentop (ttop) on exit (interactive terminals only)
 opencode() {
   command opencode "$@"
-  ttop
+  # Only launch ttop if running in an interactive terminal
+  if [ -t 1 ] && [[ $- == *i* ]]; then
+    ttop
+  fi
 }'
 
 # Find the first existing config file
