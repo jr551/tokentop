@@ -25,14 +25,14 @@ Real-time terminal monitoring of LLM token usage and spending across providers a
 
 ## Why tokentop?
 
-You're coding with AI agents all day. Claude Code, OpenCode, Cursor — they're burning through tokens and you have no idea how fast.
+You're coding with AI agents all day. Claude Code, OpenCode, Cursor, Copilot CLI — they're burning through tokens and you have no idea how fast.
 
 You check the Anthropic dashboard. It's hours behind. You check OpenAI. Different dashboard, different login. Want to see it all in one place? In real time? In your terminal, where you already live?
 
 That's tokentop.
 
 - See every session, every model, every dollar — **live**
-- Track costs across **10 providers** from a single dashboard
+- Track costs across **11 providers** from a single dashboard
 - Set **budget alerts** so you don't wake up to a surprise bill
 - Runs **100% locally** — your usage data never leaves your machine
 
@@ -43,8 +43,8 @@ https://github.com/user-attachments/assets/0b0225c7-a137-454b-9b29-c858cdcbd86c
 ## Features
 
 - **Real-time dashboard** — Live token counts, costs, burn rate, and activity sparklines
-- **10 providers** — Anthropic, OpenAI, Google Gemini, GitHub Copilot, Codex, Perplexity, Antigravity, MiniMax, Zai, OpenCode Zen
-- **Session tracking** — See every coding agent session with model, tokens, cost, and duration
+- **11 providers** — Anthropic, OpenAI, Google Gemini, GitHub Copilot, Codex, Perplexity, Antigravity, MiniMax, Zai, OpenCode Zen, Chutes
+- **Session tracking** — See every coding agent session with model, tokens, cost, and duration. Built-in support for Claude Code, OpenCode, Cursor, and Copilot CLI
 - **Budget guardrails** — Daily, weekly, and monthly limits with visual warnings at limit percentages you set
 - **Smart sidebar** — Adaptive panel that breaks down spending by model, project, or agent
 - **Efficiency insights** — Cache leverage, output verbosity, and cost-per-request analysis to help you spend less
@@ -56,7 +56,7 @@ https://github.com/user-attachments/assets/0b0225c7-a137-454b-9b29-c858cdcbd86c
 - **Plugin system** — Extend with custom providers, agents, themes, and notifications
 - **Responsive layout** — Adapts to any terminal size; sidebar, KPI strip, header, and tables all reflow automatically from ultrawide to laptop-width
 - **Demo mode** — Explore the UI with synthetic data, no API keys needed
-- **Zero config** — Auto-discovers credentials from Claude Code, environment variables, and CLI auth files
+- **Zero config** — Auto-discovers credentials from Claude Code, OpenCode, Cursor, Copilot CLI, environment variables, and CLI auth files
 
 ## Installation
 
