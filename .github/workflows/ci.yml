@@ -16,7 +16,7 @@ env:
 jobs:
   typecheck:
     name: Typecheck
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, supermicro-server]
     steps:
       - uses: actions/checkout@v6
 
@@ -29,7 +29,7 @@ jobs:
 
   lint:
     name: Lint
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, supermicro-server]
     steps:
       - uses: actions/checkout@v6
 
@@ -42,7 +42,7 @@ jobs:
 
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, supermicro-server]
     steps:
       - uses: actions/checkout@v6
 
