@@ -11,7 +11,7 @@ on:
 jobs:
   analyze:
     name: Analyze TypeScript
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, supermicro-server]
 
     permissions:
       security-events: write
